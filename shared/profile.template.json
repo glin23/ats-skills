@@ -1,0 +1,88 @@
+{
+  "_notes": [
+    "Copy of this file lives at shared/profile.json after setup.sh runs.",
+    "profile.json is gitignored. Never commit your real profile.",
+    "Field names match what real Greenhouse + Ashby forms expect.",
+    "Leave a field as the placeholder if you do not want the skill to touch it."
+  ],
+
+  "personal": {
+    "first_name": "Your First Name",
+    "last_name": "Your Last Name",
+    "full_name": "Your First Last",
+    "preferred_name": "",
+    "email": "you@example.com",
+    "phone": "+1-555-555-5555",
+    "phone_country_iti": "United States",
+    "phone_country_greenhouse": "United States +1",
+    "linkedin": "https://www.linkedin.com/in/your-handle/",
+    "github": "https://github.com/your-handle",
+    "portfolio": "https://your-portfolio.example.com",
+    "twitter": "",
+    "city": "City, State",
+    "address_street": "",
+    "address_city": "",
+    "address_state": "",
+    "address_zip": "",
+    "address_country": "United States"
+  },
+
+  "education": {
+    "school": "Your School",
+    "degree": "B.S. in Your Major",
+    "major": "Your Major",
+    "graduation_date": "MM/YYYY",
+    "gpa": "3.9",
+    "currently_enrolled": true
+  },
+
+  "work_authorization": {
+    "visa_status": "F-1 OPT eligible",
+    "authorized_to_work_us": true,
+    "requires_sponsorship_now": false,
+    "requires_sponsorship_future": true,
+    "salary_expectation_usd": ""
+  },
+
+  "demographics": {
+    "race": "Prefer not to say",
+    "hispanic_or_latino": "Prefer not to say",
+    "gender": "Prefer not to say",
+    "veteran_status": "I am not a protected veteran",
+    "disability_status": "I do not wish to answer"
+  },
+
+  "resume_path": "/absolute/path/to/your_resume.pdf",
+  "cover_letter_path": "",
+  "cover_letter_template": "",
+
+  "standard_qa": {
+    "how_did_you_hear": "LinkedIn",
+    "referral_name": "",
+    "why_company": "Short default answer about why you want to work here. The skill may overwrite this per company.",
+    "why_role": "Short default answer about why this role fits you.",
+    "biggest_strength": "",
+    "biggest_weakness": "",
+    "favorite_project": "",
+    "earliest_start_date": "MM/DD/YYYY",
+    "willing_to_relocate": true,
+    "preferred_work_arrangement": "Open to onsite, hybrid, or remote"
+  },
+
+  "social_accounts_to_skip": [
+    "facebook",
+    "instagram",
+    "tiktok"
+  ],
+
+  "ats_overrides": {
+    "greenhouse": {
+      "_notes": "Greenhouse-specific tweaks. The country picker uses 'United States +1' with the space-+1 suffix.",
+      "phone_country_display": "United States +1"
+    },
+    "ashby": {
+      "_notes": "Ashby _systemfield_name is a single combined field, not first/last.",
+      "use_combined_name": true
+    }
+  }
+}
