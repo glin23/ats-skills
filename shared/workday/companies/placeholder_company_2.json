@@ -1,0 +1,190 @@
+{
+  "_meta": {
+    "company": "TODO: Lee fill this in after dogfooding",
+    "tenant_subdomain": "TODO",
+    "wd_instance": "wd5",
+    "board_slug": "TODO",
+    "version": "0.1",
+    "last_verified": null,
+    "verified_by": null,
+    "notes": "Placeholder slot 2. Copy step_definitions from real DevTools inspection of a target tenant before relying on this. See _template.json for the schema."
+  },
+  "step_definitions": [
+    {
+      "step": 1,
+      "name": "My Information",
+      "fields": [
+        {
+          "automation_id": "legalName--firstName",
+          "label": "First Name",
+          "profile_path": "personal.first_name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "legalName--lastName",
+          "label": "Last Name",
+          "profile_path": "personal.last_name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "email",
+          "label": "Email",
+          "profile_path": "personal.email",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "addressSection_addressLine1",
+          "label": "Address Line 1",
+          "profile_path": "personal.address.line1",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "addressSection_city",
+          "label": "City",
+          "profile_path": "personal.address.city",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "addressSection_countryRegion",
+          "label": "State / Region",
+          "profile_path": "personal.address.state",
+          "type": "select",
+          "required": true,
+          "options_to_value_map": {
+            "CA": "California",
+            "NY": "New York"
+          }
+        },
+        {
+          "automation_id": "addressSection_postalCode",
+          "label": "Postal Code",
+          "profile_path": "personal.address.zip",
+          "type": "text",
+          "required": true
+        },
+        {
+          "automation_id": "phone-number",
+          "label": "Phone",
+          "profile_path": "personal.phone",
+          "type": "text",
+          "required": true
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "name": "My Experience",
+      "fields": [
+        {
+          "automation_id": "file-upload-input-ref",
+          "label": "Resume Upload",
+          "profile_path": "resume_path",
+          "type": "file",
+          "required": true
+        },
+        {
+          "automation_id": "linkedinQuestion",
+          "label": "LinkedIn URL",
+          "profile_path": "personal.linkedin",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Application Questions",
+      "fields": [
+        {
+          "automation_id": "REPLACE_ME_work_auth_question",
+          "label": "Are you legally authorized to work in the US?",
+          "profile_path": "standard_answers.work_authorized",
+          "type": "select",
+          "required": true,
+          "options_to_value_map": {
+            "Yes": "Yes",
+            "No": "No"
+          }
+        },
+        {
+          "automation_id": "REPLACE_ME_sponsorship_question",
+          "label": "Will you require visa sponsorship?",
+          "profile_path": "standard_answers.needs_visa_sponsorship",
+          "type": "select",
+          "required": true
+        },
+        {
+          "automation_id": "REPLACE_ME_source_question",
+          "label": "How did you hear about us?",
+          "profile_path": "standard_answers.source",
+          "type": "select",
+          "required": false,
+          "options_to_value_map": {
+            "linkedin": "LinkedIn",
+            "referral": "Employee Referral",
+            "website": "Company Website"
+          }
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Voluntary Disclosures",
+      "fields": [
+        {
+          "automation_id": "gender",
+          "label": "Gender",
+          "profile_path": "standard_answers.gender",
+          "type": "select",
+          "required": false
+        },
+        {
+          "automation_id": "ethnicity",
+          "label": "Race / Ethnicity",
+          "profile_path": "standard_answers.race",
+          "type": "select",
+          "required": false
+        },
+        {
+          "automation_id": "hispanicOrLatino",
+          "label": "Hispanic or Latino",
+          "profile_path": "standard_answers.hispanic_or_latino",
+          "type": "select",
+          "required": false
+        },
+        {
+          "automation_id": "veteranStatus",
+          "label": "Veteran Status",
+          "profile_path": "standard_answers.veteran_status",
+          "type": "select",
+          "required": false
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Self Identify",
+      "fields": [
+        {
+          "automation_id": "disabilityStatus",
+          "label": "Disability Status",
+          "profile_path": "standard_answers.disability_status",
+          "type": "select",
+          "required": false
+        },
+        {
+          "automation_id": "name",
+          "label": "Signature (full name)",
+          "profile_path": "personal.full_name",
+          "type": "text",
+          "required": true
+        }
+      ]
+    }
+  ]
+}
