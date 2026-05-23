@@ -1,6 +1,6 @@
 # ats-skills
 
-> v0.2 (batch mode). First dogfooded application 2026-05-23.
+> v0.7 (sourcing + dashboard + batch + feedback loop + Handshake beta + Workday config-driven). First dogfood: NiCE SDR + Cresta DS + Crusoe Motion Design (2026-05-23). v0.5 batch + feedback dogfooded. v0.6/v0.7 alpha — needs real-platform verification.
 
 Claude Code skills for automating Greenhouse and Ashby application form filling on your own browser.
 
@@ -58,7 +58,7 @@ This opens a separate Chrome window with debugging on port 9222 and a profile st
 ```bash
 # First-time setup (once)
 ./setup.sh
-# edit shared/profile.json with your info
+# edit shared/profile.json with your info (including target_filters)
 bash shared/chrome-cdp-launcher.sh
 # log into your CV uploads / linkedin etc on the new Chrome window if needed
 
@@ -67,13 +67,52 @@ bash shared/chrome-cdp-launcher.sh
 # Skill loads your Notion 「🔵 未投」queue → confirms once → applies all → marks Notion
 ```
 
+```bash
+# Sourcing (v0.3+)
+export ANTHROPIC_API_KEY=sk-ant-...
+export NOTION_API_KEY=secret_...
+# 在 Claude Code: "用 ats-source 找新岗位" → Notion 出 50 个 AI scored jobs
+# 在 Notion DB 拖卡 approve / skip + reason
+# 再说 "/ats-skills" → batch 投 Approved 全部
+```
+
 ## Supported flows
 
 | Flow | Trigger | Best for |
 | --- | --- | --- |
-| Batch (v0.2) | `/ats-skills` or "用 ats-skills 投待投队列" | 一次跑完整 queue，看 dashboard |
-| Single Greenhouse | `/ats-greenhouse <url>` | 1-off Greenhouse 投递 |
-| Single Ashby | `/ats-ashby <url>` | 1-off Ashby 投递 |
+| AI Sourcing (v0.3) | `/ats-source` or "找新岗位" | 一句话拉 50+ AI scored jobs 进 Notion |
+| Batch Apply (v0.5) | `/ats-skills` or "投我的 Approved" | 跑完整 Approved 队列 + 自动 mark Notion + feedback loop |
+| Single Greenhouse (v0.1) | `/ats-greenhouse <url>` | 1-off Greenhouse |
+| Single Ashby (v0.1) | `/ats-ashby <url>` | 1-off Ashby |
+| Single Handshake (v0.6 beta) | `/ats-handshake <url>` | 1-off Handshake (beta) |
+| Single Workday (v0.7 stretch) | `/ats-workday <url>` | 1-off Workday with per-company config |
+
+## Configurable Filters (profile.json `target_filters`)
+
+v0.3+ profile.json has a `target_filters` block that the AI scorer and batch orchestrator both read:
+
+- `role_types` — e.g. `["intern", "new_grad_FT"]`. Anything else gets scored down or filtered out.
+- `locations` — e.g. `["US", "Remote-US"]`. JD locations outside this list are penalized.
+- `exclude_keywords` — e.g. `["SWE", "Software Engineer", "Sales Engineer"]`. Title or description hits get filtered.
+- `min_fit_score` — integer 0-10. Below this, the row is skipped before AI sync to Notion.
+- `visa_must_sponsor` — boolean. If true, JD without sponsorship language gets down-ranked.
+
+## Notion Setup
+
+```
+v0.3+ requires writing to your Notion 「📋 岗位追踪」 DB.
+First-time setup:
+1. Create Notion integration → get NOTION_API_KEY
+2. Share your job tracking DB with the integration
+3. Add these properties (matching ats-skills schema):
+   - fit_score (NUMBER)
+   - key_gaps (TEXT)
+   - role_type_match (SELECT: intern / new_grad_FT / other)
+   - skip_reason (SELECT: Wrong Role / Wrong Location / No Sponsor / Salary / Other)
+   - user_note (TEXT)
+   - dim_scores (TEXT, JSON-encoded)
+4. Add to 「状态」 SELECT: "🤖 AI sourced" and "✅ Approved" options
+```
 
 ## Queue source
 
@@ -153,6 +192,14 @@ Not accepted:
 - Paid hosting, "as a service" wrappers, or anything that takes money for using this.
 
 If you fork this and run a service on top of it, please give it a different name.
+
+## Roadmap
+
+- v0.3 ✓ Sourcing + AI matching
+- v0.5 ✓ Batch + feedback loop
+- v0.6 (alpha) Handshake support
+- v0.7 (stretch) Workday config-driven, per-company JSON adapter
+- v1.0 GitHub public release; CDP + Computer Use hybrid stable
 
 ## License
 
