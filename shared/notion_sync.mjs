@@ -1,0 +1,358 @@
+#!/usr/bin/env node
+// notion_sync.mjs — Notion HTTP API client for ats-skills v0.3
+// Node 24+ required (uses global fetch). Zero deps by design.
+// Direct REST calls so open-source users don't need our private MCP setup.
+//
+// =============================================================================
+// FIRST-TIME SETUP — DO THIS BEFORE RUNNING ANY SYNC
+// =============================================================================
+// 1. Create a Notion integration at https://www.notion.so/my-integrations
+//    Copy the secret token (starts with `secret_...` or `ntn_...`).
+// 2. Share your "📋 岗位追踪" database with the integration (Share → Invite).
+// 3. Export NOTION_API_KEY=<your-token>  (setup.sh will help you persist this)
+// 4. (Optional) Override NOTION_JOB_DB_ID if your DB id differs from the default.
+//
+// 5. Manually add these properties to the Notion DB — this script will NOT
+//    create them for you (Notion API can but we skip that until v0.4):
+//
+//      • fit_score          (Number)
+//      • key_gaps           (Text)              — multi-line OK
+//      • role_type_match    (Select)            options: intern / new_grad_FT / other
+//      • skip_reason        (Select)            options: Wrong Role / Wrong Location /
+//                                                        No Sponsor / Salary / Other
+//      • user_note          (Text)
+//      • dim_scores         (Text)              — stores JSON string
+//
+//    Also add these options to the existing "状态" (Status) Select:
+//      • "🤖 AI sourced"
+//      • "✅ Approved"
+//
+// If a property is missing, page create/update will fail with a 400 from
+// Notion telling you which property is unknown — add it and retry.
+// =============================================================================
+
+const NOTION_API_KEY = process.env.NOTION_API_KEY;
+const DATABASE_ID =
+  process.env.NOTION_JOB_DB_ID || '94b728d7-526d-4c9f-96f4-a8cb92c0f5fe';
+const NOTION_VERSION = '2022-06-28';
+const API_BASE = 'https://api.notion.com/v1';
+
+// Notion published rate limit is ~3 req/sec average. We throttle to that.
+const RATE_LIMIT_RPS = 3;
+const MIN_INTERVAL_MS = Math.ceil(1000 / RATE_LIMIT_RPS);
+
+// ---------- low-level HTTP ----------
+
+let _lastRequestAt = 0;
+
+async function _throttle() {
+  const now = Date.now();
+  const wait = Math.max(0, _lastRequestAt + MIN_INTERVAL_MS - now);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  _lastRequestAt = Date.now();
+}
+
+async function notionFetch(method, path, body, { retried = false } = {}) {
+  if (!NOTION_API_KEY) {
+    throw new Error(
+      'NOTION_API_KEY env var not set. See header of notion_sync.mjs for setup.'
+    );
+  }
+  await _throttle();
+  const res = await fetch(`${API_BASE}/${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${NOTION_API_KEY}`,
+      'Notion-Version': NOTION_VERSION,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 429) {
+    if (retried) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Notion 429 rate-limited after retry: ${text}`);
+    }
+    const retryAfter = Number(res.headers.get('retry-after') || 5);
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return notionFetch(method, path, body, { retried: true });
+  }
+
+  if (res.status >= 500 && res.status < 600 && !retried) {
+    await new Promise((r) => setTimeout(r, 1500));
+    return notionFetch(method, path, body, { retried: true });
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Notion ${method} ${path} → ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+// ---------- property helpers ----------
+
+function titleProp(text) {
+  return { title: [{ text: { content: String(text ?? '') } }] };
+}
+function richTextProp(text) {
+  return { rich_text: [{ text: { content: String(text ?? '') } }] };
+}
+function selectProp(name) {
+  if (name == null || name === '') return { select: null };
+  return { select: { name: String(name) } };
+}
+function urlProp(url) {
+  return { url: url || null };
+}
+function numberProp(n) {
+  return { number: typeof n === 'number' && Number.isFinite(n) ? n : null };
+}
+function dateProp(iso) {
+  return iso ? { date: { start: iso } } : { date: null };
+}
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// ---------- property extraction (for queries) ----------
+
+function readTitle(prop) {
+  return prop?.title?.map((t) => t.plain_text).join('') || '';
+}
+function readRichText(prop) {
+  return prop?.rich_text?.map((t) => t.plain_text).join('') || '';
+}
+function readSelect(prop) {
+  return prop?.select?.name || '';
+}
+function readUrl(prop) {
+  return prop?.url || '';
+}
+function readNumber(prop) {
+  return typeof prop?.number === 'number' ? prop.number : null;
+}
+
+// ---------- build properties payload from jobScored ----------
+
+function buildProperties(job, { forCreate = false } = {}) {
+  const props = {};
+  if (job.company != null) props['公司'] = titleProp(job.company);
+  if (job.title != null) props['岗位'] = richTextProp(job.title);
+  if (job.location != null) props['城市'] = richTextProp(job.location);
+  if (job.url != null) props['Apply URL'] = urlProp(job.url);
+  if (job.ats != null) props['ATS 平台'] = selectProp(job.ats);
+
+  if (job.fit_score != null) props['fit_score'] = numberProp(job.fit_score);
+  if (job.key_gaps != null) props['key_gaps'] = richTextProp(job.key_gaps);
+  if (job.role_type_match != null)
+    props['role_type_match'] = selectProp(job.role_type_match);
+  if (job.dim_scores != null) {
+    const jsonStr =
+      typeof job.dim_scores === 'string'
+        ? job.dim_scores
+        : JSON.stringify(job.dim_scores);
+    props['dim_scores'] = richTextProp(jsonStr);
+  }
+  if (job.user_note != null) props['user_note'] = richTextProp(job.user_note);
+  if (job.skip_reason != null) props['skip_reason'] = selectProp(job.skip_reason);
+  if (job.bot_note != null) props['Bot 备注'] = richTextProp(job.bot_note);
+
+  if (forCreate) {
+    // Default state for newly-created AI-sourced rows.
+    if (!props['状态']) props['状态'] = selectProp('🤖 AI sourced');
+  }
+  return props;
+}
+
+// ---------- query helpers ----------
+
+async function findByUrl(url) {
+  if (!url) return null;
+  const data = await notionFetch('POST', `databases/${DATABASE_ID}/query`, {
+    filter: { property: 'Apply URL', url: { equals: url } },
+    page_size: 1,
+  });
+  return data.results?.[0] || null;
+}
+
+async function queryByStatus(statusName, { pageSize = 100 } = {}) {
+  const out = [];
+  let cursor;
+  do {
+    const body = {
+      filter: { property: '状态', select: { equals: statusName } },
+      page_size: pageSize,
+    };
+    if (cursor) body.start_cursor = cursor;
+    const data = await notionFetch('POST', `databases/${DATABASE_ID}/query`, body);
+    for (const row of data.results || []) {
+      const p = row.properties || {};
+      out.push({
+        page_id: row.id,
+        company: readTitle(p['公司']),
+        role: readRichText(p['岗位']),
+        url: readUrl(p['Apply URL']),
+        ats: readSelect(p['ATS 平台']),
+        fit_score: readNumber(p['fit_score']),
+        location: readRichText(p['城市']),
+        status: readSelect(p['状态']),
+      });
+    }
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return out;
+}
+
+// ---------- public API ----------
+
+export async function upsertJob(jobScored, _opts = {}) {
+  try {
+    if (!jobScored || !jobScored.url) {
+      return { ok: false, error: 'jobScored.url required for upsert' };
+    }
+    const existing = await findByUrl(jobScored.url);
+    if (existing) {
+      const props = buildProperties(jobScored, { forCreate: false });
+      // Don't clobber 状态 on existing rows — preserve Lee's manual edits
+      // (e.g. ✅ Approved, ✅ 已投, ⚠️ 跳过未投).
+      delete props['状态'];
+      const updated = await notionFetch('PATCH', `pages/${existing.id}`, {
+        properties: props,
+      });
+      return { ok: true, page_id: updated.id, created: false };
+    }
+    const props = buildProperties(jobScored, { forCreate: true });
+    const created = await notionFetch('POST', 'pages', {
+      parent: { database_id: DATABASE_ID },
+      properties: props,
+    });
+    return { ok: true, page_id: created.id, created: true };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
+export async function batchUpsert(jobs, opts = {}) {
+  const { concurrency = 3, onProgress } = opts;
+  const results = { created: 0, updated: 0, errors: [] };
+  let cursor = 0;
+  let done = 0;
+  const total = jobs.length;
+
+  async function worker() {
+    while (cursor < jobs.length) {
+      const idx = cursor++;
+      const job = jobs[idx];
+      const r = await upsertJob(job);
+      if (r.ok) {
+        if (r.created) results.created++;
+        else results.updated++;
+      } else {
+        results.errors.push({
+          index: idx,
+          company: job?.company,
+          url: job?.url,
+          error: r.error,
+        });
+      }
+      done++;
+      if (onProgress) {
+        try {
+          onProgress({ done, total, last: { ...r, index: idx } });
+        } catch (_) {
+          /* ignore onProgress errors */
+        }
+      }
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(concurrency, jobs.length));
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+export async function markApplied(pageId, info = {}) {
+  if (!pageId) return { ok: false, error: 'pageId required' };
+  const props = {
+    状态: selectProp('✅ 已投'),
+    投递日期: dateProp(todayIso()),
+    链接质量: selectProp('submitted'),
+    来源: selectProp('ATS 直投'),
+  };
+  if (info.bot_note) props['Bot 备注'] = richTextProp(info.bot_note);
+  if (info.confirmation_url) {
+    // Stash confirmation URL inside Bot 备注 if no dedicated field, else append.
+    const extra = info.bot_note
+      ? `${info.bot_note}\nconfirmation: ${info.confirmation_url}`
+      : `confirmation: ${info.confirmation_url}`;
+    props['Bot 备注'] = richTextProp(extra);
+  }
+  try {
+    const updated = await notionFetch('PATCH', `pages/${pageId}`, {
+      properties: props,
+    });
+    return { ok: true, page_id: updated.id };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
+export async function markSkipped(pageId, reason, userNote = '') {
+  if (!pageId) return { ok: false, error: 'pageId required' };
+  const props = {
+    状态: selectProp('⚠️ 跳过未投'),
+  };
+  if (reason) props['skip_reason'] = selectProp(reason);
+  if (userNote) props['user_note'] = richTextProp(userNote);
+  try {
+    const updated = await notionFetch('PATCH', `pages/${pageId}`, {
+      properties: props,
+    });
+    return { ok: true, page_id: updated.id };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
+export async function queryApprovedView(_opts = {}) {
+  return queryByStatus('✅ Approved');
+}
+
+export async function queryAiSourcedPending(_opts = {}) {
+  return queryByStatus('🤖 AI sourced');
+}
+
+// ---------- CLI entrypoint (sanity ping) ----------
+
+const isCli =
+  import.meta.url === `file://${process.argv[1]}` ||
+  process.argv[1]?.endsWith('notion_sync.mjs');
+
+if (isCli) {
+  const cmd = process.argv[2];
+  try {
+    if (cmd === 'ping') {
+      const data = await notionFetch('GET', `databases/${DATABASE_ID}`);
+      console.log(JSON.stringify({ ok: true, title: data?.title?.[0]?.plain_text || '(untitled)', id: data?.id }, null, 2));
+    } else if (cmd === 'approved') {
+      const rows = await queryApprovedView();
+      console.log(JSON.stringify(rows, null, 2));
+    } else if (cmd === 'ai-sourced') {
+      const rows = await queryAiSourcedPending();
+      console.log(JSON.stringify(rows, null, 2));
+    } else {
+      console.error(
+        'Usage: node notion_sync.mjs <ping|approved|ai-sourced>\n' +
+          '  ping        — fetch DB metadata to verify auth + DB id\n' +
+          '  approved    — list rows with 状态="✅ Approved"\n' +
+          '  ai-sourced  — list rows with 状态="🤖 AI sourced"\n'
+      );
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error('ERROR:', err.message || err);
+    process.exit(1);
+  }
+}

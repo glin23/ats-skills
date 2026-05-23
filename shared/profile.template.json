@@ -69,6 +69,19 @@
     "preferred_work_arrangement": "Open to onsite, hybrid, or remote"
   },
 
+  "target_filters": {
+    "_notes": [
+      "用于 ats-skills v0.3 sourcing + AI matching。",
+      "role_types 决定 AI 接受什么类型的岗位；不在列表里的 role 会被 AI 自动 fit_score ≤ 3。",
+      "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。"
+    ],
+    "role_types": ["intern", "new_grad_FT"],
+    "locations": ["US", "Remote-US", "United States"],
+    "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
+    "min_fit_score": 6,
+    "visa_must_sponsor": false
+  },
+
   "social_accounts_to_skip": [
     "facebook",
     "instagram",

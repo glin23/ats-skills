@@ -1,0 +1,123 @@
+{
+  "_notes": [
+    "Seed list of companies for Greenhouse + Ashby sourcing.",
+    "Add/remove via PR or local edit. Each entry tries both ATS platforms.",
+    "Use Lee's profile (US intern / new_grad_FT / non-SWE / GTM+PM track) as the filter.",
+    "Slugs marked null are unknown — fill in when you confirm the board exists.",
+    "priority levels: high | medium | low — influences AI scorer weighting in later phases."
+  ],
+  "companies": [
+    {
+      "name": "Cresta",
+      "greenhouse_slug": "cresta",
+      "ashby_slug": null,
+      "tags": ["AI", "CX", "B2B SaaS"],
+      "priority": "high"
+    },
+    {
+      "name": "Hugging Face",
+      "greenhouse_slug": "huggingface",
+      "ashby_slug": null,
+      "tags": ["AI infra", "open source"],
+      "priority": "high"
+    },
+    {
+      "name": "LangChain",
+      "greenhouse_slug": null,
+      "ashby_slug": "langchain",
+      "tags": ["AI infra", "developer tools"],
+      "priority": "high"
+    },
+    {
+      "name": "Pinecone",
+      "greenhouse_slug": "pinecone",
+      "ashby_slug": null,
+      "tags": ["AI infra", "vector DB"],
+      "priority": "high"
+    },
+    {
+      "name": "Crusoe",
+      "greenhouse_slug": null,
+      "ashby_slug": "crusoe",
+      "tags": ["AI infra", "GPU cloud"],
+      "priority": "medium"
+    },
+    {
+      "name": "Asana",
+      "greenhouse_slug": "asana",
+      "ashby_slug": null,
+      "tags": ["productivity", "B2B SaaS"],
+      "priority": "medium"
+    },
+    {
+      "name": "Notion",
+      "greenhouse_slug": "notion",
+      "ashby_slug": null,
+      "tags": ["productivity", "B2B SaaS"],
+      "priority": "high"
+    },
+    {
+      "name": "Linear",
+      "greenhouse_slug": null,
+      "ashby_slug": "linear",
+      "tags": ["developer tools", "B2B SaaS"],
+      "priority": "high"
+    },
+    {
+      "name": "Ramp",
+      "greenhouse_slug": null,
+      "ashby_slug": "ramp",
+      "tags": ["fintech", "spend mgmt"],
+      "priority": "high"
+    },
+    {
+      "name": "Mercury",
+      "greenhouse_slug": "mercury",
+      "ashby_slug": null,
+      "tags": ["fintech", "banking"],
+      "priority": "medium"
+    },
+    {
+      "name": "Faire",
+      "greenhouse_slug": "faire",
+      "ashby_slug": null,
+      "tags": ["marketplace", "B2B"],
+      "priority": "medium"
+    },
+    {
+      "name": "Whatnot",
+      "greenhouse_slug": "whatnot",
+      "ashby_slug": null,
+      "tags": ["marketplace", "consumer"],
+      "priority": "medium"
+    },
+    {
+      "name": "Brex",
+      "greenhouse_slug": "brex",
+      "ashby_slug": null,
+      "tags": ["fintech", "spend mgmt"],
+      "priority": "medium"
+    },
+    {
+      "name": "Stripe",
+      "greenhouse_slug": "stripe",
+      "ashby_slug": null,
+      "tags": ["fintech", "payments"],
+      "priority": "low"
+    },
+    {
+      "name": "Coinbase",
+      "greenhouse_slug": "coinbase",
+      "ashby_slug": null,
+      "tags": ["crypto", "fintech"],
+      "priority": "low"
+    },
+    {
+      "name": "Polymarket",
+      "greenhouse_slug": null,
+      "ashby_slug": "polymarket",
+      "tags": ["crypto", "prediction markets"],
+      "priority": "medium"
+    }
+  ]
+}

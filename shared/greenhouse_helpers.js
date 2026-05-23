@@ -111,6 +111,141 @@
     return (ctl.innerText || '').trim();
   }
 
+  /**
+   * prepareLocationCombobox(fieldId) — v0.3.
+   *
+   * Greenhouse `candidate-location` is NOT a normal react-select picker. It's a
+   * Google Places API autocomplete wrapped in `.select__control` with an
+   * `<input role="combobox">`. Dogfood (5/23 Twilio + EnergyHub) found:
+   *   - JS setter + InputEvent: options never render (Google Places ignores it).
+   *   - CDP Input.insertText (real keyboard): options STILL don't render on
+   *     Greenhouse (works on Ashby's equivalent widget — TBD why).
+   *
+   * Since the working path requires real CDP `typetext` (which can't be invoked
+   * from in-page JS), this helper just primes the input: scrolls it into view,
+   * assigns a temp ID, focuses it, and returns a selector the caller can hand
+   * to `node shared/cdp.mjs typetext <tab> <selector> <text>`.
+   *
+   * Caller flow:
+   *   1) `GH.prepareLocationCombobox('candidate-location')` -> { ok, selector }
+   *   2) `cdp typetext <tab> <selector> "<location text>"`
+   *   3) sleep ~1.5s for Google Places debounce
+   *   4) `GH.pickLocationOption("<location text>")` -> picks first matching option
+   *      (or falls back to ArrowDown + Enter keyboard sim)
+   */
+  async function prepareLocationCombobox(fieldId) {
+    const hidden = document.getElementById(fieldId);
+    if (!hidden) return { ok: false, error: 'field not found: ' + fieldId };
+    const ctl = hidden.closest('.select__control');
+    if (!ctl) return { ok: false, error: 'no .select__control wrapper for ' + fieldId };
+    const input = ctl.querySelector('input[role="combobox"]') || ctl.querySelector('input');
+    if (!input) return { ok: false, error: 'no input inside .select__control' };
+    try {
+      ctl.scrollIntoView({ block: 'center', behavior: 'instant' });
+    } catch (_) {
+      ctl.scrollIntoView({ block: 'center' });
+    }
+    await sleep(300);
+    // Assign a temp ID so caller can target it via CDP `typetext` regardless of
+    // whatever ID react-select auto-generates (often `react-select-N-input`).
+    const tempId = '__loc_' + Date.now();
+    input.id = tempId;
+    try {
+      input.focus();
+    } catch (_) {}
+    // Also dispatch a mousedown on the control so react-select opens its
+    // internal menu state — some Greenhouse builds require this before
+    // accepting input.
+    dispatchMouseSeries(ctl);
+    await sleep(150);
+    return {
+      ok: true,
+      selector: '#' + tempId,
+      tempId,
+      fieldId,
+      instructions:
+        'caller: 1) `cdp typetext <tab> #' +
+        tempId +
+        ' "<location text>"`; 2) wait ~1500ms; 3) `GH.pickLocationOption("<location text>")`',
+    };
+  }
+
+  /**
+   * pickLocationOption(text) — v0.3.
+   *
+   * Called AFTER caller has typed text via real CDP keyboard into the prepared
+   * combobox. Polls for `.select__option` / `[role="option"]` up to 3s. If no
+   * options appear, falls back to ArrowDown + Enter keyboard dispatch on the
+   * active element (some Greenhouse builds keep the menu state but never paint
+   * .select__option nodes — keyboard nav still commits the highlighted entry).
+   *
+   * Verifies success by reading `.select__single-value` (where react-select
+   * writes the committed label after pick).
+   */
+  async function pickLocationOption(text) {
+    const target = text == null ? '' : String(text).trim().toLowerCase();
+    const tries = [];
+    // Allow Google Places a moment to populate the menu after typing finished.
+    await sleep(500);
+    const deadline = Date.now() + 3000;
+    let opts = [];
+    while (Date.now() < deadline) {
+      opts = Array.from(document.querySelectorAll('.select__option, [role="option"]'));
+      if (opts.length) break;
+      await sleep(100);
+    }
+    if (opts.length) {
+      tries.push({ strategy: 'option-click', count: opts.length });
+      let match = null;
+      if (target) {
+        match = opts.find((o) => (o.innerText || '').trim().toLowerCase() === target);
+        if (!match) match = opts.find((o) => (o.innerText || '').trim().toLowerCase().includes(target));
+      }
+      if (!match) match = opts[0]; // Google Places: first option is usually best.
+      dispatchMouseSeries(match);
+      await sleep(400);
+      const ctl = match.closest('.select__control') || document.activeElement?.closest('.select__control');
+      const picked = ctl?.querySelector('.select__single-value')?.innerText?.trim();
+      if (picked) {
+        return { ok: true, picked, strategy: 'option-click', strategies_tried: tries };
+      }
+      // Pick didn't commit a single-value — fall through to keyboard fallback.
+    } else {
+      tries.push({ strategy: 'option-click', count: 0 });
+    }
+
+    // Fallback: ArrowDown + Enter on whatever element currently has focus.
+    const focused = document.activeElement;
+    if (focused) {
+      const keyOpts = (key, keyCode) => ({
+        key,
+        code: key,
+        keyCode,
+        which: keyCode,
+        bubbles: true,
+        cancelable: true,
+      });
+      focused.dispatchEvent(new KeyboardEvent('keydown', keyOpts('ArrowDown', 40)));
+      focused.dispatchEvent(new KeyboardEvent('keyup', keyOpts('ArrowDown', 40)));
+      await sleep(300);
+      focused.dispatchEvent(new KeyboardEvent('keydown', keyOpts('Enter', 13)));
+      focused.dispatchEvent(new KeyboardEvent('keyup', keyOpts('Enter', 13)));
+      await sleep(500);
+      const ctl = focused.closest('.select__control');
+      const picked = ctl?.querySelector('.select__single-value')?.innerText?.trim();
+      tries.push({ strategy: 'keyboard-down-enter', picked: picked || null });
+      if (picked) {
+        return { ok: true, picked, strategy: 'keyboard-down-enter', strategies_tried: tries };
+      }
+    }
+
+    return {
+      ok: false,
+      error: 'no options after 3s + keyboard fallback did not commit',
+      strategies_tried: tries,
+    };
+  }
+
   function setText(fieldId, value) {
     const el = document.querySelector('#' + CSS.escape(fieldId));
     if (!el) return { ok: false, error: 'no #' + fieldId };
@@ -262,10 +397,19 @@
       const display = (ctl.innerText || '').trim();
       const empty = !display || display.toLowerCase().startsWith('select');
       if (!empty) return;
+      // v0.3: detect Google Places autocomplete combobox (candidate-location and
+      // similar). These need prepareLocationCombobox + cdp typetext, not the
+      // normal openPicker / pickOption flow.
+      const combo = ctl.querySelector('input[role="combobox"]');
+      const isLocationCombobox =
+        forId === 'candidate-location' ||
+        (combo && (combo.getAttribute('aria-autocomplete') === 'list' ||
+                   combo.getAttribute('autocomplete') === 'off')) ||
+        (combo && !ctl.querySelector('.select__indicator'));
       result.push({
         id: forId,
         label: (labelText || '(no label)').replace(/\s*\*\s*$/, '').trim(),
-        type: 'react-select',
+        type: isLocationCombobox ? 'location-combobox' : 'react-select',
         required: true,
         currentValue: display,
         options: null,
@@ -446,6 +590,9 @@
     // v0.2 additions
     normalizeProfile,
     findEmptyRequired,
+    // v0.3 additions — Google Places candidate-location combobox
+    prepareLocationCombobox,
+    pickLocationOption,
   };
 
   return 'GH ready: ' + Object.keys(globalThis.GH).join(',');

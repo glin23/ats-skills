@@ -99,7 +99,7 @@
    * @param {string} question_uuid — the `name` of the hidden checkbox
    * @param {"Yes"|"No"} answer
    */
-  Ashby.clickYesNo = function (question_uuid, answer) {
+  Ashby.clickYesNo = async function (question_uuid, answer) {
     if (answer !== 'Yes' && answer !== 'No') {
       return { ok: false, note: 'bad_answer:' + answer };
     }
@@ -133,8 +133,23 @@
       return { ok: true, note: 'already_active' };
     }
     target.click(); // single click. NOT mousedown.
-    const active = /(^|\s)_active_/.test(target.className);
-    return { ok: active, note: active ? 'activated' : 'click_did_not_activate' };
+
+    // v0.3 fix: react-hook-form state can lag the DOM update by a frame.
+    // Wait 250ms before checking the button's `_active_` class. DO NOT check
+    // `cb.checked` — React's internal state can desync from the DOM attribute.
+    await sleep(250);
+    if (/(^|\s)_active_/.test(target.className)) {
+      return { ok: true, picked: answer, note: 'activated' };
+    }
+
+    // Retry once — some Ashby orgs need a second click after slow hydration.
+    target.click();
+    await sleep(300);
+    if (/(^|\s)_active_/.test(target.className)) {
+      return { ok: true, picked: answer, note: 'activated_after_retry', retried: true };
+    }
+
+    return { ok: false, note: 'click_did_not_activate_after_retry' };
   };
 
   // ---------- react-select v5 picker ----------
@@ -288,6 +303,76 @@
       selector: '#_systemfield_resume',
       note: 'use cdp.mjs upload — DOM.setFileInputFiles, not JS',
     };
+  };
+
+  // ---------- location combobox (v0.3) ----------
+
+  /**
+   * Ashby.prepareLocationCombobox(elementOrId)
+   *
+   * Ashby "Current Location" is a `<input role="combobox">` with no stable id.
+   * findEmptyRequired() returns an `element` reference; pass it here (or pass
+   * an existing id string) to scroll it into view, assign a temp id, and focus.
+   * Then the caller must run `node shared/cdp.mjs typetext $TAB <selector> <text>`
+   * to type with real keyboard events, then call Ashby.pickLocationOption() to
+   * commit the autocomplete selection.
+   *
+   * @param {Element|string} elementOrId — DOM element OR existing id string
+   * @returns {{ ok: boolean, selector?: string, error?: string }}
+   */
+  Ashby.prepareLocationCombobox = async function (elementOrId) {
+    const el =
+      typeof elementOrId === 'string'
+        ? document.getElementById(elementOrId)
+        : elementOrId;
+    if (!el) return { ok: false, error: 'no element' };
+
+    try {
+      el.scrollIntoView({ block: 'center', behavior: 'instant' });
+    } catch (_) {
+      el.scrollIntoView({ block: 'center' });
+    }
+    await sleep(300);
+    if (!el.id) el.id = '__ashby_loc_' + Date.now();
+    el.focus();
+    return { ok: true, selector: '#' + el.id };
+  };
+
+  /**
+   * Ashby.pickLocationOption(text)
+   *
+   * After the caller has used cdp.mjs typetext to enter location text into the
+   * combobox prepared by prepareLocationCombobox(), call this to wait for the
+   * Ashby autocomplete options and click the matching one (or the first if no
+   * exact match). Uses MouseEvent trio (mousedown/mouseup/click) on `[role="option"]`.
+   *
+   * @param {string} text — text to match (case-insensitive substring)
+   */
+  Ashby.pickLocationOption = async function (text) {
+    // Ashby debounces autocomplete ~600-800ms after the last keystroke.
+    await sleep(800);
+    const deadline = Date.now() + 3000;
+    let opts = [];
+    while (Date.now() < deadline) {
+      opts = Array.from(document.querySelectorAll('[role="option"]'));
+      if (opts.length > 0) break;
+      await sleep(100);
+    }
+    if (!opts.length) return { ok: false, error: 'no options after 3s' };
+
+    const target = String(text).trim().toLowerCase();
+    let match = opts.find((o) =>
+      (o.innerText || '').toLowerCase().includes(target)
+    );
+    if (!match) match = opts[0]; // fallback to first option
+
+    ['mousedown', 'mouseup', 'click'].forEach((t) =>
+      match.dispatchEvent(
+        new MouseEvent(t, { bubbles: true, cancelable: true, view: window, button: 0 })
+      )
+    );
+    await sleep(300);
+    return { ok: true, picked: (match.innerText || '').trim() };
   };
 
   // ---------- submit / success ----------
@@ -537,6 +622,58 @@
         currentValue: display,
         options: null,
       });
+    }
+
+    // 5) v0.3 fix: Ashby "Current Location" combobox.
+    // Ashby renders location autocomplete as <input role="combobox"
+    // class="_input_v5ami_28" placeholder="Start typing...">. No id, no
+    // `required`, no `aria-required`. Caller must assign a temp id, focus,
+    // run cdp.mjs typetext, then Ashby.pickLocationOption() to commit.
+    //
+    // Surfaced 2026-05-23 by Crusoe submission failure: "Missing entry for
+    // required field: Current Location".
+    const locInputs = document.querySelectorAll(
+      'input[role="combobox"][placeholder*="ype here" i], input[role="combobox"][placeholder*="tart typing" i], input[role="combobox"][placeholder*="ocation" i]'
+    );
+    for (const inp of locInputs) {
+      if (inp.value && inp.value.trim()) continue; // already filled
+      if (inp.id && seen.has(inp.id)) continue;
+      if (result.some((r) => r.element === inp)) continue;
+
+      // Walk up looking for a label-like element (Ashby uses div._title_*
+      // for the field label; explicit <label> is rare for comboboxes).
+      let labelText = '(unlabeled combobox)';
+      let walker = inp;
+      for (let i = 0; i < 5; i++) {
+        walker = walker.parentElement;
+        if (!walker) break;
+        const lab = walker.querySelector(
+          'label, div[class*="_title_"], div[class*="label" i]'
+        );
+        if (lab && lab.innerText && lab.innerText.trim().length > 0 && lab.innerText.trim().length < 80) {
+          labelText = lab.innerText.trim();
+          break;
+        }
+      }
+
+      const entry = {
+        id: inp.id || null,
+        element: inp, // element ref since the input has no stable id
+        label: labelText.replace(/\s*\*\s*$/, '').trim(),
+        type: 'ashby-location-combobox',
+        required: true,
+        currentValue: inp.value || '',
+        options: null,
+        note:
+          'caller: assign temp id, focus, use cdp typetext, then Ashby.pickLocationOption() to commit',
+      };
+      // Bypass the `push()` id-gate — element-only entries are still useful.
+      if (entry.id && !seen.has(entry.id)) {
+        seen.add(entry.id);
+        result.push(entry);
+      } else if (!entry.id) {
+        result.push(entry);
+      }
     }
 
     return result;
