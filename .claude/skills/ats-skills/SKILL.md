@@ -1,11 +1,13 @@
 ---
 name: ats-skills
-description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. One trigger, runs through your entire 「🔵 未投」Notion queue, applies with a single upfront batch authorization, and auto-marks Notion on success. Triggered via "/ats-skills", "用 ats-skills 投待投队列", "投我的待投", or "batch apply". Uses upfront batch authorization to satisfy Claude Code's safety classifier — the user confirms "go" once at the start, and that single explicit authorization covers every URL in the batch. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
+description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "✅ Approved" jobs from your Notion 「📋 岗位追踪」 dashboard, routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks Notion on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
 ---
 
-# ats-skills batch orchestrator (v0.2)
+# ats-skills batch orchestrator (v0.5)
 
-One trigger. Skill loads the 「🔵 未投」 Notion view, asks for a **single batch authorization** ("回 'go' 开始投这 N 家"), then runs through every Greenhouse + Ashby row end-to-end: fill → upload → submit → verify → mark Notion. Failures are logged and skipped, never retried in a loop. Ends with a dashboard.
+**v0.5 (2026-05-23)**: Queue source = Notion "✅ Approved" view; URL-based ATS dispatch; Computer Use visual fallback for unknown selectors; feedback.jsonl write on success+fail; auto-mark Notion 已投 with confirmation_url.
+
+One trigger. Skill loads the "✅ Approved (Ready to Apply)" Notion view (curated by 用户 in the dashboard after AI sourcing scored + 用户 approved), asks for a **single batch authorization** ("回 'go' 开始投这 N 家"), then dispatches each URL to its matching ATS helper (Greenhouse / Ashby) and runs end-to-end: fill → upload → submit → verify → mark Notion → append feedback. Failures are logged, skipped, and written to `~/.ats-skills/feedback.jsonl` so the next sourcing run learns from them. Ends with a dashboard + feedback-loop status.
 
 This is 用户's actual daily-use form: one command, walk away, come back to a report.
 
@@ -55,40 +57,66 @@ RESUME=$(node -e "console.log(require('$PROFILE').resume_path)")
 
 # 4. log dir
 mkdir -p /tmp/ats-skills/log/$(date +%F)
+
+# 5. Notion has "✅ Approved" status enum (v0.5 requirement)
+#    Ping the DB and verify the 状态 select includes "✅ Approved".
+node -e "
+import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+  try {
+    const rows = await m.queryApprovedView();
+    console.log('Approved view OK, ' + rows.length + ' rows visible');
+  } catch (e) {
+    console.error('Notion approved view query failed: ' + e.message);
+    process.exit(1);
+  }
+});
+" || {
+  echo "Notion 「📋 岗位追踪」 DB is missing the '✅ Approved' status option."
+  echo "Add it manually: open the DB → 状态 property → + Add option → '✅ Approved'."
+  echo "Then re-run /ats-skills."
+  exit 1
+}
+
+# 6. ~/.ats-skills feedback dir
+mkdir -p ~/.ats-skills
 ```
 
-**输出给用户**："Pre-flight OK. CDP ✓ profile ✓ resume ✓ ($RESUME)."
+**输出给用户**："Pre-flight OK. CDP ✓ profile ✓ resume ✓ Approved view ✓ ($RESUME)."
 
 ---
 
-## Step 1: Load queue from Notion
+## Step 1: Load queue from Notion "✅ Approved" view (v0.5)
 
-用 `mcp__notion__notion-query-database-view`（Notion MCP）查 「🔵 未投」 view：
+v0.5 不再读「🔵 未投」全表；只读 用户 在 dashboard 里手动 / AI sourcing pipeline approve 过的岗位。
 
-- **database_id**: `94b728d7-526d-4c9f-96f4-a8cb92c0f5fe`
-- **data_source_id**: `6995653c-4fab-4622-b174-d10892620ad8`
-- **view URL** (reference): `https://www.notion.so/94b728d7526d4c9f96f4a8cb92c0f5fe?v=35d1e8ce8185817fb19d000c1360b514`
+调 `shared/notion_sync.mjs` 里的 `queryApprovedView()`：
 
-筛选规则（v0.2 严格）：
-
-1. `状态` == `🔵 未投`
-2. `ATS 平台` ∈ {`greenhouse`, `ashby`} — **v0.2 不支持 workday / lever / handshake / other**
-3. `链接质量` ∈ {`alive_exact`, `large_ats`} — **跳过 `alive_careers`**（那是 landing page，没 specific role URL）+ `unverified` + `skipped`
-4. `Apply URL` 非空
-
-构造 candidate list（每项含 page_id 供后续 update）：
-
-```js
-[
-  { page_id: "<notion page id>", company: "Cresta", role: "DS Intern CS", url: "https://...", ats: "greenhouse", fit_score: "△" },
-  { page_id: "...", company: "Ramp", role: "CX Agent", url: "https://...", ats: "ashby", fit_score: "✓" },
-  ...
-]
+```bash
+node -e "
+import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+  const rows = await m.queryApprovedView();
+  console.log(JSON.stringify(rows, null, 2));
+});
+" > /tmp/ats-skills/queue.json
 ```
 
-`fit_score` 从 `Bot 备注` 里 parse `fit=N` (如有) 或 留空。**不**用 fit 作过滤，只是 dashboard 显示。
+`queryApprovedView()` 内部用 Notion REST API 过滤 `状态 == "✅ Approved"`（DB id 默认 `94b728d7-526d-4c9f-96f4-a8cb92c0f5fe`，可经 `NOTION_JOB_DB_ID` env 覆盖）。返回每行：
 
-队列为空 → 报告 "未投队列里没有 greenhouse/ashby + alive_exact/large_ats 的 row 了。" 退出。
+```js
+{
+  page_id, company, role, url, ats /* select value if set */, fit_score, location, status
+}
+```
+
+后续 ATS dispatch 不再 trust Notion 里的 `ats` 字段——v0.5 改成在 Step 3 用 URL pattern 自动判定 (`ats` 字段仅在 dashboard print 时显示)。所以即便用户手动建的 row 没填 ATS 也照样跑。
+
+筛选规则（v0.5 更宽松，因为 Approve flow 已经 vet 过）：
+
+1. `状态` == `✅ Approved`（`queryApprovedView` 已 enforce）
+2. `Apply URL` 非空（否则没法 navigate）
+3. URL 必须能被 Step 3 dispatcher 识别为支持的 ATS（greenhouse / ashby v0.5；handshake / workday 留到 v0.6 / v0.7）——无法识别的 row 在 Step 3 当场 skip + feedback log，不在 Step 1 预过滤
+
+队列为空 → 报告 "Notion '✅ Approved' view 里没有 row。先去 dashboard 标几个 AI sourced 岗位为 Approved 再来。" 退出。
 
 ---
 
@@ -162,10 +190,25 @@ for i, c in enumerate(list, 1):
    ```
    404 / `body.innerText` 含 "Job is no longer available" / "Job not found" → return `{ok: false, error: "URL dead"}` 让 caller skip。
 
-2. **Detect ATS** (sanity check vs Notion claim):
-   - URL host 含 `greenhouse.io` 或 `boards.greenhouse.io` → greenhouse
-   - URL host 含 `jobs.ashbyhq.com` 或 `ashbyhq.com` → ashby
-   - 与 `c.ats` 不一致 → 信 URL，log warning，继续
+2. **URL-based ATS dispatch (v0.5)** — 信 URL，不信 Notion 字段：
+
+   ```js
+   function detectATS(url) {
+     if (/job-boards\.greenhouse\.io|boards\.greenhouse\.io|.*\.greenhouse\.io/.test(url)) return 'greenhouse';
+     if (/jobs\.ashbyhq\.com/.test(url)) return 'ashby';
+     if (/joinhandshake\.com|app\.joinhandshake\.com/.test(url)) return 'handshake';  // v0.6, currently skip
+     if (/myworkdayjobs\.com|workday\.com/.test(url)) return 'workday';                // v0.7, currently skip
+     return 'unknown';
+   }
+   ```
+
+   - `greenhouse` → 走 `ats-greenhouse` helpers（`shared/greenhouse_helpers.js`）
+   - `ashby` → 走 `ats-ashby` helpers（`shared/ashby_helpers.js`）
+   - `handshake` → **v0.5 not implemented**：log error + write feedback.jsonl `{skip_reason: "ATS unsupported", user_note: "handshake — v0.6"}` + skip
+   - `workday` → **v0.5 not implemented**：同上，`user_note: "workday — v0.7"`
+   - `unknown` → log + feedback `{skip_reason: "ATS unsupported", user_note: "unknown URL pattern: <url>"}` + skip
+
+   与 Notion 里 `ats` 字段不一致 → log warning（"Notion says X, URL says Y, going with URL"），继续。
 
 3. **Inject helpers**:
    ```bash
@@ -300,7 +343,38 @@ for i, c in enumerate(list, 1):
 
 填完一轮 → 重新调 `findEmptyRequired()` → 还有空 → 再推理一轮。最多 3 轮。
 
-**3 轮后仍有空 required** → return `{ok: false, error: "still N empty required after 3 rounds: <labels>"}` → caller skip。
+### Location combobox 特例（v0.3 → v0.5）
+
+如果 `field.type` 是 `location-combobox`（Greenhouse Google Places picker）或 `ashby-location-combobox`（Ashby 地点 combobox）——这俩用普通 react-select 路径填不进去：
+
+1. 调 `GH.prepareLocationCombobox(fieldId)` 或 `Ashby.prepareLocationCombobox(fieldElement)` → 返回 `{ ok, selector }`（一个 temp CSS selector 指向已 focus 的输入框）
+2. `node shared/cdp.mjs typetext $TAB "<temp selector>" "<location text from profile>"`（真键盘输入，触发 autocomplete）
+3. 等约 1500ms 让下拉出现
+4. 调 `GH.pickLocationOption("<location text>")` 或 `Ashby.pickLocationOption("<location text>")` → 选第一个 match 项
+5. 失败 → 进入下方 Computer Use vision fallback
+
+### Computer Use vision fallback（v0.5 新增）
+
+**仅在**：Claude 推理出"该填什么"但找不到对应 selector / element ID（label 文本和 DOM 名字对不上、或字段动态渲染）时启用。
+
+流程：
+
+1. 调 `shared/computer_use_locator.mjs` 里的 `shouldEscalateToVision(unidentifiedFields, attemptCount)`
+   - 返 `{ok: false, reason: "..."}` → 不升级，按现有 3-round 逻辑继续 / skip
+   - 返 `{ok: true, fieldsToLocate: [...]}` → 进 vision 路径
+2. 调 `captureFrame(tabId)` 把当前 DOM frame 截到 `/tmp/ats-skills/locator-frame.png`
+3. 对每个要找的 field：
+   - 调 `buildVisionPrompt(field, { url, atsPlatform, formTitle })` 拿到 prompt
+   - 用 `mcp__computer-use__screenshot` 取当前屏幕（或读 saved frame），按 prompt 分析定位
+   - Claude 返 `{selector, x, y, confidence}` JSON
+4. 三种结果：
+   - `confidence < 0.5` → log + skip 这个 field
+   - `selector` 非空 → 切回 CDP 快路径：`node shared/cdp.mjs typetext $TAB "<selector>" "<value>"`
+   - `selector` 空但有 `x, y` → 调 `fillViaCoordsPlan(x, y, text)` 拿 action 数组，用 `mcp__computer-use__left_click` + `mcp__computer-use__type` 顺序执行
+5. 每次尝试调 `logAttempt({fieldLabel, strategy, result, confidence, attempt, ats})` 写 `~/.ats-skills/log/locator.jsonl`
+6. 同一 form 内 vision 升级最多 3 次（`MAX_VISION_ATTEMPTS_PER_FORM`）；超过即不再 escalate
+
+**3 轮 Claude 兜底 + Computer Use vision fallback 都跑完仍有空 required** → return `{ok: false, error: "still N empty required after 3 rounds + vision: <labels>"}` → caller skip + feedback log。
 
 ### Claude 推理时的规则
 
@@ -319,26 +393,54 @@ for i, c in enumerate(list, 1):
 
 ---
 
-## Step 4: Mark Notion 已投
+## Step 4: Mark Notion + write feedback.jsonl (v0.5)
 
-仅在 `apply_one` 返回 `{ok: true}` 后调：
+v0.5 在 success 和 fail 两条路径上都写 feedback——success 沉淀"哪类 form 这套 helper 能搞定"，fail 沉淀"下次 sourcing 要规避哪类 pattern"。
 
-```python
-mcp__notion__notion-update-page(
-    page_id=c.page_id,
-    properties={
-        "状态": "✅ 已投",
-        "投递日期": datetime.today().isoformat()[:10],   # "2026-05-23"
-        "链接质量": "submitted",
-        "来源": "ATS 直投",   # if 该字段存在
-        "Bot 备注": "ats-skills v0.2 batch"
-    }
-)
+### Success path
+
+调 `shared/notion_sync.mjs` 的 `markApplied(page_id, info)`：
+
+```bash
+node -e "
+import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+  const r = await m.markApplied('$PAGE_ID', {
+    bot_note: 'ats-skills v0.5 batch',
+    confirmation_url: '$CONFIRMATION_URL'  // 如有, e.g. submit 后落地页 URL
+  });
+  console.log(JSON.stringify(r));
+});
+"
 ```
 
-property 名要严格按 schema（中文 keys）。任一不存在 → 跳过该 key，不阻塞 update。
+`markApplied` 内部把状态置 `✅ 已投`、投递日期 = 今天、链接质量 = `submitted`、来源 = `ATS 直投`，并把 `confirmation_url`（如有）附到 `Bot 备注`。
 
-Notion update 失败 → log warning 但不算 fail（已经投出去了，人工补 mark 也行）。
+Notion update 失败 → log warning 但**不**算 fail（已经投出去了，人工补 mark 也行）。
+
+### Fail path (v0.5 新增 feedback write)
+
+调 `shared/feedback.mjs` 的 `append({company, role, url, ats, skip_reason, user_note})`：
+
+```bash
+node -e "
+import('/Users/lee/Projects/ats-skills/shared/feedback.mjs').then(m => {
+  m.append({
+    company: '$COMPANY',
+    role: '$ROLE',
+    url: '$URL',
+    ats: '$ATS',
+    skip_reason: 'Submit failed',   // 或 'ATS unsupported' / 'Required field' / 'URL dead' / 'Captcha' / etc.
+    user_note: '$ERROR_MESSAGE'      // 原始报错文本
+  });
+});
+"
+```
+
+`feedback.append` 会写到 `~/.ats-skills/feedback.jsonl`（每行一个 JSON 记录，含 `ts`）。
+
+下次 sourcing pipeline 起手时 (`shared/feedback.mjs` 的 `loadRecent(20)` + `formatForPrompt`) 会把最近 skip 注入 AI scorer 的 system prompt，让 scorer 学会"上周 Sierra/Ramp 这种 FT recruiter role 用户嫌弃 → 这次别推"。
+
+注：feedback 是 sourcing 调优用的，不是 retry 用的。Fail 的 row 在 Notion 里保持原状（依然 `✅ Approved`），用户可以手动改 reason / 改成 `⚠️ 跳过未投` / 重新触发 batch。如果想自动 mark 跳过，调 `markSkipped(page_id, reason, user_note)`——v0.5 默认 **不**调，留 user note 后续 review。
 
 ---
 
@@ -369,11 +471,25 @@ batch loop 结束（无论 break 还是 done），print：
          submit click 后 4+4s 仍没 "successfully submitted" 文字，可能 captcha
          截图: /tmp/ats-skills/log/2026-05-23/Polymarket_post_submit.png
 
-Notion: 已 auto-mark 8 个「✅ 已投」+ 投递日期 + 来源="ATS 直投".
+Notion: 已 auto-mark 8 个「✅ 已投」+ 投递日期 + 来源="ATS 直投" (+ confirmation_url 落进 Bot 备注).
 Inbox check: confirmation emails 到 (open a GitHub issue) (Greenhouse 通常有, Ashby 小 startup 经常没).
 
 Log: /tmp/ats-skills/log/2026-05-23.jsonl
 Screenshots: /tmp/ats-skills/log/2026-05-23/
+Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
+
+## v0.5 feedback loop status
+
+跑一遍 `node -e "import('/Users/lee/Projects/ats-skills/shared/feedback.mjs').then(m => console.log(JSON.stringify(m.summarize(m.loadRecent(50)), null, 2)))"`，
+列出 top-3 skip 模式 (累积 50 条):
+
+  • "Wrong Role" × 12 → 下次 sourcing 会 inject "user keeps rejecting senior-level non-intern roles"
+  • "Submit failed" × 5 → helpers 有 systematic bug，建议 check log 看是不是同一 selector 反复挂
+  • "ATS unsupported" × 3 → handshake/workday 未实现（v0.6/v0.7 任务）
+
+→ 下次 sourcing 时 AI scorer 会自动把这些 context 注入 system prompt，过滤掉同类岗位。
+→ 想看更系统的偏差分析，跑 `node shared/patterns.mjs analyze`（v0.5+ 配套工具）→ 会建议
+  你 update `profile.json` 的 `target_filters.exclude_keywords`。
 ```
 
 如果是因为 `ClassifierBlocked` 提前 break：
