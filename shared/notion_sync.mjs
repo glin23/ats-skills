@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// notion_sync.mjs — Notion HTTP API client for ats-skills v0.3
+// notion_sync.mjs — Notion HTTP API client for ats-skills v0.3 / v0.8
 // Node 24+ required (uses global fetch). Zero deps by design.
 // Direct REST calls so open-source users don't need our private MCP setup.
 //
@@ -26,6 +26,15 @@
 //    Also add these options to the existing "状态" (Status) Select:
 //      • "🤖 AI sourced"
 //      • "✅ Approved"
+//
+//    v0.8 additions (salary / comp tracking — required for Lee's 2026-05-23 vision):
+//
+//      • salary_min         (Number)            — lower bound of comp band
+//      • salary_max         (Number)            — upper bound of comp band
+//      • salary_currency    (Select)            options: USD / EUR / GBP / CAD / AUD / SGD / INR / CNY / Other
+//      • salary_interval    (Select)            options: hour / year / month / week
+//      • hourly_rate        (Number)            — auto-computed from salary band
+//                                                  (year → /2080, month → /173, week → /40, hour passthrough)
 //
 // If a property is missing, page create/update will fail with a 400 from
 // Notion telling you which property is unknown — add it and retry.
@@ -134,6 +143,30 @@ function readNumber(prop) {
   return typeof prop?.number === 'number' ? prop.number : null;
 }
 
+// ---------- salary helpers (v0.8) ----------
+
+// Convert a salary band into an hourly rate (USD-equivalent unit-wise — caller
+// is responsible for currency conversion; we only normalize interval).
+// Returns null when interval/value missing.
+//
+// Conventions:
+//   year   → /2080  (52 wk × 40 hr)
+//   month  → /173   (2080 / 12, rounded)
+//   week   → /40    (40-hr work week)
+//   hour   → passthrough
+function computeHourlyRate({ min, max, interval } = {}) {
+  if (interval == null) return null;
+  // Use the midpoint of the band when both bounds present, else whichever is set.
+  let amount = null;
+  if (typeof min === 'number' && typeof max === 'number') amount = (min + max) / 2;
+  else if (typeof min === 'number') amount = min;
+  else if (typeof max === 'number') amount = max;
+  if (amount == null || !Number.isFinite(amount)) return null;
+  const divisor = { year: 2080, month: 173, week: 40, hour: 1 }[interval];
+  if (!divisor) return null;
+  return Math.round((amount / divisor) * 100) / 100; // 2 decimals
+}
+
 // ---------- build properties payload from jobScored ----------
 
 function buildProperties(job, { forCreate = false } = {}) {
@@ -158,6 +191,20 @@ function buildProperties(job, { forCreate = false } = {}) {
   if (job.user_note != null) props['user_note'] = richTextProp(job.user_note);
   if (job.skip_reason != null) props['skip_reason'] = selectProp(job.skip_reason);
   if (job.bot_note != null) props['Bot 备注'] = richTextProp(job.bot_note);
+
+  // v0.8 — salary / comp band
+  // jobScored.salary = { min: 25, max: 35, currency: 'USD', interval: 'hour' }
+  if (job.salary && typeof job.salary === 'object') {
+    const s = job.salary;
+    if (s.min != null) props['salary_min'] = numberProp(s.min);
+    if (s.max != null) props['salary_max'] = numberProp(s.max);
+    if (s.currency != null) props['salary_currency'] = selectProp(s.currency);
+    if (s.interval != null) props['salary_interval'] = selectProp(s.interval);
+    const hr = computeHourlyRate(s);
+    if (hr != null) props['hourly_rate'] = numberProp(hr);
+  }
+  // Allow direct override of hourly_rate if caller already computed it (e.g. with currency conversion).
+  if (job.hourly_rate != null) props['hourly_rate'] = numberProp(job.hourly_rate);
 
   if (forCreate) {
     // Default state for newly-created AI-sourced rows.
