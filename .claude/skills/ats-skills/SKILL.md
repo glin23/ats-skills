@@ -3,7 +3,9 @@ name: ats-skills
 description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "✅ Approved" jobs from your Notion 「📋 岗位追踪」 dashboard, routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks Notion on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
 ---
 
-# ats-skills batch orchestrator (v0.8)
+# ats-skills batch orchestrator (v0.9)
+
+**v0.9 (2026-05-24)**: Quota guard for large companies (Google/Meta/Microsoft/etc). Batch 主动 skip 限投公司，引导用户 cherry-pick + single-URL skill 手动投。
 
 **v0.8 (2026-05-23)**: Slow-mode pacing (2-5 min jitter, 50/day cap by default); reads new profile.batch_pace config; URL-based dispatch extended to lever / smartrecruiters / icims / jobvite / handshake / workday.
 
@@ -208,6 +210,25 @@ print 给用户：
 # pseudocode
 for i, c in enumerate(list, 1):
     print(f"[{i}/{N}] {c.company} — {c.role} ({c.ats})")
+
+    # v0.9 Quota Guard — skip large capped companies, do NOT batch
+    company_entry = lookup_company(c.url)  # 从 company_list.json 找 (URL 公司名匹配)
+    if company_entry and company_entry.get("apply_quota", {}).get("enabled") is True:
+        q = company_entry["apply_quota"]
+        msg = f"⚠️ {c.company} 是限投公司 (cap {q['limit_per_period']}/{q['period']}). 跳过 batch. 请用 /ats-{c.ats} <url> 单独投递。"
+        print(f"  {msg}")
+        log_feedback({
+            "company": c.company,
+            "role": c.role,
+            "url": c.url,
+            "ats": c.ats,
+            "skip_reason": "quota_protect",
+            "user_note": "ats-skills batch 主动 skip 限投公司，避免烧 quota",
+        })
+        notion_mark_skipped(c.page_id, reason="Other",
+                            user_note="Quota protect — manual single-URL only")
+        continue  # 跳到下一家 — 注意不是 break batch
+
     try:
         result = apply_one(c)
         if result.ok:
@@ -224,6 +245,8 @@ for i, c in enumerate(list, 1):
         log_jsonl({**c.dict(), "success": False, "error": str(e), "ts": now()})
         print(f"  ❌ {e} — skipping, continuing batch.")
 ```
+
+注意：quota guard 跟 `ClassifierBlocked` 不同 —— **不 break batch，只 skip 这一家**，下一家继续。被 skip 的 row 写 feedback `skip_reason=quota_protect` 并在 Notion 上 mark 「⚠️ 跳过未投」+ user_note 说明是 quota 保护。
 
 ### Per-job flow (`apply_one(c)`)
 
@@ -567,8 +590,19 @@ ETA for next 38 @ 3.5min avg = ~2h13m  (finishes ~22:47 local)
          submit click 后 4+4s 仍没 "successfully submitted" 文字，可能 captcha
          截图: /tmp/ats-skills/log/2026-05-23/Polymarket_post_submit.png
 
+🏢 v0.9 Quota guard skipped (2):
+  - [11] Google — Product Mgmt Intern  (greenhouse)
+         apply_quota cap 3/semester — 用 single-URL skill cherry-pick 手动投
+  - [12] Anthropic — TPM Intern  (greenhouse)
+         apply_quota cap 3/semester — 用 single-URL skill cherry-pick 手动投
+
+  → 这些 row 已被 mark 「⚠️ 跳过未投」 + user_note="Quota protect — manual single-URL only"
+  → 去 Notion 「🏢 大公司限投 (待手动选)」 view 看完整 capped 队列
+  → 心里挑出 dream 那 1-3 家 → 用 `/ats-greenhouse <url>` / `/ats-ashby <url>` 单独投
+  → 投完手动在 「🏢 大公司投递配额追踪」 sub-page 记一笔（Google 1/3 etc.）
+
 Notion: 已 auto-mark 8 个「✅ 已投」+ 投递日期 + 来源="ATS 直投" (+ confirmation_url 落进 Bot 备注).
-Inbox check: confirmation emails 到 (open a GitHub issue) (Greenhouse 通常有, Ashby 小 startup 经常没).
+Inbox check: confirmation emails 到用户注册邮箱 (Greenhouse 通常有, Ashby 小 startup 经常没).
 
 Log: /tmp/ats-skills/log/2026-05-23.jsonl
 Screenshots: /tmp/ats-skills/log/2026-05-23/
@@ -623,6 +657,60 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 
 ---
 
+## 大公司限投保护 (v0.9 Quota Guard)
+
+### 为什么 batch 必须主动 skip
+
+大公司（Google / Meta / Microsoft / Amazon / Apple / Stripe / Anthropic / OpenAI / 投行系列 etc.）的招聘系统对每位 candidate 有 **submission cap**。最有名的：
+
+- Google careers: 3 applications / 6 months（hard-blocked）
+- Amazon Jobs: 系统阻挡在 10/yr
+- Apple / Netflix / Stripe / Anthropic / OpenAI: 没明文 cap 但 self-restraint 3/sem
+- 投行 (Goldman / JPMorgan / Morgan Stanley): 行业规范 3/sem
+
+**如果 batch 自动投这些**：配额会烧在 **非 dream role** 上，等用户想投真正梦中岗位时已 hit cap = 失败。
+
+**Hard product constraint**，不是 nice-to-have。
+
+### 检测 (Step 3 dispatch 头部)
+
+每个 URL 进 dispatch 前：
+
+1. lookup `shared/sourcing/company_list.json` 的对应公司 entry（用 URL 解析或 Notion row 上的 company 名）
+2. 若 entry 含 `apply_quota.enabled == true` → 跳过本 row，**不 break batch，只 skip**：
+   - print `⚠️ {company} 是限投公司 (cap {limit}/{period}). 跳过 batch. 请用 /ats-{ats} <url> 单独投递。`
+   - 写 `~/.ats-skills/feedback.jsonl` 一条 `skip_reason=quota_protect` 记录
+   - Notion 上 mark `状态 = ⚠️ 跳过未投` + `skip_reason = Other` + `user_note = Quota protect — manual single-URL only`
+   - `continue` 跳到下一家
+3. 否则继续 v0.8 dispatch logic
+
+### 与 ClassifierBlocked 的差别
+
+| 触发场景 | break batch? | feedback log | Notion 状态 |
+|---|---|---|---|
+| `ClassifierBlocked` (Bash classifier 拦 submit) | **break** 整个 batch | n/a (没投出去) | 保留 ✅ Approved |
+| **Quota guard skip** (v0.9) | **不 break**, 只 skip 这家 | 写 `skip_reason=quota_protect` | mark `⚠️ 跳过未投` + user_note |
+
+quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **harness 层** 阻断，需用户切 single-URL 路径。
+
+### 用户操作流（被 skip 之后）
+
+1. batch 跑完，dashboard 看到 "🏢 N 家因 quota 保护被 skip"
+2. 用户打开 Notion 「📋 岗位追踪」 → 「🏢 大公司限投 (待手动选)」 view
+3. 心里挑出最 dream 的 1-3 家（每个公司 1 个 role）
+4. 对每个 cherry-pick 的 row 单独跑 `/ats-greenhouse <url>` / `/ats-ashby <url>` 等 single-URL skill
+5. 投完去 「🏢 大公司投递配额追踪」 sub-page 手动 +1（"Google 用了 1/3，剩 2"）
+6. 剩下的 capped row 留在 view 里，下一 cycle 再 review
+
+### 不要做的事
+
+- ❌ 不要让 quota guard 报错 / throw —— 它是设计内的 skip，dashboard 单独成组
+- ❌ 不要在 batch 中"绕过"或"覆盖" quota guard —— 即使用户在 Notion 把 capped row 改成 ✅ Approved，batch 还是要 skip。要投 capped 公司，**唯一方式**是 single-URL skill
+- ❌ 不要 hardcode capped 公司名单 —— 全部从 `company_list.json` 的 `apply_quota` 字段读
+- ❌ 不要把被 skip 的 row 计入 daily_cap 计数 —— 它没真投，不算 attempt
+
+---
+
 ## Error handling speedrun
 
 | 情形 | 处理 |
@@ -639,6 +727,7 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 | Chrome 9222 中途挂掉 | break batch + 让用户重启 launcher |
 | **今日 daily cap 触顶** (v0.8) | **pause batch** → 写 progress.json + 跳到 Step 5 with daily-cap message — 剩余 row 留在 Approved 队列，明天 0:00 后自动续接 |
 | 中途 ATS helper 文件不存在 (v0.8 alpha/beta) | log + feedback `helper missing for $ATS` + skip + continue |
+| **公司 `apply_quota.enabled == true`** (v0.9) | skip 这家 + feedback `skip_reason=quota_protect` + Notion mark `⚠️ 跳过未投`，**不**break batch，引导用户用 single-URL skill cherry-pick |
 
 ---
 
