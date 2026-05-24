@@ -202,15 +202,14 @@ export async function fetchJobsForCompany(companyName, slugCandidates, opts = {}
  * or 'other'. Conservative: prefer false negatives over polluting the
  * sourced feed with FT roles labeled as new-grad.
  *
- * 'intern'      → /intern|internship|summer 202[5-7]|co-op/i
- * 'new_grad_FT' → /new grad|new graduate|university grad|early career|associate \(.*new/i
- *                 AND NOT intern
+ * Word boundaries (\b) required: without them, "Internal Audit" / "International X"
+ * match /intern/i. Dry-run 2026-05-23 showed 61/168 (36%) false positives without \b.
  */
 export function classifyRoleType(title) {
   if (!title) return 'other';
   const t = String(title);
-  const internRe = /intern|internship|summer\s+202[5-7]|co-?op/i;
-  const newGradRe = /new\s+grad|new\s+graduate|university\s+grad|early\s+career|associate\s*\(.*new/i;
+  const internRe = /\b(intern|internship|co-?op)\b|\bsummer\s+202[5-7]\b/i;
+  const newGradRe = /\b(new\s+grad|new\s+graduate|university\s+grad|early\s+career)\b|\bassociate\s*\([^)]*new/i;
   if (internRe.test(t)) return 'intern';
   if (newGradRe.test(t)) return 'new_grad_FT';
   return 'other';
@@ -235,4 +234,45 @@ export function filterByRoleType(jobs, roleTypes = ['intern', 'new_grad_FT']) {
     }
   }
   return out;
+}
+
+/**
+ * filterByExcludeKeywords(jobs, excludeKeywords) — drop jobs whose title
+ * matches any keyword (substring, case-insensitive, word-boundary aware).
+ * Used to strip SWE / ML / Backend / Security Engineer etc. before AI scoring.
+ *
+ * Each keyword is matched as a whole phrase with word boundaries on both
+ * ends, so "swe" won't match "answer" and "data engineer" only matches
+ * the literal phrase.
+ */
+export function filterByExcludeKeywords(jobs, excludeKeywords = []) {
+  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(excludeKeywords) || excludeKeywords.length === 0) return jobs;
+  const patterns = excludeKeywords.map((kw) => {
+    const escaped = String(kw).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i');
+  });
+  return jobs.filter((j) => {
+    const t = j.title || '';
+    return !patterns.some((re) => re.test(t));
+  });
+}
+
+/**
+ * filterByLocation(jobs, allowedPatterns) — keep jobs whose location field
+ * contains at least one allowed substring (case-insensitive). Empty / null
+ * locations are kept (some boards omit location at the API level).
+ *
+ * Cloudflare returns the literal string "In-Office" for many jobs — include
+ * "In-Office" in allowedPatterns to keep those rather than drop them.
+ */
+export function filterByLocation(jobs, allowedPatterns = []) {
+  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(allowedPatterns) || allowedPatterns.length === 0) return jobs;
+  const lc = allowedPatterns.map((p) => String(p).toLowerCase());
+  return jobs.filter((j) => {
+    const loc = (j.location || '').toLowerCase();
+    if (!loc) return true;
+    return lc.some((p) => loc.includes(p));
+  });
 }

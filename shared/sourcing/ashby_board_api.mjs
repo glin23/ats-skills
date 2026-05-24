@@ -171,6 +171,39 @@ export function filterByRoleType(jobs, roleTypes = ['intern', 'new_grad_FT']) {
   });
 }
 
+/**
+ * filterByExcludeKeywords(jobs, excludeKeywords) — drop jobs whose title
+ * matches any keyword. See greenhouse_board_api.mjs for full doc.
+ */
+export function filterByExcludeKeywords(jobs, excludeKeywords = []) {
+  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(excludeKeywords) || excludeKeywords.length === 0) return jobs;
+  const patterns = excludeKeywords.map((kw) => {
+    const escaped = String(kw).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}\\b`, 'i');
+  });
+  return jobs.filter((j) => {
+    const t = j.title || '';
+    return !patterns.some((re) => re.test(t));
+  });
+}
+
+/**
+ * filterByLocation(jobs, allowedPatterns) — keep jobs whose location field
+ * contains at least one allowed substring (case-insensitive). Empty / null
+ * locations are kept. See greenhouse_board_api.mjs for full doc.
+ */
+export function filterByLocation(jobs, allowedPatterns = []) {
+  if (!Array.isArray(jobs)) return [];
+  if (!Array.isArray(allowedPatterns) || allowedPatterns.length === 0) return jobs;
+  const lc = allowedPatterns.map((p) => String(p).toLowerCase());
+  return jobs.filter((j) => {
+    const loc = (j.location || '').toLowerCase();
+    if (!loc) return true;
+    return lc.some((p) => loc.includes(p));
+  });
+}
+
 // ---------- CLI smoke test ----------
 // Usage: node shared/sourcing/ashby_board_api.mjs <slug>
 if (import.meta.url === `file://${process.argv[1]}`) {
