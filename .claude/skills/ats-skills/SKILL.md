@@ -3,7 +3,9 @@ name: ats-skills
 description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "✅ Approved" jobs from your Notion 「📋 岗位追踪」 dashboard, routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks Notion on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
 ---
 
-# ats-skills batch orchestrator (v0.5)
+# ats-skills batch orchestrator (v0.8)
+
+**v0.8 (2026-05-23)**: Slow-mode pacing (2-5 min jitter, 50/day cap by default); reads new profile.batch_pace config; URL-based dispatch extended to lever / smartrecruiters / icims / jobvite / handshake / workday.
 
 **v0.5 (2026-05-23)**: Queue source = Notion "✅ Approved" view; URL-based ATS dispatch; Computer Use visual fallback for unknown selectors; feedback.jsonl write on success+fail; auto-mark Notion 已投 with confirmation_url.
 
@@ -82,6 +84,50 @@ mkdir -p ~/.ats-skills
 ```
 
 **输出给用户**："Pre-flight OK. CDP ✓ profile ✓ resume ✓ Approved view ✓ ($RESUME)."
+
+---
+
+## Batch Pacing Configuration (v0.8)
+
+profile.json 的 `batch_pace` 字段控制投递速度：
+
+| Pace | Per-job 间隔 | 每日 cap | 用途 |
+|---|---|---|---|
+| `"fast"` | 5-15 sec jitter | 200 | 用户 自己 dogfood + 短 batch |
+| `"normal"` | 30-60 sec jitter | 100 | 日常用 |
+| `"slow"` | 2-5 min jitter | 50 | 平台反爬高时 + 过夜跑 (**default**) |
+| `"stealth"` | 5-15 min jitter | 30 | 极度模拟人类，2-3 小时 50 个 |
+
+默认 `"slow"` (per 用户 2026-05-23 vision: 模拟人工不让平台识别)。
+
+### Pace lookup (canonical jitter ranges, in seconds)
+
+```js
+const BATCH_PACE = {
+  fast:    { jitter: [5,   15],  daily_cap: 200 },
+  normal:  { jitter: [30,  60],  daily_cap: 100 },
+  slow:    { jitter: [120, 300], daily_cap: 50  },  // 2-5 min — DEFAULT
+  stealth: { jitter: [300, 900], daily_cap: 30  },  // 5-15 min
+};
+const pace   = profile.batch_pace || 'slow';
+const cfg    = BATCH_PACE[pace] || BATCH_PACE.slow;
+const sleepS = cfg.jitter[0] + Math.random() * (cfg.jitter[1] - cfg.jitter[0]);
+```
+
+### 实施 (Step 3 loop hook)
+
+Step 3 loop 内每个 job 完成后:
+- `await sleep(jitter_range[pace])` —— jitter 是 uniform random in `[min, max]` seconds
+- 检查今日已投递数 (`success_count + fail_count`) >= `daily_cap` → break batch 并提示"今日 cap N 已达，明日再 trigger / 或临时切 fast pace"
+- 写 progress 到 `~/.ats-skills/batch_progress.json` (含 `pace`, `started_at`, `last_job_at`, `success_count`, `fail_count`, `remaining_urls[]`)
+- 容许中断恢复：下次 `/ats-skills resume` 读 progress.json 接着跑（v0.8 stretch）
+- 过夜跑 (stealth + 30 cap): 显示预计完成时间 = `now + remaining * avg_jitter`
+
+### Daily cap 计算口径
+
+- 计数包含**所有触发的 attempt**（success + fail + skipped），不是只算 success
+- 跨日界限以本地时区 `America/New_York` 0:00 为准（用户 默认时区）
+- daily cap counter 存 `~/.ats-skills/daily_count.json`，按日期 key 累计
 
 ---
 
@@ -190,35 +236,81 @@ for i, c in enumerate(list, 1):
    ```
    404 / `body.innerText` 含 "Job is no longer available" / "Job not found" → return `{ok: false, error: "URL dead"}` 让 caller skip。
 
-2. **URL-based ATS dispatch (v0.5)** — 信 URL，不信 Notion 字段：
+2. **URL-based ATS dispatch (v0.5 / v0.8)** — 信 URL，不信 Notion 字段：
 
    ```js
    function detectATS(url) {
      if (/job-boards\.greenhouse\.io|boards\.greenhouse\.io|.*\.greenhouse\.io/.test(url)) return 'greenhouse';
      if (/jobs\.ashbyhq\.com/.test(url)) return 'ashby';
-     if (/joinhandshake\.com|app\.joinhandshake\.com/.test(url)) return 'handshake';  // v0.6, currently skip
-     if (/myworkdayjobs\.com|workday\.com/.test(url)) return 'workday';                // v0.7, currently skip
+     if (/jobs\.lever\.co/.test(url)) return 'lever';                                  // v0.8
+     if (/jobs\.smartrecruiters\.com/.test(url)) return 'smartrecruiters';             // v0.8 beta
+     if (/careers-.*\.icims\.com|.*\.icims\.com/.test(url)) return 'icims';            // v0.8 alpha
+     if (/jobs\.jobvite\.com/.test(url)) return 'jobvite';                             // v0.8 alpha
+     if (/joinhandshake\.com|app\.joinhandshake\.com/.test(url)) return 'handshake';   // v0.6 beta
+     if (/myworkdayjobs\.com|workday\.com/.test(url)) return 'workday';                // v0.7 stretch
+     // sourcing-only — recognized but no auto-apply helper yet
+     if (/wellfound\.com|angel\.co/.test(url)) return 'wellfound';
+     if (/(work|jobs)\.ycombinator\.com/.test(url)) return 'yc';
+     if (/bamboohr\.com/.test(url)) return 'bamboohr';
+     if (/ats\.rippling\.com|app\.rippling\.com/.test(url)) return 'rippling';
+     if (/recruitee\.com/.test(url)) return 'recruitee';
+     if (/personio\.de|personio\.com/.test(url)) return 'personio';
      return 'unknown';
    }
    ```
 
-   - `greenhouse` → 走 `ats-greenhouse` helpers（`shared/greenhouse_helpers.js`）
-   - `ashby` → 走 `ats-ashby` helpers（`shared/ashby_helpers.js`）
-   - `handshake` → **v0.5 not implemented**：log error + write feedback.jsonl `{skip_reason: "ATS unsupported", user_note: "handshake — v0.6"}` + skip
-   - `workday` → **v0.5 not implemented**：同上，`user_note: "workday — v0.7"`
-   - `unknown` → log + feedback `{skip_reason: "ATS unsupported", user_note: "unknown URL pattern: <url>"}` + skip
+   ### URL → helper dispatch 表 (v0.8)
 
-   与 Notion 里 `ats` 字段不一致 → log warning（"Notion says X, URL says Y, going with URL"），继续。
+   | URL pattern | ATS key | Helper status | Action |
+   |---|---|---|---|
+   | `*.greenhouse.io` / `boards.greenhouse.io` / `job-boards.greenhouse.io` | `greenhouse` | stable | route to `ats-greenhouse` |
+   | `jobs.ashbyhq.com` | `ashby` | stable | route to `ats-ashby` |
+   | `jobs.lever.co` | `lever` | v0.8 (new) | route to `ats-lever` |
+   | `jobs.smartrecruiters.com` | `smartrecruiters` | v0.8 beta | route to `ats-smartrecruiters` (beta — verify before submit) |
+   | `careers-*.icims.com` | `icims` | v0.8 alpha | route to `ats-icims` (alpha — may fail, log + continue) |
+   | `jobs.jobvite.com` | `jobvite` | v0.8 alpha | route to `ats-jobvite` (alpha — may fail) |
+   | `app.joinhandshake.com` | `handshake` | v0.6 beta | route to `ats-handshake` (beta) |
+   | `*.myworkdayjobs.com` | `workday` | v0.7 stretch | route to `ats-workday` (per-company config required) |
+   | `wellfound.com` / `angel.co` | `wellfound` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | `(work|jobs).ycombinator.com` | `yc` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | `bamboohr.com` | `bamboohr` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | `ats.rippling.com` | `rippling` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | `recruitee.com` | `recruitee` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | `personio.de/com` | `personio` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
+   | (else) | `unknown` | — | skip + feedback `unknown URL pattern: <url>` |
 
-3. **Inject helpers**:
+   - alpha/beta helpers: still run but `feedback.jsonl` 标记 `experimental: true`，便于后期回归
+   - sourcing-only: 从 Notion approved 队列里 vet 过的 row 也照 skip，理由 = `manual apply required (sourcing-only)`，**不**算 fail
+   - 与 Notion 里 `ats` 字段不一致 → log warning（"Notion says X, URL says Y, going with URL"），继续
+
+3. **Inject helpers** (v0.8 — switch on detected ATS):
    ```bash
-   if [ "$ATS" = "greenhouse" ]; then
-     node shared/cdp.mjs eval "$TAB" "$(cat shared/greenhouse_helpers.js)"
-   else
-     node shared/cdp.mjs eval "$TAB" "$(cat shared/ashby_helpers.js)"
-   fi
+   case "$ATS" in
+     greenhouse)      node shared/cdp.mjs eval "$TAB" "$(cat shared/greenhouse_helpers.js)" ;;
+     ashby)           node shared/cdp.mjs eval "$TAB" "$(cat shared/ashby_helpers.js)" ;;
+     lever)           node shared/cdp.mjs eval "$TAB" "$(cat shared/lever_helpers.js)" ;;             # v0.8
+     smartrecruiters) node shared/cdp.mjs eval "$TAB" "$(cat shared/smartrecruiters_helpers.js)" ;;   # v0.8 beta
+     icims)           node shared/cdp.mjs eval "$TAB" "$(cat shared/icims_helpers.js)" ;;             # v0.8 alpha
+     jobvite)         node shared/cdp.mjs eval "$TAB" "$(cat shared/jobvite_helpers.js)" ;;           # v0.8 alpha
+     handshake)       node shared/cdp.mjs eval "$TAB" "$(cat shared/handshake_helpers.js)" ;;         # v0.6 beta
+     workday)         node shared/cdp.mjs eval "$TAB" "$(cat shared/workday/$COMPANY_TENANT.js)" ;;   # v0.7 stretch
+     *) echo "skip — no helper for $ATS"; continue ;;
+   esac
    ```
-   应返回 `"GH ready: ..."` 或 `"Ashby ready: ..."`。
+   应返回类似 `"GH ready: ..."` / `"Ashby ready: ..."` / `"Lever ready: ..."`。helper 文件不存在 = ATS 还没实现 → log + skip + feedback `helper missing for $ATS`。
+
+   **Stability flags** (写到 feedback.jsonl 的 `experimental` 字段以便后期回归)：
+
+   | ATS | stable? | experimental flag |
+   |---|---|---|
+   | greenhouse | ✓ | no |
+   | ashby | ✓ | no |
+   | lever | new (v0.8) | yes (first 50 submits) |
+   | smartrecruiters | beta | yes |
+   | icims | alpha | yes |
+   | jobvite | alpha | yes |
+   | handshake | beta | yes |
+   | workday | stretch | yes |
 
 4. **Resume upload** (early — Ashby `_systemfield_resume` 有时 reveal conditional fields):
    ```bash
@@ -446,10 +538,14 @@ import('/Users/lee/Projects/ats-skills/shared/feedback.mjs').then(m => {
 
 ## Step 5: Final dashboard
 
-batch loop 结束（无论 break 还是 done），print：
+batch loop 结束（无论 break 还是 done），print。v0.8 起 dashboard 顶部多一段 **pace context**（当前 pace + 今日 cap + 剩余配额 + 预计完成时间），方便过夜跑回来一眼看到状态：
 
 ```
 ## ats-skills batch report — 2026-05-23
+
+Pace: slow (2-5 min jitter, daily cap 50)
+Today so far: 12/50 attempts (38 left)
+ETA for next 38 @ 3.5min avg = ~2h13m  (finishes ~22:47 local)
 
 投了 8/10 家：
 
@@ -492,6 +588,21 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
   你 update `profile.json` 的 `target_filters.exclude_keywords`。
 ```
 
+如果是因为 **daily cap 触顶** 提前 break (v0.8)：
+
+```
+⏸️  batch 暂停在 [50/87] —— 今日 cap (50, slow pace) 已达。
+
+已投 47 家 ✅ / fail 3 家 ❌
+
+未投 37 家（仍在 Notion「✅ Approved」队列里，下次跑接着投）。
+
+下次触发:
+  - 等本地时间 0:00 (America/New_York) 后跑 `/ats-skills`，剩余 37 家自动续接。
+  - 临时切 fast pace: 把 profile.json 的 batch_pace 改成 "normal" 或 "fast" → 立刻可以接着跑（但平台反爬风险↑）。
+  - 跑 `/ats-skills resume` 直接从 ~/.ats-skills/batch_progress.json 续接（v0.8 stretch）。
+```
+
 如果是因为 `ClassifierBlocked` 提前 break：
 
 ```
@@ -526,6 +637,8 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 | **submit click 未获 classifier 授权**（Bash 命令被拦） | **break batch**, 跳到 Step 5 with `ClassifierBlocked` message — 让用户用 single-URL skill 继续剩余 row |
 | Notion update-page 失败 | log warning，**不**算 fail（已投出去了） |
 | Chrome 9222 中途挂掉 | break batch + 让用户重启 launcher |
+| **今日 daily cap 触顶** (v0.8) | **pause batch** → 写 progress.json + 跳到 Step 5 with daily-cap message — 剩余 row 留在 Approved 队列，明天 0:00 后自动续接 |
+| 中途 ATS helper 文件不存在 (v0.8 alpha/beta) | log + feedback `helper missing for $ATS` + skip + continue |
 
 ---
 
@@ -537,7 +650,8 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 - ❌ 不要在 batch 中途 ask user "确认投 X 家吗"——所有 per-app 决策在 Step 2 一次性收完
 - ❌ 不要绕过 harness classifier（混淆 selector / 拆 eval 等）——那是 malicious bypass
 - ❌ 不要 git commit / push 到 ats-skills repo——这个 skill 是 runtime，不是 build
-- ❌ 不要碰 workday / lever / handshake / other ATS——v0.2 严格只投 greenhouse + ashby
+- ❌ 不要假装 v0.8 新 ATS helpers 已 stable——lever/smartrecruiters/icims/jobvite/handshake/workday 都还是 alpha/beta，必须写 `experimental: true` 进 feedback.jsonl，遇 fail 立刻 skip 不重试
+- ❌ 不要绕过 batch_pace jitter——即使用户嫌慢也不能临时调到 fast 之外的速度，否则平台容易识别为 bot
 - ❌ 不要投 alive_careers row——那是 landing page，没 specific role URL，会跑到 careers 主页填假表
 
 ---
@@ -558,8 +672,14 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 ## 参考
 
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver (tabs / goto / eval / upload / screenshot / typetext)
-- `shared/greenhouse_helpers.js` — `GH.fillForm`, `GH.openPicker`, `GH.findSubmit`, `GH.checkSuccess`, etc.
-- `shared/ashby_helpers.js` — `Ashby.fillForm`, `Ashby.clickYesNo`, `Ashby.pickSelect`, `Ashby.checkSuccess`, etc.
+- `shared/greenhouse_helpers.js` — `GH.fillForm`, `GH.openPicker`, `GH.findSubmit`, `GH.checkSuccess`, etc. (stable)
+- `shared/ashby_helpers.js` — `Ashby.fillForm`, `Ashby.clickYesNo`, `Ashby.pickSelect`, `Ashby.checkSuccess`, etc. (stable)
+- `shared/lever_helpers.js` — v0.8 (new, mark experimental in feedback)
+- `shared/smartrecruiters_helpers.js` — v0.8 beta
+- `shared/icims_helpers.js` — v0.8 alpha
+- `shared/jobvite_helpers.js` — v0.8 alpha
+- `shared/handshake_helpers.js` — v0.6 beta
+- `shared/workday/<tenant>.js` — v0.7 stretch, per-company config
 - `shared/profile.json` — 用户填的真实 profile (gitignored)
 - `.claude/skills/ats-greenhouse/SKILL.md` — single-URL Greenhouse flow (本 skill 是 batch 版)
 - `.claude/skills/ats-ashby/SKILL.md` — single-URL Ashby flow
