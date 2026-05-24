@@ -3,7 +3,9 @@ name: ats-source
 description: AI-driven job sourcing from Greenhouse and Ashby public Job Board APIs. Fetches latest postings from your curated company list, scores each one against your profile + recent skip feedback, and writes results to your Notion 「📋 岗位追踪」 dashboard for review. Triggered via "/ats-source", "用 ats-source 找新岗位", "AI source 一下", "find new jobs", or "source jobs".
 ---
 
-# /ats-source — AI sourcing pipeline (v0.3)
+# /ats-source — AI sourcing pipeline (v0.3 + v0.9)
+
+**v0.9 (2026-05-24)**: Large-company quota guard. Companies with `apply_quota.enabled == true` in `company_list.json` (Google/Meta/MS/Amazon/Apple/etc., ~25 total) are tagged in Notion as 「大公司限投」 + flagged in Bot 备注. ats-skills batch will **skip** them — they must be cherry-picked + applied via single-URL skill manually so capped quota is spent on dream roles.
 
 One trigger. Skill pulls fresh job postings from the Greenhouse + Ashby public Job Board APIs for every company in `shared/sourcing/company_list.json`, filters to user's `target_filters.role_types`, scores each with Claude Sonnet (multi-dim fit score + key alignment/gaps), upserts to Notion with status `🤖 AI sourced`, and reports a top-N summary. Walk away, come back to a Notion dashboard you can approve/skip in 30 sec/row.
 
@@ -259,6 +261,19 @@ node /tmp/ats-source/score_jobs.mjs
 
 读 `/tmp/ats-source/scored_jobs.json`，按 Notion DB schema 映射，调 `batchUpsert()`。
 
+### v0.9 Capped detection (大公司限投保护)
+
+**核心规则**：upsert 之前，每条 scored job 都要 lookup `company_list.json` 拿对应公司的 `apply_quota` 字段。若 `apply_quota?.enabled == true`：
+
+- `notion_properties["分类"] = "大公司限投"`
+- `notion_properties["apply_quota_limit"] = company_entry.apply_quota.limit_per_period`
+- `notion_properties["apply_quota_period"] = company_entry.apply_quota.period`
+- `notion_properties["apply_quota_note"] = company_entry.apply_quota.note`
+- `notion_properties["Bot 备注"] += " ⚠️ CAP: {limit}/{period}. Manual select required, do NOT batch."`
+- `notion_properties["状态"] = "🤖 AI sourced"` —— 状态依然走标准 AI sourced，但 「分类」 字段会让 row 落到 「🏢 大公司限投 (待手动选)」 view，被 ats-skills batch 主动跳过
+
+未带 `apply_quota` 或 `apply_quota.enabled == false` 的公司走原 flow，「分类」字段留空（不视为大公司限投）。
+
 ```bash
 cat > /tmp/ats-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
@@ -267,22 +282,42 @@ import { batchUpsert } from '/Users/lee/Projects/ats-skills/shared/notion_sync.m
 const { scored, fetch_errors } = JSON.parse(
   await readFile('/tmp/ats-source/scored_jobs.json', 'utf8'),
 );
+const companyList = JSON.parse(
+  await readFile('/Users/lee/Projects/ats-skills/shared/sourcing/company_list.json', 'utf8'),
+);
+const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
 
 // Map scored → Notion row payload (see notion_sync.buildProperties for fields)
-const rows = scored.map((j) => ({
-  company: j.company,
-  title: j.title,
-  location: j.location || '',
-  url: j.url || j.apply_url || '',
-  ats: j.ats,
-  fit_score: typeof j.fit_score === 'number' ? j.fit_score : null,
-  key_gaps: Array.isArray(j.key_gaps) ? j.key_gaps.join('; ') : '',
-  role_type_match: j.role_type_match || null,
-  dim_scores: j.dim_scores || null,
-  bot_note: j.honest_reason
+const rows = scored.map((j) => {
+  const company = companyByName.get(j.company);
+  const quota = company?.apply_quota;
+  const isCapped = quota?.enabled === true;
+
+  const baseNote = j.honest_reason
     ? `ats-source v0.3 | fit=${j.fit_score ?? '?'} | ${j.honest_reason}`
-    : `ats-source v0.3 | fit=${j.fit_score ?? '?'}`,
-})).filter((r) => r.url); // skip jobs without URL
+    : `ats-source v0.3 | fit=${j.fit_score ?? '?'}`;
+  const capNote = isCapped
+    ? ` ⚠️ CAP: ${quota.limit_per_period}/${quota.period}. Manual select required, do NOT batch.`
+    : '';
+
+  return {
+    company: j.company,
+    title: j.title,
+    location: j.location || '',
+    url: j.url || j.apply_url || '',
+    ats: j.ats,
+    fit_score: typeof j.fit_score === 'number' ? j.fit_score : null,
+    key_gaps: Array.isArray(j.key_gaps) ? j.key_gaps.join('; ') : '',
+    role_type_match: j.role_type_match || null,
+    dim_scores: j.dim_scores || null,
+    bot_note: baseNote + capNote,
+    // v0.9 capped fields — null/undef when not capped so batchUpsert can keep 「分类」 empty
+    category: isCapped ? '大公司限投' : null,
+    apply_quota_limit: isCapped ? quota.limit_per_period : null,
+    apply_quota_period: isCapped ? quota.period : null,
+    apply_quota_note: isCapped ? quota.note : null,
+  };
+}).filter((r) => r.url); // skip jobs without URL
 
 process.stderr.write(`[notion] upserting ${rows.length} rows (skipping ${scored.length - rows.length} without URL)\n`);
 
@@ -320,6 +355,11 @@ batch 结束 print 给用户：
   - AI scored:            45/47  (2 scorer errors — see log)
   - Notion synced:        43 new + 2 updated, 2 errors
 
+Sourced summary:
+  - ✅ 43 jobs sourced
+  - 🤖 N "AI sourced" → 「🤖 AI Sourced (Pending Review)」view
+  - 🏢 N capped (大公司限投) → 「🏢 大公司限投 (待手动选)」view ← 务必手动 cherry-pick，不要 batch
+
 ⭐ Top-10 fits (by fit_score):
 
 | # | Company   | Role                       | ATS        | Fit | Role Type    |
@@ -344,12 +384,65 @@ batch 结束 print 给用户：
      - ✅ approve → 拖到 "✅ Approved" view（改 状态 字段）
      - ❌ skip → 状态 改 "⚠️ 跳过未投" + skip_reason + user_note
   3. 审完后跑 `/ats-skills` 一键投 Approved view 里的全部
+  4. **大公司限投 (v0.9)** → 单独看 「🏢 大公司限投 (待手动选)」 view + 「🏢 大公司投递配额追踪」 sub-page
+     - 这些 row 已被 ats-skills batch 主动跳过（不会烧 quota）
+     - 自己 cherry-pick 几家最 dream 的，用 `/ats-greenhouse <url>` / `/ats-ashby <url>` 等 single-URL skill 投
+     - 投完手动在 sub-page 记一笔（用了 1/3 / 4/5 etc.）
 
 Log:
   /tmp/ats-source/raw_jobs.json       (fetch results)
   /tmp/ats-source/scored_jobs.json    (AI scores)
   /tmp/ats-source/notion_result.json  (sync results + errors)
 ```
+
+---
+
+## 大公司限投保护 (v0.9)
+
+### 为什么需要
+
+大公司（Google / Meta / Microsoft / Amazon / Apple / Stripe / Anthropic / OpenAI / 投行系列 etc.）的招聘系统对每位 candidate 有 **submission cap**：
+
+- Google careers: 3 applications / 6 months（well-documented）
+- Amazon Jobs: 系统硬阻挡在 10/yr
+- Apple / Netflix / Stripe / Anthropic / OpenAI: 没明文 cap 但岗位极卷，self-restraint 3/sem 是常识
+- 投行 (Goldman / JPMorgan / Morgan Stanley): 行业规范 3/sem
+- 其他 large enterprise (Salesforce / Adobe / Oracle / IBM / Snowflake / Databricks / Airbnb / Uber): 较宽松但每年 5 个是合理上限
+
+**问题**：如果 ats-skills batch 把这些公司 auto-apply 进去，配额会被烧在 **非 dream role** 上 — 等用户真的想投某个梦中岗位时，发现已经 hit cap = 失败。这是一个 hard product constraint，不是 nice-to-have。
+
+**解法**：v0.9 在 sourcing 端给这些公司打上 `apply_quota.enabled = true` 标签 + 「分类」 = `大公司限投`；batch 端 (`/ats-skills`) 拿到这些 row 主动 skip，引导用户用 single-URL skill 手动 cherry-pick 投。
+
+### 检测逻辑
+
+1. sourcing 时每条 job 都 lookup `company_list.json` 拿公司 entry
+2. 若 `entry.apply_quota?.enabled == true` → 该 row 在 Notion 上：
+   - 「状态」 = `🤖 AI sourced`（保持原 funnel）
+   - 「分类」 = `大公司限投`（v0.9 新字段，让 「🏢 大公司限投 (待手动选)」 view filter 抓住）
+   - 「apply_quota_limit / period / note」 = 公司 entry 里的字段（Notion 里展示给用户看 cap 还剩几个）
+   - 「Bot 备注」 末尾加 `⚠️ CAP: {limit}/{period}. Manual select required, do NOT batch.`
+
+### 为什么不在 sourcing 端就过滤掉
+
+- 它们仍然是有价值的 sourcing 信号 (Lee 想看 Google PM Intern 长什么样)
+- Lee 自己 cherry-pick 哪几家最 dream 的，是个 **人工决策**，sourcing 只负责提供候选
+- batch end (`/ats-skills`) 才是真正烧 quota 的地方 — 那里 skip 才是关键拦截
+
+### 用户操作流
+
+1. `/ats-source` 跑完 → Notion 「📋 岗位追踪」 同时多 N row capped
+2. 用户去 「🏢 大公司限投 (待手动选)」 view 看这一批（按 fit_score 排）
+3. 心里挑出最 dream 的 1-3 家（每个公司 1 个 role）
+4. 对每个 cherry-pick 的 row 单独跑 `/ats-greenhouse <url>` / `/ats-ashby <url>` 之类 single-URL skill
+5. 投完去 「🏢 大公司投递配额追踪」 sub-page 手动 +1（"Google 用了 1/3，剩 2"）
+6. 剩下的 capped row 留在 view 里，下一 cycle 再 review
+
+### 不要做的事
+
+- ❌ 不要在 capped row 上跑 `/ats-skills` batch —— 它会跳过它们；但用户错把它们标 ✅ Approved 又意外投了的情况要避免
+- ❌ 不要在 sourcing 端按 `apply_quota` 做 hard filter —— 让 Lee 自己 cherry-pick
+- ❌ 不要 hardcode capped 公司名单 —— 全部从 `company_list.json` 的 `apply_quota` 字段读
+- ❌ 不要让 capped row 落到 「✅ Approved」 view —— Lee 改 status 时要意识到这是 batch 入口
 
 ---
 
