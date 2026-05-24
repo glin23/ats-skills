@@ -79,7 +79,13 @@
     "locations": ["US", "Remote-US", "United States"],
     "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
     "min_fit_score": 6,
-    "visa_must_sponsor": false
+    "visa_must_sponsor": false,
+
+    "batch_pace": "slow",
+    "_batch_pace_options": "fast | normal | slow | stealth — see ats-skills SKILL.md for per-pace timing + daily caps. Default 'slow' for human-pacing (2-5 min jitter, 50/day cap).",
+
+    "daily_apply_cap": 50,
+    "_daily_apply_cap_notes": "Hard cap on applications per 24h. Overrides batch_pace cap if lower."
   },
 
   "social_accounts_to_skip": [

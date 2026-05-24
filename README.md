@@ -1,6 +1,6 @@
 # ats-skills
 
-> v0.7 (sourcing + dashboard + batch + feedback loop + Handshake beta + Workday config-driven). First dogfood: NiCE SDR + Cresta DS + Crusoe Motion Design (2026-05-23). v0.5 batch + feedback dogfooded. v0.6/v0.7 alpha — needs real-platform verification.
+> v0.8 (sourcing + dashboard + batch + feedback loop + Handshake beta + Workday config-driven + Lever stable + SmartRecruiters/iCIMS/JobVite alpha + ~200-company seed list + batch-pace controls). First dogfood: NiCE SDR + Cresta DS + Crusoe Motion Design (2026-05-23). v0.5 batch + feedback dogfooded. v0.6/v0.7 alpha — needs real-platform verification. v0.8 expands sourcing surface area + pacing controls.
 
 Claude Code skills for automating Greenhouse and Ashby application form filling on your own browser.
 
@@ -86,6 +86,10 @@ export NOTION_API_KEY=secret_...
 | Single Ashby (v0.1) | `/ats-ashby <url>` | 1-off Ashby |
 | Single Handshake (v0.6 beta) | `/ats-handshake <url>` | 1-off Handshake (beta) |
 | Single Workday (v0.7 stretch) | `/ats-workday <url>` | 1-off Workday with per-company config |
+| Single Lever (v0.8) | `/ats-lever <url>` | 1-off Lever |
+| Single SmartRecruiters (v0.8 beta) | `/ats-smartrecruiters <url>` | beta |
+| Single iCIMS (v0.8 alpha) | `/ats-icims <url>` | alpha |
+| Single JobVite (v0.8 alpha) | `/ats-jobvite <url>` | alpha |
 
 ## Configurable Filters (profile.json `target_filters`)
 
@@ -96,6 +100,22 @@ v0.3+ profile.json has a `target_filters` block that the AI scorer and batch orc
 - `exclude_keywords` — e.g. `["SWE", "Software Engineer", "Sales Engineer"]`. Title or description hits get filtered.
 - `min_fit_score` — integer 0-10. Below this, the row is skipped before AI sync to Notion.
 - `visa_must_sponsor` — boolean. If true, JD without sponsorship language gets down-ranked.
+- `batch_pace` (v0.8) — `fast | normal | slow | stealth`. Controls per-job jitter + daily cap. Default `slow`.
+- `daily_apply_cap` (v0.8) — hard ceiling on applications per 24h. Overrides `batch_pace` cap if lower.
+
+## Daily Throughput (v0.8)
+
+Default batch_pace: slow — 2-5 min jitter per job, 50/day cap.
+- 50 jobs × 3 min = ~2.5 hours
+- Run unattended overnight; orchestrator writes `~/.ats-skills/batch_progress.json` for resume
+- Increase to `normal` (100/day) once dogfood confirms no rate-limit issues
+- Decrease to `stealth` (30/day) if a platform starts flagging
+
+## Supported Companies (v0.8)
+
+`shared/sourcing/company_list.json` ships with ~200 company seed entries across AI, B2B SaaS, fintech, consumer, health, dev tools.
+Each entry can map to multiple ATS slugs (greenhouse / ashby / lever / smartrecruiters / icims / jobvite / bamboohr / rippling / recruitee / personio).
+Best-guess slugs included — PR corrections welcomed.
 
 ## Notion Setup
 
@@ -146,9 +166,13 @@ You then either submit manually in the browser, or ask Claude Code to submit. Th
 | --- | --- | --- |
 | Greenhouse | Working | react-select v5 pickers require `mousedown` event dispatch, handled in `shared/greenhouse_helpers.js`. |
 | Ashby | Working | react-hook-form text fields require real keyboard input via CDP `Input.insertText`. Yes/No buttons use a single `click()`. Handled in `shared/ashby_helpers.js`. |
-| Workday | Not supported | Form variance is too high to cover with a single script. |
-| Lever | Not supported | The CDP file-upload path hit a 50MB bug during testing. |
-| Handshake | Not supported | No working implementation. |
+| Lever (v0.8) | Stable | CDP file-upload path resolved; standard text + select fields covered. |
+| Workday (v0.7) | Stretch | Per-company JSON adapter; form variance still high. |
+| Handshake (v0.6) | Beta | Works on student portals; needs login session. |
+| SmartRecruiters (v0.8) | Beta | Sourcing-supported board fetch + alpha form-fill. |
+| iCIMS (v0.8) | Alpha | Single-URL form-fill prototype. Tenant-based slugs. |
+| JobVite (v0.8) | Alpha | Single-URL form-fill prototype. |
+| Recruitee / Personio / BambooHR / Rippling / Wellfound / YC | Sourcing-only | Board fetch in `shared/sourcing/`; no form-fill skill yet. |
 | LinkedIn Easy Apply | Will not be supported | Out of scope. |
 
 ## Layout
@@ -199,6 +223,7 @@ If you fork this and run a service on top of it, please give it a different name
 - v0.5 ✓ Batch + feedback loop
 - v0.6 (alpha) Handshake support
 - v0.7 (stretch) Workday config-driven, per-company JSON adapter
+- v0.8 Lever stable + SmartRecruiters/iCIMS/JobVite alpha + ~200-company seed list + batch_pace + daily_apply_cap
 - v1.0 GitHub public release; CDP + Computer Use hybrid stable
 
 ## License
