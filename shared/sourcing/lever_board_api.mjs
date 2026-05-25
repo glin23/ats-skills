@@ -33,7 +33,7 @@ const BASE = 'https://api.lever.co/v0/postings';
 const DEFAULT_TIMEOUT_MS = 12000;
 const MIN_INTERVAL_MS = 1000; // 1 req/sec
 const RETRY_BACKOFF_MS = 2000;
-const USER_AGENT = 'ats-skills/0.8 (+sourcing/lever)';
+const USER_AGENT = 'mrweirdo-jobs/1.3 (+sourcing/lever)';
 
 let _lastFetchAt = 0;
 

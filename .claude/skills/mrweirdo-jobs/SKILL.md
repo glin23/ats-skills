@@ -1,9 +1,9 @@
 ---
 name: mrweirdo-jobs
-description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "✅ Approved" jobs from your Notion 「📋 岗位追踪」 dashboard, routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks Notion on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
+description: Batch-mode auto-applier across all supported ATSes. Reads "✅ Approved" jobs from your local SQLite dashboard (~/.mrweirdo-jobs/jobs.db), routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks status on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-lever / etc. helpers — this skill orchestrates the loop.
 ---
 
-# ats-skills batch orchestrator (v0.9)
+# mrweirdo-jobs batch orchestrator (v0.9+)
 
 **v0.9 (2026-05-24)**: Quota guard for large companies (Google/Meta/Microsoft/etc). Batch 主动 skip 限投公司，引导用户 cherry-pick + single-URL skill 手动投。
 
@@ -19,7 +19,7 @@ This is 用户's actual daily-use form: one command, walk away, come back to a r
 
 ## 何时触发
 
-- 用户说 "用 ats-skills 投我的待投队列" / "投我的待投" / "/mrweirdo-jobs" / "/mrweirdo-jobs run"
+- 用户说 "用 mrweirdo-jobs 投我的待投队列" / "投我的待投" / "/mrweirdo-jobs" / "/mrweirdo-jobs run"
 - 用户说 "batch apply" / "跑一遍 Notion 队列" / "把未投投了"
 - 单 URL 投递 → 用 `/mrweirdo-greenhouse` 或 `/mrweirdo-ashby`，**不**用这个 skill
 
@@ -40,7 +40,7 @@ This is 用户's actual daily-use form: one command, walk away, come back to a r
 跑这些。任何一项 fail → 报告退出。
 
 ```bash
-# 0. ats-skills env (v1.0 multi-tenant)
+# 0. mrweirdo-jobs env (v1.0+ multi-tenant)
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 [ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
@@ -219,7 +219,7 @@ for i, c in enumerate(list, 1):
     company_entry = lookup_company(c.url)  # 从 company_list.json 找 (URL 公司名匹配)
     if company_entry and company_entry.get("apply_quota", {}).get("enabled") is True:
         q = company_entry["apply_quota"]
-        msg = f"⚠️ {c.company} 是限投公司 (cap {q['limit_per_period']}/{q['period']}). 跳过 batch. 请用 /ats-{c.ats} <url> 单独投递。"
+        msg = f"⚠️ {c.company} 是限投公司 (cap {q['limit_per_period']}/{q['period']}). 跳过 batch. 请用 /mrweirdo-{c.ats} <url> 单独投递。"
         print(f"  {msg}")
         log_feedback({
             "company": c.company,
@@ -227,7 +227,7 @@ for i, c in enumerate(list, 1):
             "url": c.url,
             "ats": c.ats,
             "skip_reason": "quota_protect",
-            "user_note": "ats-skills batch 主动 skip 限投公司，避免烧 quota",
+            "user_note": "mrweirdo-jobs batch 主动 skip 限投公司，避免烧 quota",
         })
         notion_mark_skipped(c.page_id, reason="Other",
                             user_note="Quota protect — manual single-URL only")
@@ -290,14 +290,14 @@ for i, c in enumerate(list, 1):
 
    | URL pattern | ATS key | Helper status | Action |
    |---|---|---|---|
-   | `*.greenhouse.io` / `boards.greenhouse.io` / `job-boards.greenhouse.io` | `greenhouse` | stable | route to `ats-greenhouse` |
-   | `jobs.ashbyhq.com` | `ashby` | stable | route to `ats-ashby` |
-   | `jobs.lever.co` | `lever` | v0.8 (new) | route to `ats-lever` |
-   | `jobs.smartrecruiters.com` | `smartrecruiters` | v0.8 beta | route to `ats-smartrecruiters` (beta — verify before submit) |
-   | `careers-*.icims.com` | `icims` | v0.8 alpha | route to `ats-icims` (alpha — may fail, log + continue) |
-   | `jobs.jobvite.com` | `jobvite` | v0.8 alpha | route to `ats-jobvite` (alpha — may fail) |
-   | `app.joinhandshake.com` | `handshake` | v0.6 beta | route to `ats-handshake` (beta) |
-   | `*.myworkdayjobs.com` | `workday` | v0.7 stretch | route to `ats-workday` (per-company config required) |
+   | `*.greenhouse.io` / `boards.greenhouse.io` / `job-boards.greenhouse.io` | `greenhouse` | stable | route to `mrweirdo-greenhouse` |
+   | `jobs.ashbyhq.com` | `ashby` | stable | route to `mrweirdo-ashby` |
+   | `jobs.lever.co` | `lever` | v0.8 (new) | route to `mrweirdo-lever` |
+   | `jobs.smartrecruiters.com` | `smartrecruiters` | v0.8 beta | route to `mrweirdo-smartrecruiters` (beta — verify before submit) |
+   | `careers-*.icims.com` | `icims` | v0.8 alpha | route to `mrweirdo-icims` (alpha — may fail, log + continue) |
+   | `jobs.jobvite.com` | `jobvite` | v0.8 alpha | route to `mrweirdo-jobvite` (alpha — may fail) |
+   | `app.joinhandshake.com` | `handshake` | v0.6 beta | route to `mrweirdo-handshake` (beta) |
+   | `*.myworkdayjobs.com` | `workday` | v0.7 stretch | route to `mrweirdo-workday` (per-company config required) |
    | `wellfound.com` / `angel.co` | `wellfound` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
    | `(work|jobs).ycombinator.com` | `yc` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
    | `bamboohr.com` | `bamboohr` | sourcing-only | skip + log `manual apply required (sourcing-only)` |
@@ -354,10 +354,10 @@ for i, c in enumerate(list, 1):
    if [ "$ATS" = "greenhouse" ]; then
      RESULT=$(node shared/cdp.mjs eval "$TAB" "(async () => JSON.stringify(await GH.fillForm($PROFILE_JSON)))()")
    else
-     # Ashby fillForm returns a plan, then per-action dispatch (see ats-ashby SKILL.md step 5)
+     # Ashby fillForm returns a plan, then per-action dispatch (see mrweirdo-ashby SKILL.md step 5)
      PLAN=$(node shared/cdp.mjs eval "$TAB" "JSON.stringify(Ashby.fillForm($PROFILE_JSON))")
      # Loop plan items, dispatch typetext / yesno / select / date
-     # See ats-ashby SKILL.md for exact dispatch logic
+     # See mrweirdo-ashby SKILL.md for exact dispatch logic
    fi
    ```
 
@@ -524,7 +524,7 @@ v0.5 在 success 和 fail 两条路径上都写 feedback——success 沉淀"哪
 node -e "
 import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const r = await m.markApplied('$PAGE_ID', {
-    bot_note: 'ats-skills v0.5 batch',
+    bot_note: 'mrweirdo-jobs batch',
     confirmation_url: '$CONFIRMATION_URL'  // 如有, e.g. submit 后落地页 URL
   });
   console.log(JSON.stringify(r));
@@ -597,7 +597,7 @@ import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/feedback.mjs`).then(m => {
 batch loop 结束（无论 break 还是 done），print。v0.8 起 dashboard 顶部多一段 **pace context**（当前 pace + 今日 cap + 剩余配额 + 预计完成时间），方便过夜跑回来一眼看到状态：
 
 ```
-## ats-skills batch report — 2026-05-23
+## mrweirdo-jobs batch report — 2026-05-23
 
 Pace: slow (2-5 min jitter, daily cap 50)
 Today so far: 12/50 attempts (38 left)
@@ -711,7 +711,7 @@ Feedback log: ~/.mrweirdo-jobs/feedback.jsonl (新 append 2 条 fail 记录)
 
 1. lookup `shared/sourcing/company_list.json` 的对应公司 entry（用 URL 解析或 Notion row 上的 company 名）
 2. 若 entry 含 `apply_quota.enabled == true` → 跳过本 row，**不 break batch，只 skip**：
-   - print `⚠️ {company} 是限投公司 (cap {limit}/{period}). 跳过 batch. 请用 /ats-{ats} <url> 单独投递。`
+   - print `⚠️ {company} 是限投公司 (cap {limit}/{period}). 跳过 batch. 请用 /mrweirdo-{ats} <url> 单独投递。`
    - 写 `~/.mrweirdo-jobs/feedback.jsonl` 一条 `skip_reason=quota_protect` 记录
    - Notion 上 mark `状态 = ⚠️ 跳过未投` + `skip_reason = Other` + `user_note = Quota protect — manual single-URL only`
    - `continue` 跳到下一家
@@ -771,7 +771,7 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 - ❌ 不要 retry 同一家超过 2 次（除非用户明确要求）
 - ❌ 不要在 batch 中途 ask user "确认投 X 家吗"——所有 per-app 决策在 Step 2 一次性收完
 - ❌ 不要绕过 harness classifier（混淆 selector / 拆 eval 等）——那是 malicious bypass
-- ❌ 不要 git commit / push 到 ats-skills repo——这个 skill 是 runtime，不是 build
+- ❌ 不要 git commit / push 到 mrweirdo-jobs repo——这个 skill 是 runtime，不是 build
 - ❌ 不要假装 v0.8 新 ATS helpers 已 stable——lever/smartrecruiters/icims/jobvite/handshake/workday 都还是 alpha/beta，必须写 `experimental: true` 进 feedback.jsonl，遇 fail 立刻 skip 不重试
 - ❌ 不要绕过 batch_pace jitter——即使用户嫌慢也不能临时调到 fast 之外的速度，否则平台容易识别为 bot
 - ❌ 不要投 alive_careers row——那是 landing page，没 specific role URL，会跑到 careers 主页填假表

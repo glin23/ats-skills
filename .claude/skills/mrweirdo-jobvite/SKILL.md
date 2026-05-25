@@ -20,7 +20,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
 
 ## 何时触发
 
-- 用户说 "用 ats-jobvite 投这个：`<URL>`"
+- 用户说 "用 mrweirdo-jobvite 投这个：`<URL>`"
 - 用户说 "投这个 JobVite URL：`<URL>`"
 - 用户输入 `/mrweirdo-jobvite <URL>`
 - 用户给的 URL host 是 `jobs.jobvite.com`

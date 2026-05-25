@@ -1,4 +1,4 @@
-// notion_setup.mjs — create the ats-skills Notion DB + schema for a new user.
+// notion_setup.mjs — create the mrweirdo-jobs Notion DB + schema (v0.9 era; deprecated by SQLite in v1.1).
 // Views are NOT created here (Notion REST does not publicly support view create);
 // SKILL.md guides Claude to use the mcp__notion__notion-create-view MCP tool after.
 //

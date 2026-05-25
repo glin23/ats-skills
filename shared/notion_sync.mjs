@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// notion_sync.mjs — Notion HTTP API client for ats-skills v0.3 / v0.8 / v1.0
+// notion_sync.mjs — Notion HTTP API client (v0.3 / v0.8 / v1.0 era)
 //
-// ⚠️ v1.1 NOTICE: This file is no longer the primary job tracker. ats-skills
-// v1.1 uses shared/local_db.mjs (SQLite + Datasette) instead. notion_sync is
+// ⚠️ v1.1 NOTICE: This file is no longer the primary job tracker. mrweirdo-jobs
+// v1.1+ uses shared/local_db.mjs (SQLite + Datasette) instead. notion_sync is
 // retained for:
 //   1. v0.9 / v1.0 users who already have Notion DB data (migration tool)
 //   2. Anyone who explicitly wants a Notion mirror of their local jobs.db

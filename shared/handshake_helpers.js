@@ -107,7 +107,7 @@
    *
    * If user clicked "Apply Externally", Handshake opens a NEW TAB pointed at
    * the employer's ATS. This function inspects current URL and returns a hint
-   * for the orchestrator to dispatch to ats-greenhouse / ats-ashby / etc.
+   * for the orchestrator to dispatch to mrweirdo-greenhouse / mrweirdo-ashby / etc.
    *
    * Heuristic: if location.hostname is NOT app.joinhandshake.com, we're on the
    * external ATS already.

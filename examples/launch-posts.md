@@ -1,4 +1,4 @@
-# ats-skills v1.1 launch posts — drafts
+# mrweirdo-jobs v1.3 launch posts — drafts
 
 > 不 commit 也行，但放 examples/ 留底。用户 改完后撕掉。
 
@@ -14,7 +14,7 @@
 Spent enough time copy-pasting the same name/email/visa answers
 into 100 job applications that I built a Claude Code skill for it.
 
-Open-sourced today: ats-skills v1.1
+Open-sourced today: mrweirdo-jobs
 - AI sources from 250+ companies' public job boards
 - Local SQLite dashboard (zero cloud)
 - Fills the form, you click Submit
@@ -42,7 +42,7 @@ Install on macOS:
 
 bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 
-Then in Claude Code:  /ats-init
+Then in Claude Code:  /mrweirdo-init
 
 MIT licensed.  github.com/glin23/mrweirdo-jobs
 
@@ -58,7 +58,7 @@ Built mostly with Claude Code itself — about 20k lines across two weeks.
 **Tone**: lessons + audience = PMs / recruiters / founders. 200-250 words.
 
 ```
-I open-sourced ats-skills v1.1 — a Claude Code skill bundle that
+I open-sourced mrweirdo-jobs — a Claude Code skill bundle that
 turns job-search into a single pipeline:
 
   AI sourcing → local SQLite dashboard → batch CDP form-fill → Gmail confirmation loop
@@ -117,7 +117,7 @@ Open to PRs, especially helper fixes when an ATS changes their DOM.
 
 最后写了一个 Claude Code 工具自动做这件事
 
-GitHub 搜 ats-skills（链接放 profile）
+GitHub 搜 mrweirdo-jobs（链接放 profile）
 
 ----
 能做的事:
@@ -132,7 +132,7 @@ GitHub 搜 ats-skills（链接放 profile）
 3. 你在本地 SQLite dashboard 看（Datasette 一行命令起 web UI）
    approve 的岗位进队列
 
-4. 一句 /ats-skills 触发 batch
+4. 一句 /mrweirdo-jobs 触发 batch
    工具自动开浏览器 → 导航 → 填字段 → 上传简历 → 截图
    你看截图点 Submit（永远不自动 submit）
 
@@ -156,7 +156,7 @@ GitHub 搜 ats-skills（链接放 profile）
 
 **Image suggestions**:
 - 9 张图卡片：
-  1. 标题封面（标 v1.1 / 开源 / Claude Code）
+  1. 标题封面（标 mrweirdo-jobs / 开源 / Claude Code）
   2. 痛点对比（手投 10 小时 vs 自动 2 小时）
   3. Datasette UI 截图
   4. AI 评分输出截图
@@ -164,7 +164,7 @@ GitHub 搜 ats-skills（链接放 profile）
   6. 流程图（README 里那个 ASCII pipeline 转成可读图）
   7. CDP + Computer Use 架构图
   8. GitHub repo 截图（star/fork count if any）
-  9. install 一行命令 + /ats-init
+  9. install 一行命令 + /mrweirdo-init
 
 可以用 baoyu-image-cards skill 出图。
 

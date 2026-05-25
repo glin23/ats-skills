@@ -11,7 +11,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
 
 ## 何时触发
 
-- 用户说 "用 ats-lever 投这个：`<URL>`"
+- 用户说 "用 mrweirdo-lever 投这个：`<URL>`"
 - 用户说 "投这个 Lever URL：`<URL>`"
 - 用户输入 `/mrweirdo-lever <URL>`
 - 用户给的 URL host 是 `jobs.lever.co`（任何 `/<company>/<uuid>` 或 `/<company>/<uuid>/apply` 都接）

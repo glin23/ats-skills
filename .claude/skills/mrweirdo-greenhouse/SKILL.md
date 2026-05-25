@@ -9,7 +9,7 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
 
 ## 何时触发
 
-- 用户说 "用 ats-greenhouse 投这个：`<URL>`"
+- 用户说 "用 mrweirdo-greenhouse 投这个：`<URL>`"
 - 用户说 "投这个 Greenhouse URL：`<URL>`"
 - 用户输入 `/mrweirdo-greenhouse <URL>`
 - 用户给的 URL host 是 `boards.greenhouse.io` / `job-boards.greenhouse.io` / `<company>.greenhouse.io`

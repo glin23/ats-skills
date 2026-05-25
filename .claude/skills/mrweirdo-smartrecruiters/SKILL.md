@@ -10,7 +10,7 @@ description: Automate SmartRecruiters ATS application form filling via Chrome CD
 ## Known Limitations
 
 1. **SAP 迁移风险** — SmartRecruiters 2025 被 SAP 收购，正在逐步迁移到 SuccessFactors (`career.sap.com/...`)。可能遇到：
-   - 部分公司已经跳转到 SF 流程（这时本 skill 无法处理，需要走 ats-successfactors 或手投）
+   - 部分公司已经跳转到 SF 流程（这时本 skill 无法处理，需要等未来 mrweirdo-successfactors 或手投）
    - 同公司不同岗位用不同栈
    - 选择器 / API 在 SAP 整合过程中漂移
 2. **零实战** — `findEmptyRequired` / `fillForm` 的选择器是基于 React 表单常见模式 + 公开 jobs.smartrecruiters.com 截图推断的，**没有跟真实 DOM 对过**。第一次跑前，让 Claude 先 `node shared/cdp.mjs eval $TAB "$(cat shared/smartrecruiters_helpers.js); JSON.stringify(SmartRecruiters.findEmptyRequired())"` 看看实际返回，不要直接信任 `fillForm.plan`。
@@ -58,7 +58,7 @@ sleep 3   # 等 SPA 渲染
 node shared/cdp.mjs eval $TAB "location.href"
 ```
 如果 URL 跳到 `career.sap.com` / `successfactors.com` / `*.sapsf.com`，立即停止：
-> "这家公司已经迁移到 SAP SuccessFactors，ats-smartrecruiters v0.8 不支持。建议手投或等 ats-successfactors。"
+> "这家公司已经迁移到 SAP SuccessFactors，mrweirdo-smartrecruiters 不支持。建议手投或等未来 mrweirdo-successfactors。"
 
 ### 3. 注入 helpers + 先看实际表单
 **v0.8 beta 关键**：不要直接信任 `fillForm.plan`。先 dump 一次 required fields to the user 看：
@@ -140,7 +140,7 @@ node shared/cdp.mjs screenshot $TAB /tmp/smartrecruiters_success.png
 
 | 症状 | 处理 |
 |---|---|
-| URL 跳到 SAP / SuccessFactors | 停下，report to the user 走手投或等 ats-successfactors |
+| URL 跳到 SAP / SuccessFactors | 停下，report to the user 走手投或等未来 mrweirdo-successfactors |
 | `cdp.mjs goto` 404 / 超时 | URL 死了，report to the user + 退出（不写 log） |
 | `findEmptyRequired` 返回里 label 大量 `null` 或 `(no label)` | DOM 跟预期不一致，截图 + 停下诊断 |
 | `fillForm.plan` 为空 | 选择器没匹配上，截图to the user + 让 用户 报 field name |

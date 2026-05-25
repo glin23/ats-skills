@@ -206,7 +206,7 @@ This is the contribution flow. Expect ~30 min per company the first time.
 6. **Dogfood + iterate.**
    Run `/mrweirdo-workday <URL>` against a real low-stakes job posting. Every time something fails, update the config. Once a full submission succeeds, set `_meta.last_verified` to today's date.
 
-7. **PR to ats-skills repo** so the community can reuse the config. Strip anything tenant-private before pushing.
+7. **PR to mrweirdo-jobs repo** so the community can reuse the config. Strip anything tenant-private before pushing.
 
 ## Workday specifics (one-liner each)
 

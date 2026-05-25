@@ -71,7 +71,7 @@
 
   "target_filters": {
     "_notes": [
-      "用于 ats-skills v0.3 sourcing + AI matching。",
+      "用于 mrweirdo-jobs sourcing + AI matching。",
       "role_types 决定 AI 接受什么类型的岗位；不在列表里的 role 会被 AI 自动 fit_score ≤ 3。",
       "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。"
     ],
@@ -82,7 +82,7 @@
     "visa_must_sponsor": false,
 
     "batch_pace": "slow",
-    "_batch_pace_options": "fast | normal | slow | stealth — see ats-skills SKILL.md for per-pace timing + daily caps. Default 'slow' for human-pacing (2-5 min jitter, 50/day cap).",
+    "_batch_pace_options": "fast | normal | slow | stealth — see mrweirdo-jobs SKILL.md for per-pace timing + daily caps. Default 'slow' for human-pacing (2-5 min jitter, 50/day cap).",
 
     "daily_apply_cap": 50,
     "_daily_apply_cap_notes": "Hard cap on applications per 24h. Overrides batch_pace cap if lower."

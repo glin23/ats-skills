@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-handshake
-description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to ats-greenhouse / ats-ashby / ats-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/mrweirdo-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
+description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/mrweirdo-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # Handshake ATS 投递 skill (v0.6 BETA)
@@ -14,7 +14,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 
 ## 何时触发
 
-- 用户说 "用 ats-handshake 投这个：`<URL>`"
+- 用户说 "用 mrweirdo-handshake 投这个：`<URL>`"
 - 用户说 "投这个 Handshake URL：`<URL>`"
 - 用户输入 `/mrweirdo-handshake <URL>`
 - 用户给的 URL host 是 `app.joinhandshake.com` 或 `joinhandshake.com`
@@ -145,7 +145,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_handshake_post
 ## Known Limitations (v0.6)
 
 - **未 dogfood 验证** — 所有 selector / DOM 假设需要真投递 verify。第一次跑必失败一些字段。
-- **多个 Handshake 公司 redirect 到外部 ATS** — 此 skill 仅处理 native Handshake form；外跳后 dispatch 给 ats-greenhouse / ats-ashby（用户手动跑 sub-skill，v0.6 不做 auto-dispatch）。
+- **多个 Handshake 公司 redirect 到外部 ATS** — 此 skill 仅处理 native Handshake form；外跳后 dispatch 给 mrweirdo-greenhouse / mrweirdo-ashby（用户手动跑 sub-skill，v0.6 不做 auto-dispatch）。
 - **暂未支持 multi-step wizards** — Handshake 部分 employer 配多页 apply 流程，当前只处理单 page。
 - **反爬未测试** — 建议 ≤5 投递/天 + 每次后 sleep 30-60s jitter，直到摸到 throttle 边界。Daily 应用 cap 300（官方）。
 - **document picker selectors 全是 TODO-verify** — `data-hook` 属性是从 ASU QuickApply-Bot 开源仓库借的，可能已过时。

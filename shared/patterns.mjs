@@ -84,7 +84,7 @@ export function analyzePatterns(entries) {
     if (count < MIN_PATTERN_COUNT * 2) continue; // higher bar for ATS-level pattern
     patterns.push({
       pattern: `${count} skips concentrated on ATS "${ats}"`,
-      suggestion: `Review ats-skills sourcing for "${ats}" — may be surfacing low-fit roles`,
+      suggestion: `Review mrweirdo-jobs sourcing for "${ats}" — may be surfacing low-fit roles`,
       confidence: 0.6,
       evidence: [`${count} skips`],
     });

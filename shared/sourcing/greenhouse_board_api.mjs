@@ -102,7 +102,7 @@ async function _doFetch(url, { timeout, abort } = {}) {
   try {
     return await fetch(url, {
       signal: ctrl.signal,
-      headers: { Accept: 'application/json', 'User-Agent': 'ats-skills/0.3 (+sourcing)' },
+      headers: { Accept: 'application/json', 'User-Agent': 'mrweirdo-jobs/1.3 (+sourcing)' },
     });
   } finally {
     clearTimeout(to);

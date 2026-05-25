@@ -1,11 +1,11 @@
 ---
 name: mrweirdo-source
-description: AI-driven job sourcing from Greenhouse and Ashby public Job Board APIs. Fetches latest postings from your curated company list, scores each one against your profile + recent skip feedback, and writes results to your Notion 「📋 岗位追踪」 dashboard for review. Triggered via "/mrweirdo-source", "用 ats-source 找新岗位", "AI source 一下", "find new jobs", or "source jobs".
+description: AI-driven job sourcing from Greenhouse, Ashby, Lever, SmartRecruiters, iCIMS, JobVite, Recruitee, Personio, BambooHR, and Rippling public Job Board APIs. Fetches latest postings from your curated company list, scores each one against your profile + recent skip feedback, and writes results to your local SQLite dashboard (~/.mrweirdo-jobs/jobs.db) for review. Triggered via "/mrweirdo-source", "用 mrweirdo-source 找新岗位", "AI source 一下", "find new jobs", or "source jobs".
 ---
 
 # /mrweirdo-source — AI sourcing pipeline (v0.3 + v0.9)
 
-**v0.9 (2026-05-24)**: Large-company quota guard. Companies with `apply_quota.enabled == true` in `company_list.json` (Google/Meta/MS/Amazon/Apple/etc., ~25 total) are tagged in Notion as 「大公司限投」 + flagged in Bot 备注. ats-skills batch will **skip** them — they must be cherry-picked + applied via single-URL skill manually so capped quota is spent on dream roles.
+**v0.9 (2026-05-24)**: Large-company quota guard. Companies with `apply_quota.enabled == true` in `company_list.json` (Google/Meta/MS/Amazon/Apple/etc., ~25 total) are tagged as 「大公司限投」 in the SQLite dashboard (`v_large_company_pending` view). mrweirdo-jobs batch will **skip** them — they must be cherry-picked + applied via single-URL skill manually so capped quota is spent on dream roles.
 
 One trigger. Skill pulls fresh job postings from the Greenhouse + Ashby public Job Board APIs for every company in `shared/sourcing/company_list.json`, filters to user's `target_filters.role_types`, scores each with Claude Sonnet (multi-dim fit score + key alignment/gaps), upserts to Notion with status `🤖 AI sourced`, and reports a top-N summary. Walk away, come back to a Notion dashboard you can approve/skip in 30 sec/row.
 
@@ -15,7 +15,7 @@ This is the Step 1 of the v0.3 funnel: **source → approve → /mrweirdo-jobs b
 
 ## When to use
 
-- 用户说 "找新岗位" / "AI source 一下" / "source jobs" / "用 ats-source 找新岗位" / "find new jobs"
+- 用户说 "找新岗位" / "AI source 一下" / "source jobs" / "用 mrweirdo-source 找新岗位" / "find new jobs"
 - 用户希望从公开 Job Board API 拉新岗位 + AI 打分 + 写 Notion 让自己审
 - **不要** 在用户手工提交单个 URL 让你投递时触发 — 那是 `/mrweirdo-greenhouse` / `/mrweirdo-ashby` 的事
 - **不要** 在用户说"投我的待投队列"时触发 — 那是 `/mrweirdo-jobs` batch orchestrator 的事
@@ -50,7 +50,7 @@ This is the Step 1 of the v0.3 funnel: **source → approve → /mrweirdo-jobs b
   exit 1; \
 }
 
-# 0. ats-skills env (v1.0 multi-tenant)
+# 0. mrweirdo-jobs env (v1.0+ multi-tenant)
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 [ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
@@ -272,7 +272,7 @@ node /tmp/mrweirdo-source/score_jobs.mjs
 - `notion_properties["apply_quota_period"] = company_entry.apply_quota.period`
 - `notion_properties["apply_quota_note"] = company_entry.apply_quota.note`
 - `notion_properties["Bot 备注"] += " ⚠️ CAP: {limit}/{period}. Manual select required, do NOT batch."`
-- `notion_properties["状态"] = "🤖 AI sourced"` —— 状态依然走标准 AI sourced，但 「分类」 字段会让 row 落到 「🏢 大公司限投 (待手动选)」 view，被 ats-skills batch 主动跳过
+- `notion_properties["状态"] = "🤖 AI sourced"` —— 状态依然走标准 AI sourced，但 「分类」 字段会让 row 落到 `v_large_company_pending` view，被 mrweirdo-jobs batch 主动跳过
 
 未带 `apply_quota` 或 `apply_quota.enabled == false` 的公司走原 flow，「分类」字段留空（不视为大公司限投）。
 
@@ -296,8 +296,8 @@ const rows = scored.map((j) => {
   const isCapped = quota?.enabled === true;
 
   const baseNote = j.honest_reason
-    ? `ats-source v0.3 | fit=${j.fit_score ?? '?'} | ${j.honest_reason}`
-    : `ats-source v0.3 | fit=${j.fit_score ?? '?'}`;
+    ? `mrweirdo-source v0.3 | fit=${j.fit_score ?? '?'} | ${j.honest_reason}`
+    : `mrweirdo-source v0.3 | fit=${j.fit_score ?? '?'}`;
   const capNote = isCapped
     ? ` ⚠️ CAP: ${quota.limit_per_period}/${quota.period}. Manual select required, do NOT batch.`
     : '';
@@ -348,7 +348,7 @@ node /tmp/mrweirdo-source/sync_notion.mjs
 batch 结束 print 给用户：
 
 ```
-## ats-source report — 2026-05-23
+## mrweirdo-source report — 2026-05-23
 
 📊 Sourcing pipeline:
   - Companies queried:    16 (Greenhouse + Ashby)
@@ -387,7 +387,7 @@ Sourced summary:
      - ❌ skip → 状态 改 "⚠️ 跳过未投" + skip_reason + user_note
   3. 审完后跑 `/mrweirdo-jobs` 一键投 Approved view 里的全部
   4. **大公司限投 (v0.9)** → 单独看 「🏢 大公司限投 (待手动选)」 view + 「🏢 大公司投递配额追踪」 sub-page
-     - 这些 row 已被 ats-skills batch 主动跳过（不会烧 quota）
+     - 这些 row 已被 mrweirdo-jobs batch 主动跳过（不会烧 quota）
      - 自己 cherry-pick 几家最 dream 的，用 `/mrweirdo-greenhouse <url>` / `/mrweirdo-ashby <url>` 等 single-URL skill 投
      - 投完手动在 sub-page 记一笔（用了 1/3 / 4/5 etc.）
 
@@ -411,7 +411,7 @@ Log:
 - 投行 (Goldman / JPMorgan / Morgan Stanley): 行业规范 3/sem
 - 其他 large enterprise (Salesforce / Adobe / Oracle / IBM / Snowflake / Databricks / Airbnb / Uber): 较宽松但每年 5 个是合理上限
 
-**问题**：如果 ats-skills batch 把这些公司 auto-apply 进去，配额会被烧在 **非 dream role** 上 — 等用户真的想投某个梦中岗位时，发现已经 hit cap = 失败。这是一个 hard product constraint，不是 nice-to-have。
+**问题**：如果 mrweirdo-jobs batch 把这些公司 auto-apply 进去，配额会被烧在 **非 dream role** 上 — 等用户真的想投某个梦中岗位时，发现已经 hit cap = 失败。这是一个 hard product constraint，不是 nice-to-have。
 
 **解法**：v0.9 在 sourcing 端给这些公司打上 `apply_quota.enabled = true` 标签 + 「分类」 = `大公司限投`；batch 端 (`/mrweirdo-jobs`) 拿到这些 row 主动 skip，引导用户用 single-URL skill 手动 cherry-pick 投。
 
@@ -482,7 +482,7 @@ Log:
 ## Example invocation
 
 ```
-用户: "用 ats-source 帮我找新岗位"
+用户: "用 mrweirdo-source 帮我找新岗位"
 
 Claude: [Step 0 pre-flight] Pre-flight OK. NOTION_API_KEY ✓ ANTHROPIC_API_KEY ✓ profile.target_filters ✓ company_list (16 companies) ✓
         [Step 1 confirm scope]

@@ -1,11 +1,11 @@
 ---
 name: mrweirdo-init
-description: First-run onboarding for ats-skills v1.1. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.mrweirdo-jobs/jobs.db. Persists everything to ~/.mrweirdo-jobs/. Run once per user. After this, /mrweirdo-source + /mrweirdo-jobs + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
+description: First-run onboarding for mrweirdo-jobs. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.mrweirdo-jobs/jobs.db. Persists everything to ~/.mrweirdo-jobs/. Run once per user. After this, /mrweirdo-source + /mrweirdo-jobs + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
 ---
 
-# ats-init — Onboarding Orchestrator (v1.1, SQLite-backed)
+# mrweirdo-init — Onboarding Orchestrator (v1.1+, SQLite-backed)
 
-**何时跑**：用户首次使用 ats-skills，或想 reset 配置。一次性 setup，之后所有其它 skill (ats-source / ats-skills / ats-greenhouse / ats-ashby / ats-lever / ats-confirm 等) 都从 `~/.mrweirdo-jobs/` 读配置。
+**何时跑**：用户首次使用 mrweirdo-jobs，或想 reset 配置。一次性 setup，之后所有其它 skill (mrweirdo-source / mrweirdo-jobs / mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-lever / mrweirdo-confirm 等) 都从 `~/.mrweirdo-jobs/` 读配置。
 
 **何时不要跑**：用户已经有 `~/.mrweirdo-jobs/jobs.db` 且能正常 sourcing — 直接走 /mrweirdo-source。
 
@@ -235,7 +235,7 @@ Datasette 自带 SQL query + filter + JSON export + CSV export，比 Notion 还�
 ## Step 7: 打印 next steps
 
 ```
-🎉 ats-init 完成！~/.mrweirdo-jobs/ 已配齐：
+🎉 mrweirdo-init 完成！~/.mrweirdo-jobs/ 已配齐：
   - .env (ANTHROPIC_API_KEY, chmod 600)
   - profile.json (你的 personal/education/target_filters)
   - jobs.db (SQLite, 含 schema + 5 个 view)

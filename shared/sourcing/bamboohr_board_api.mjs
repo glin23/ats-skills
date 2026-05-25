@@ -36,7 +36,7 @@
 
 const REQ_INTERVAL_MS = 1000; // 1 req/sec throttle
 const RETRY_BACKOFF_MS = 2000;
-const USER_AGENT = 'ats-skills/0.8 (+https://github.com/glin23/mrweirdo-jobs)';
+const USER_AGENT = 'mrweirdo-jobs/1.3 (+https://github.com/glin23/mrweirdo-jobs)';
 
 let _lastRequestAt = 0;
 

@@ -21,10 +21,10 @@
  *       when no CSS selector can be derived from vision (coord-based fill)
  *
  * Flow:
- *   1. ats-{platform} helper runs fillForm + findEmptyRequired
+ *   1. mrweirdo-{platform} helper runs fillForm + findEmptyRequired
  *   2. Some required fields come back unidentified (no selector match)
  *   3. Helper calls shouldEscalateToVision(unidentified) — gated, capped
- *   4. Helper calls captureFrame(tabId) to write /tmp/ats-skills/locator-frame.png
+ *   4. Helper calls captureFrame(tabId) to write /tmp/mrweirdo-jobs/locator-frame.png
  *   5. Helper calls buildVisionPrompt(field) and returns it to SKILL.md
  *   6. SKILL.md flow: Claude reads prompt, calls mcp__computer-use__screenshot,
  *      analyzes, returns { selector?, x?, y?, confidence }
@@ -55,7 +55,7 @@ const __dirname = dirname(__filename);
 
 const LOG_DIR = join(homedir(), '.mrweirdo-jobs', 'log');
 const LOG_FILE = join(LOG_DIR, 'locator.jsonl');
-const FRAME_DIR = '/tmp/ats-skills';
+const FRAME_DIR = '/tmp/mrweirdo-jobs';
 const FRAME_PATH = join(FRAME_DIR, 'locator-frame.png');
 
 // Ensure dirs at import time (idempotent)

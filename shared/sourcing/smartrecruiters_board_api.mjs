@@ -34,7 +34,7 @@ const MAX_JOBS_PER_COMPANY = 300; // safety cap — 3 pages
 const REQ_INTERVAL_MS = 1000; // 1 req/sec throttle
 const RETRY_BACKOFF_MS = 2000;
 const DEFAULT_TIMEOUT_MS = 12000;
-const USER_AGENT = 'ats-skills/0.8 (+sourcing/smartrecruiters)';
+const USER_AGENT = 'mrweirdo-jobs/1.3 (+sourcing/smartrecruiters)';
 
 let _lastRequestAt = 0;
 

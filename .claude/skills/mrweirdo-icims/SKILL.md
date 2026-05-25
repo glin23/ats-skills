@@ -20,7 +20,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 
 ## 何时触发
 
-- 用户说 "用 ats-icims 投这个：`<URL>`"
+- 用户说 "用 mrweirdo-icims 投这个：`<URL>`"
 - 用户说 "投这个 iCIMS URL：`<URL>`"
 - 用户输入 `/mrweirdo-icims <URL>`
 - 用户给的 URL host 匹配 `careers-*.icims.com` 或 `*.icims.com`

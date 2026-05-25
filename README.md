@@ -101,6 +101,8 @@ Per-company public API. ~250 companies seeded in `shared/sourcing/company_list.j
 | Recruitee / Personio / BambooHR / Rippling | ✅ | manual |
 | Wellfound / YC WAAS | ⚠️ stub | manual |
 
+> **Dogfood reality check**: only Greenhouse / Ashby / Lever have been real-applied with by the author (multiple successful submissions). SmartRecruiters / iCIMS / JobVite / Handshake / Workday are scaffolded with helpers + tests but **0 verified real submissions** — they need a willing first user to shake out selector drift. Treat anything not marked `stable` as "expect to debug."
+
 You add your own companies to `~/.mrweirdo-jobs/company_list.user.json` — they merge on top of the baseline (no need to fork the repo).
 
 Sourcing uses 6 AI dimensions (role_fit / skills_match / location_fit / visa_compatible / seniority_match / exclude_check) and feeds the last 20 skip reasons back into the prompt so the recommender learns from your taste.
@@ -173,18 +175,18 @@ Idempotent — safe to re-run.
 └── repo/                       # git clone of mrweirdo-jobs
 
 ~/.claude/skills/               # Symlinks → ~/.mrweirdo-jobs/repo/.claude/skills/*
-├── ats-init/SKILL.md
-├── ats-source/SKILL.md
-├── ats-skills/SKILL.md
-├── ats-greenhouse/SKILL.md
-├── ats-ashby/SKILL.md
-├── ats-lever/SKILL.md
-├── ats-smartrecruiters/SKILL.md
-├── ats-icims/SKILL.md
-├── ats-jobvite/SKILL.md
-├── ats-handshake/SKILL.md
-├── ats-workday/SKILL.md
-└── ats-confirm/SKILL.md
+├── mrweirdo-init/SKILL.md
+├── mrweirdo-source/SKILL.md
+├── mrweirdo-jobs/SKILL.md
+├── mrweirdo-greenhouse/SKILL.md
+├── mrweirdo-ashby/SKILL.md
+├── mrweirdo-lever/SKILL.md
+├── mrweirdo-smartrecruiters/SKILL.md
+├── mrweirdo-icims/SKILL.md
+├── mrweirdo-jobvite/SKILL.md
+├── mrweirdo-handshake/SKILL.md
+├── mrweirdo-workday/SKILL.md
+└── mrweirdo-confirm/SKILL.md
 ```
 
 ---

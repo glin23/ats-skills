@@ -1,9 +1,9 @@
-// local_db.mjs — SQLite-backed job tracker for ats-skills v1.1
+// local_db.mjs — SQLite-backed job tracker for mrweirdo-jobs (v1.1+)
 // Uses Node 24+ built-in `node:sqlite` (experimental — pass --no-warnings to silence).
 // File location: ~/.mrweirdo-jobs/jobs.db (overridable via MRWEIRDO_DB_PATH env).
 //
-// API surface mirrors the v1.0 notion_sync.mjs so /ats-source, /ats-skills,
-// /ats-confirm can swap import paths with minimal flow changes:
+// API surface mirrors the v1.0 notion_sync.mjs so /mrweirdo-source, /mrweirdo-jobs,
+// /mrweirdo-confirm can swap import paths with minimal flow changes:
 //
 //   upsertJob(job)            -> {ok, page_id, created|updated}
 //   batchUpsert(jobs)         -> [results]

@@ -6,7 +6,7 @@
     "Use 用户's profile (US intern / new_grad_FT / non-SWE / GTM+PM track) as the filter.",
     "Slugs marked null are unknown — fill in when you confirm the board exists.",
     "priority levels: high | medium | low — influences AI scorer weighting in later phases.",
-    "v0.9 — apply_quota field added for ~25 large capped companies (Google/Meta/MS/Amazon/Apple/etc). ats-skills batch主动 skip 限投公司，引导 cherry-pick + single-URL."
+    "v0.9 — apply_quota field added for ~25 large capped companies (Google/Meta/MS/Amazon/Apple/etc). mrweirdo-jobs batch主动 skip 限投公司，引导 cherry-pick + single-URL."
   ],
   "companies": [
     {

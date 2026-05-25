@@ -58,7 +58,7 @@
  *      this for top-K results, similar to how Career-Ops 4-level cascade
  *      defers detailed scraping).
  *   5. Normalize to the shared sourcing shape. Set `apply_url` to the
- *      Handshake URL itself — the orchestrator will let ats-handshake skill
+ *      Handshake URL itself — the orchestrator will let mrweirdo-handshake skill
  *      decide whether to use it or detect external-ATS redirect.
  *   6. Throttle: 1 navigation per 3s (more conservative than ashby/greenhouse
  *      since we're scraping DOM, not hitting an official API).
@@ -69,7 +69,7 @@
  * error so callers fail fast rather than silently treat handshake as empty.
  */
 
-const USER_AGENT = 'ats-skills/0.6 (+https://github.com/glin23/mrweirdo-jobs)';
+const USER_AGENT = 'mrweirdo-jobs/1.3 (+https://github.com/glin23/mrweirdo-jobs)';
 const NOT_IMPLEMENTED_MSG =
   'handshake_search.mjs is a v0.6 stub — real implementation requires CDP-driven scraping of authenticated Handshake UI. See file header TODO for implementation steps.';
 

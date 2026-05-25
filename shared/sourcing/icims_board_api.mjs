@@ -46,7 +46,7 @@ const DEFAULT_TIMEOUT_MS = 15000;
 // Use a real-browser User-Agent — iCIMS portals 403 on common scraper UAs.
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
-  '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 ats-skills/0.8';
+  '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 mrweirdo-jobs/1.3';
 
 let _lastRequestAt = 0;
 

@@ -1,6 +1,6 @@
 # Disclaimer
 
-Read this before using `ats-skills`.
+Read this before using `mrweirdo-jobs`.
 
 ## Purpose
 
@@ -10,7 +10,7 @@ It is not a commercial product. It is not a service. It is not sold, hosted, or 
 
 ## What you are responsible for
 
-When you use `ats-skills`, you are responsible for:
+When you use `mrweirdo-jobs`, you are responsible for:
 
 - Reading and following the terms of service of every ATS platform you interact with, including Greenhouse, Ashby, and any others. This tool does not check those for you.
 - Reviewing every form before you submit it. The skill stops before submit. The submit click is yours.

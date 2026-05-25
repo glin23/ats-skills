@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // cdp.mjs — minimal CDP CLI driver for Chrome on :9222
 // Node 24+ required (uses global WebSocket). Zero deps by design.
-// Used by ats-skills (Greenhouse / Ashby / Lever apply skills).
+// Used by mrweirdo-jobs (Greenhouse / Ashby / Lever apply skills).
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve as pathResolve } from 'node:path';

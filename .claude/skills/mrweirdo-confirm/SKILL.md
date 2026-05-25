@@ -1,9 +1,9 @@
 ---
 name: mrweirdo-confirm
-description: Close the loop after batch apply. Reads Gmail threads labeled "applied-jobs" (user-curated via a Gmail filter), uses Claude to extract company + role + ATS source from each confirmation email, and updates the matching Notion 「📋 岗位追踪」 row from 「✅ 已投」 → 「✅ 已确认」 with confirmed_at + confirmation_email_id. Idempotent — re-running is safe.
+description: Close the loop after batch apply. Reads Gmail threads labeled "applied-jobs" (user-curated via a Gmail filter), uses Claude to extract company + role + ATS source from each confirmation email, and updates the matching row in the local SQLite jobs.db from "✅ 已投" → "✅ 已确认" with confirmed_at + confirmation_email_id. Idempotent — re-running is safe.
 ---
 
-# ats-confirm — 投递 confirmation 闭环 (v1.0)
+# mrweirdo-confirm — 投递 confirmation 闭环
 
 **何时跑**：批量投递 1-2 天后，确认邮件到了。或者 cron 每日跑一次。
 

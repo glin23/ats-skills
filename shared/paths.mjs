@@ -1,16 +1,17 @@
-// paths.mjs — central path / config resolver for ats-skills (v1.0 multi-tenant)
+// paths.mjs — central path / config resolver for mrweirdo-jobs (v1.0+ multi-tenant)
 // Node 24+. Zero deps.
 //
-// Layout (after `ats-init`):
+// Layout (after `/mrweirdo-init`):
 //   $HOME/.mrweirdo-jobs/
-//   ├── .env                # ANTHROPIC_API_KEY, NOTION_API_KEY
+//   ├── .env                # ANTHROPIC_API_KEY (NOTION_API_KEY only for v0.9 era migrations)
 //   ├── profile.json        # user's resume-derived profile + target_filters
-//   ├── config.json         # Notion DB id / view ids / resume_path
+//   ├── jobs.db             # v1.1+ SQLite state (primary)
+//   ├── config.json         # v0.9 era Notion config (deprecated)
 //   ├── company_list.user.json  # optional user-specific company increments
 //   ├── feedback.jsonl      # per-apply outcome log
 //   ├── quota.jsonl         # large-company submission counter
 //   ├── log/                # per-skill jsonl logs
-//   └── repo/               # git clone of ats-skills repo
+//   └── repo/               # git clone of mrweirdo-jobs repo
 //
 // All `shared/*.mjs` should import from this module instead of hard-coding paths.
 // SKILL.md files set `MRWEIRDO_HOME` + `MRWEIRDO_REPO_ROOT` env at top and pass via process.env.
@@ -51,7 +52,7 @@ export const loadProfile = () => {
   const p = profilePath();
   if (!existsSync(p)) {
     throw new Error(
-      `profile.json not found at ${p}. Run /ats-init to create it.`
+      `profile.json not found at ${p}. Run /mrweirdo-init to create it.`
     );
   }
   return JSON.parse(readFileSync(p, 'utf8'));

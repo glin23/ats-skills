@@ -1,16 +1,17 @@
-# ats-skills v0.2 Walkthrough — Real Dogfood (2026-05-23)
+# mrweirdo-jobs Walkthrough — Real Dogfood (originally 2026-05-23, then v0.2)
 
-This is a real dogfood log from May 23, 2026. Names + URLs are kept; resume + profile details are
-generic placeholders for privacy.
+This is a real dogfood log from May 23, 2026 (when the project was still
+called `ats-skills` and at v0.2). Names + URLs are kept; resume + profile
+details are generic placeholders for privacy. Commands below have been
+updated to the current `mrweirdo-*` namespace so you can copy-paste them.
 
 ## Setup
 
 ```bash
-git clone https://github.com/glin23/mrweirdo-jobs ~/.claude/skills/ats-skills
-cd ~/.claude/skills/ats-skills
-./setup.sh
-# edit shared/profile.json — name/email/phone/linkedin/resume_path/standard_qa
-bash shared/chrome-cdp-launcher.sh
+bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
+# then in Claude Code:
+/mrweirdo-init   # API key + resume parse + 4 questions + SQLite init
+bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh
 # new Chrome window opens on CDP 9222 with profile at ~/.mrweirdo-jobs/chrome-profile
 # log into your CV upload host + linkedin inside that window
 ```
@@ -18,12 +19,12 @@ bash shared/chrome-cdp-launcher.sh
 In Claude Code: load the skill and confirm CDP is reachable.
 
 ```
-> /ats-greenhouse https://job-boards.greenhouse.io/nice/jobs/4754106101
+> /mrweirdo-greenhouse https://job-boards.greenhouse.io/nice/jobs/4754106101
 ```
 
 ## Run 1: NiCE SDR Intern Sandy UT (Greenhouse)
 
-Single-URL `/ats-greenhouse` flow. v0.1 helpers + first v0.2 fix dogfood.
+Single-URL `/mrweirdo-greenhouse` flow. First helper-set dogfood.
 
 Steps:
 1. `cdp.mjs goto` → navigate to NiCE job board apply URL.
@@ -44,7 +45,7 @@ Lessons:
 
 ## Run 2 (v0.2 batch dogfood): 6 URLs
 
-Triggered `/ats-skills` with an inline list of 6 URLs (no Notion auto-load this run; explicit URLs). Single upfront authorization gate.
+Triggered `/mrweirdo-jobs` with an inline list of 6 URLs (no auto-load this run; explicit URLs). Single upfront authorization gate.
 
 ### Success: Cresta DS Intern (Greenhouse)
 - 5 fields, `GH.fillForm` completed first try.

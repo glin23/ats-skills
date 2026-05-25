@@ -22,7 +22,7 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = DEFAULT_TIMEOUT_MS) 
   }
 }
 
-// Map a RemoteOK raw entry to ats-skills unified job shape.
+// Map a RemoteOK raw entry to mrweirdo-jobs unified job shape.
 function normalize(entry) {
   // RemoteOK fields: id, slug, epoch, date, company, position, tags[],
   //                  logo, description (html), url, apply_url, location,
@@ -70,7 +70,7 @@ export async function fetchRemoteOk(opts = {}) {
     headers: {
       // RemoteOK rejects empty UA / generic curl on some paths
       // Cloudflare requires a browser-like UA; bare "curl/8.x" or library UA returns the JS challenge.
-      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) ats-skills/1.1 Safari/537.36',
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) mrweirdo-jobs/1.3 Safari/537.36',
       accept: 'application/json',
     },
   }, timeoutMs);

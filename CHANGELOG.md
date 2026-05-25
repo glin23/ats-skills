@@ -1,5 +1,43 @@
 # Changelog
 
+## [1.3.0] - 2026-05-25 — Full namespace migration off `ats`
+
+Completes the v1.2.0 rebrand by moving the user state directory and all
+env var names off `ats` entirely. No backward-compat shim — at v1.2.0 no
+end-users had installed yet, so a clean break was safer than carrying
+two namespaces forever.
+
+### Renamed
+
+- **User state dir**: `~/.ats-skills/` → `~/.mrweirdo-jobs/`
+- **Env vars**:
+  - `ATS_HOME` → `MRWEIRDO_HOME`
+  - `ATS_REPO_ROOT` → `MRWEIRDO_REPO_ROOT`
+  - `ATS_DB_PATH` → `MRWEIRDO_DB_PATH`
+  - `ATS_SKILLS_REPO_URL` → `MRWEIRDO_REPO_URL`
+  - `ATS_SKILLS_BRANCH` → `MRWEIRDO_BRANCH`
+  - `ATS_CHROME_PROFILE` → `MRWEIRDO_CHROME_PROFILE`
+
+### Files touched
+
+- `setup.sh`: REPO_URL, all paths, all env refs
+- `shared/paths.mjs`: home dir default + all env reads
+- `shared/local_db.mjs` / `quota.mjs` / `feedback.mjs` / `computer_use_locator.mjs`
+- `shared/chrome-cdp-launcher.sh`
+- `shared/migrate_notion_to_local.mjs`
+- `shared/onboarding/*.mjs`, `shared/sourcing/*.mjs`, `shared/matching/*.mjs`
+- All 12 `.claude/skills/*/SKILL.md`
+- `README.md` / `HANDOFF.md` / `DISCLAIMER.md` / `examples/*`
+
+### Preserved (deliberately)
+
+- `/tmp/ats-skills/` — transient scratch, not user state
+- Internal function name `atsHome()` in `paths.mjs` — internal API used by
+  6 other shared modules; renaming would just churn callers. The public
+  surface (env vars + paths) is fully migrated; internal names left alone.
+- Historical CHANGELOG entries (v0.x / v1.0 / v1.1) — keep their original
+  paths and command names for accuracy.
+
 ## [1.2.0] - 2026-05-25 — Rebrand to mrweirdo-jobs
 
 Project rebranded from `ats-skills` to `mrweirdo-jobs` (用户's personal brand).

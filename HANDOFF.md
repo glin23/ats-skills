@@ -1,8 +1,10 @@
-# ats-skills — Engineer Handoff Brief
+# mrweirdo-jobs — Engineer Handoff Brief
 
-> Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · 当前版本: **v0.9.0**（2026-05-23）
+> Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · 当前版本: **v1.3.0**（2026-05-25）
 >
 > 这是一份交付给工程师的需求 brief。读完应能：(1) 理解产品定位与红线 (2) 知道当前已建什么 (3) 拿到一份按优先级排好的 next-action 列表 (4) 知道在哪验收。
+>
+> **⚠️ 文档新鲜度**：核心架构 / 红线 / 平台覆盖 / 待办 仍然成立。但 §9 (Notion DB schema) 已在 v1.1 被 SQLite + Datasette 替换，仅作历史保留。新工程师以 README + CHANGELOG 为现状真实来源，本文档为 _why_ 和 roadmap 的参考。
 
 ---
 
@@ -102,7 +104,7 @@
 2. batch orchestrator Step 3 加 quota guard：
    - 检测公司 capped → SKIP + warn + log feedback + Notion mark "⚠️ 跳过未投" + **continue**（不 break batch）
 3. sourcing 阶段把这 25 家标记到 Notion view 「🏢 大公司限投 (待手动选)」
-4. 用户必须 cherry-pick + 用单 URL skill（`/ats-greenhouse <url>` 等）**手动投**
+4. 用户必须 cherry-pick + 用单 URL skill（`/mrweirdo-greenhouse <url>` 等）**手动投**
 5. `🏢 大公司投递配额追踪` sub-page 当前**手动维护**计数 → 未来可能加自动 rollup
 
 ---
@@ -159,11 +161,13 @@
 }
 ```
 
-**已知 issue**：当前 the user's `shared/profile.json` 中 `target_filters` 全空。`ats-source` SKILL.md 的 pre-flight 会硬 fail。**P0 修复项**。
+**已知 issue**：当前 the user's `shared/profile.json` 中 `target_filters` 全空。`mrweirdo-source` SKILL.md 的 pre-flight 会硬 fail。**P0 修复项**。
 
 ---
 
 ## 9. 数据契约：Notion DB schema
+
+> **⚠️ 已废弃 (v1.1+)**：本节描述 v0.9 era 状态层 (Notion)。v1.1 已迁到本地 SQLite (`~/.mrweirdo-jobs/jobs.db`)，schema 等价但单文件单 SQL 表 + 5 个 view。保留本节做迁移参考；用户 老 install 的 Notion DB 用 `shared/migrate_notion_to_local.mjs` 迁出。
 
 **DB**: 「📋 岗位追踪」`94b728d7-526d-4c9f-96f4-a8cb92c0f5fe`
 **Data Source**: `6995653c-4fab-4622-b174-d10892620ad8`
@@ -188,42 +192,49 @@
 
 ---
 
-## 10. 仓库结构（v0.9 终态）
+## 10. 仓库结构（v1.3 终态）
 
 ```
-ats-skills/
-├── README.md / LICENSE / DISCLAIMER.md / CHANGELOG.md / setup.sh
+mrweirdo-jobs/
+├── README.md / LICENSE / DISCLAIMER.md / CHANGELOG.md / HANDOFF.md / setup.sh
 ├── shared/
-│   ├── cdp.mjs                          # 271 行 zero-dep CDP driver (WS + Node 24 fetch)
+│   ├── cdp.mjs                          # zero-dep CDP driver (WS + Node 24 fetch)
 │   ├── chrome-cdp-launcher.sh           # 启动隔离 Chrome (user uses Profile 7)
-│   ├── greenhouse_helpers.js   (599)
-│   ├── ashby_helpers.js        (903)
-│   ├── lever_helpers.js        (506)
-│   ├── smartrecruiters_helpers.js (557)  ⚠️ beta
-│   ├── icims_helpers.js        (582)     ⚠️ alpha
-│   ├── jobvite_helpers.js      (603)     ⚠️ alpha
-│   ├── handshake_helpers.js    (545)     ⚠️ beta
-│   ├── workday_helpers.js      (477)     ⚠️ config-driven
-│   ├── computer_use_locator.mjs (224)    # vision fallback
-│   ├── feedback.mjs            (132)     # ~/.mrweirdo-jobs/feedback.jsonl R/W
-│   ├── patterns.mjs            (191)     # 借鉴 Career-Ops 系统性偏差分析
-│   ├── notion_sync.mjs         (358)     # HTTP Notion API client, 不走 MCP
+│   ├── greenhouse_helpers.js
+│   ├── ashby_helpers.js
+│   ├── lever_helpers.js
+│   ├── smartrecruiters_helpers.js        ⚠️ beta
+│   ├── icims_helpers.js                  ⚠️ alpha
+│   ├── jobvite_helpers.js                ⚠️ alpha
+│   ├── handshake_helpers.js              ⚠️ beta
+│   ├── workday_helpers.js                ⚠️ config-driven
+│   ├── computer_use_locator.mjs          # vision fallback
+│   ├── feedback.mjs                      # ~/.mrweirdo-jobs/feedback.jsonl R/W
+│   ├── patterns.mjs                      # Career-Ops 系统性偏差分析
+│   ├── local_db.mjs                      # v1.1+ SQLite state layer (primary)
+│   ├── notion_sync.mjs                   # v0.9 era Notion mirror (deprecated, kept for migrate)
+│   ├── migrate_notion_to_local.mjs       # one-shot Notion → SQLite migration
+│   ├── quota.mjs                         # quota.jsonl tracker
+│   ├── paths.mjs                         # central env/path resolver
+│   ├── onboarding/                       # resume parser, notion_setup (legacy), sqlite_setup
 │   ├── sourcing/
-│   │   ├── company_list.json            # 248 公司 / 25 capped
+│   │   ├── company_list.json            # ~250 公司 / 25 capped
 │   │   ├── greenhouse_board_api.mjs / ashby_board_api.mjs / lever_board_api.mjs
 │   │   ├── smartrecruiters_board_api.mjs / icims_board_api.mjs / jobvite_board_api.mjs
 │   │   ├── recruitee_board_api.mjs / personio_board_api.mjs
-│   │   ├── bamboohr_board_api.mjs / rippling_board_api.mjs
+│   │   ├── bamboohr_board_api.mjs / rippling_board_api.mjs / remoteok_board_api.mjs
 │   │   └── handshake_search.mjs / wellfound_search.mjs / yc_workatastartup.mjs   # 3 个 stub
 │   ├── matching/ai_scorer.mjs + prompt_template.md
 │   ├── workday/companies/ _template.json + 5 placeholders
 │   └── profile.template.json
 └── .claude/skills/
-    ├── ats-skills/SKILL.md              # 777 行 batch orchestrator (含 quota guard)
-    ├── ats-source/SKILL.md              # 515 行 sourcing + AI + Notion + capped detect
-    ├── ats-greenhouse/ats-ashby/ats-lever                   # ✅ stable
-    ├── ats-smartrecruiters/ats-icims/ats-jobvite            # ⚠️ alpha/beta
-    └── ats-handshake/ats-workday                            # ⚠️ untested
+    ├── mrweirdo-jobs/SKILL.md           # batch orchestrator (含 quota guard)
+    ├── mrweirdo-source/SKILL.md         # sourcing + AI + DB + capped detect
+    ├── mrweirdo-init/SKILL.md           # onboarding (API key + resume + filters + SQLite)
+    ├── mrweirdo-confirm/SKILL.md        # Gmail confirmation loop
+    ├── mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-lever        # ✅ stable
+    ├── mrweirdo-smartrecruiters / mrweirdo-icims / mrweirdo-jobvite # ⚠️ alpha/beta
+    └── mrweirdo-handshake / mrweirdo-workday                        # ⚠️ untested
 ```
 
 ---
@@ -234,13 +245,13 @@ ats-skills/
 
 | # | 任务 | 验收 |
 |---|---|---|
-| P0-1 | 让 用户 填 `shared/profile.json` 的 `target_filters`（当前全空）。注意：memory 里 用户 明确说 **"不要 SWE / 仅美国 / 不要 FT"**，但 PRD 默认 `role_types=["intern","new_grad_FT"]` 含 new_grad_FT → **与工程师确认前先与 用户 拍板** | `ats-source` pre-flight 不再硬 fail |
+| P0-1 | 让 用户 填 `shared/profile.json` 的 `target_filters`（当前全空）。注意：memory 里 用户 明确说 **"不要 SWE / 仅美国 / 不要 FT"**，但 PRD 默认 `role_types=["intern","new_grad_FT"]` 含 new_grad_FT → **与工程师确认前先与 用户 拍板** | `mrweirdo-source` pre-flight 不再硬 fail |
 | P0-2 | 修 Greenhouse `classifyRoleType` regex（`greenhouse_board_api.mjs:212`）—— 当前 `/intern\|internship\|.../i` 缺 word boundary，"**Intern**al Audit" / "**Intern**ational" 被误判 intern | 跑 dry-run，Asana "Head of Internal Audit" 不再被分到 intern 桶 |
 | P0-3 | sourcing 阶段加 `filterByExclude(jobs, excludeKeywords)` — 当前 GH/Ashby 的 `filterByRoleType()` 没读 `profile.target_filters.exclude_keywords`，SWE 漏的根源 | 248 公司 dry-run 后 SWE 类岗位 0 进候选 |
 | P0-4 | sourcing 阶段加 `filterByLocation(jobs, allowedLocations)` — 当前 Warsaw/Toronto/远东 全进 US 候选 | dry-run 结果中只剩 US states + "Remote - US" / "United States" |
-| P0-5 | 跑完整 `/ats-source` sourcing dogfood：248 公司 → fetch ~500–1000 jobs → AI score → 写 Notion → 验证 capped 公司导向「🏢 大公司限投」view | 用户 在 Notion 看到完整 funnel；top-10 AI 推荐与他人工 pick 重合 ≥ 7 |
+| P0-5 | 跑完整 `/mrweirdo-source` sourcing dogfood：~250 公司 → fetch ~500–1000 jobs → AI score → 写 SQLite (`~/.mrweirdo-jobs/jobs.db`) → 验证 capped 公司导向 `v_large_company_pending` view | 用户 在 Datasette 看到完整 funnel；top-10 AI 推荐与他人工 pick 重合 ≥ 7 |
 
-> 上个 session 已经跑了 dry-run 到 120/248（无 AI / 无 Notion 写入，纯 fetch 测试）。后台进程结果在 `/tmp/ats-source/dry_run_result.json`，**接班的工程师应先读这个文件再写 patch**。
+> 上个 session 已经跑了 dry-run 到 120/~250（无 AI / 无 DB 写入，纯 fetch 测试）。后台进程结果在 `/tmp/ats-source/dry_run_result.json`（v0.9 era 路径，可能已被 macOS 清理），**接班的工程师应先读这个文件再写 patch**；若文件不存在，跑 `node shared/sourcing/dry_run.mjs` 重生成。
 
 ### P1 — Sourcing 准确率 / Workflow 稳定性
 
@@ -273,30 +284,31 @@ ats-skills/
 
 ```bash
 # 1. clone
-gh repo clone glin23/mrweirdo-jobs && cd ats-skills
+gh repo clone glin23/mrweirdo-jobs && cd mrweirdo-jobs
 
 # 2. 读 4 个文档（按序）
 cat README.md                                          # 用户视角
 cat HANDOFF.md                                         # 本文件
-cat CHANGELOG.md                                       # v0.1 → v0.9 历史
-cat .claude/skills/ats-skills/SKILL.md                 # 777 行 batch orchestrator
+cat CHANGELOG.md                                       # v0.1 → v1.3 历史
+cat .claude/skills/mrweirdo-jobs/SKILL.md              # batch orchestrator
 
 # 3. 启动隔离 Chrome
 bash shared/chrome-cdp-launcher.sh                     # Profile 7, port 9222
 
-# 4. 填 profile.json
+# 4. 填 profile.json（v1.1+ 推荐走 /mrweirdo-init 自动生成 ~/.mrweirdo-jobs/profile.json；
+#    用户 老 install 仍可用 shared/profile.json fallback）
 cp shared/profile.template.json shared/profile.json
 # 编辑 personal / education / standard_qa / target_filters
 
-# 5. 设 env
+# 5. 设 env（/mrweirdo-init 会写 ~/.mrweirdo-jobs/.env，手动也可）
 export ANTHROPIC_API_KEY=...     # AI scorer 用
-export NOTION_API_KEY=...        # notion_sync 用
+# NOTION_API_KEY 仅 v1.1+ 老用户迁移时需要；新 install 不再依赖
 
 # 6. 验证 sourcing dry-run（不烧 API key）
-node /tmp/ats-source/dry_run.mjs                       # 上个 session 留下来的 driver
+node shared/sourcing/dry_run.mjs                       # 纯 fetch 测试，不写 DB
 
 # 7. 真 sourcing（小批量先验）
-# 在 Claude Code 里说: /ats-source
+# 在 Claude Code 里说: /mrweirdo-source
 ```
 
 ---
