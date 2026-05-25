@@ -19,7 +19,7 @@ Workday tenant variant 太多 — 同样一份 "Application Questions" step，Le
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— personal.first_name / last_name / email / address.* / phone / linkedin
-3. **简历 PDF 存在** — 默认 `/Users/lee/Desktop/Lee_Lin_Resume.pdf`
+3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）
 4. **公司 config 存在** — `shared/workday/companies/<slug>.json`，schema 见 `_template.json`
 5. **Node 24+**
 
@@ -48,11 +48,15 @@ echo "tenant=$TENANT slug=$SLUG"
 ### 2. Pre-flight — 检查 config + 依赖
 
 ```bash
-CONFIG="shared/workday/companies/${SLUG}.json"
-test -f "$CONFIG" || { echo "ERROR: No config for $SLUG. Copy shared/workday/companies/_template.json to $CONFIG and fill in step_definitions. See SKILL.md 'How to add a new company'."; exit 1; }
-test -f shared/profile.json || { echo "ERROR: missing profile.json"; exit 1; }
-test -f "$(jq -r '.resume_path // "/Users/lee/Desktop/Lee_Lin_Resume.pdf"' shared/profile.json)" || { echo "ERROR: resume PDF missing"; exit 1; }
-curl -s http://localhost:9222/json/version > /dev/null || ./shared/chrome-cdp-launcher.sh
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
+RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+CONFIG="$ATS_REPO_ROOT/shared/workday/companies/${SLUG}.json"
+test -f "$CONFIG" || { echo "ERROR: No config for $SLUG. Copy $ATS_REPO_ROOT/shared/workday/companies/_template.json to $CONFIG and fill in step_definitions. See SKILL.md 'How to add a new company'."; exit 1; }
+test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /ats-init"; exit 1; }
+test -f "$RESUME" || { echo "ERROR: resume PDF missing: $RESUME"; exit 1; }
+curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 jq -e '._meta.last_verified != null' "$CONFIG" > /dev/null || echo "WARN: config $SLUG never dogfooded (last_verified=null). Proceeding but expect failures."
 ```
 
@@ -77,9 +81,9 @@ If Workday demands account creation/signin, Lee handles it manually in the visib
 For each wizard step, re-inject helpers (page rerenders on Save & Continue) and call `applyCompanyConfig`:
 
 ```bash
-PROFILE=$(cat shared/profile.json)
+PROFILE_JSON=$(cat "$PROFILE")
 CONFIG_JSON=$(cat "$CONFIG")
-PLAN=$(node shared/cdp.mjs eval $TAB "$(cat shared/workday/workday_helpers.js); JSON.stringify(Workday.applyCompanyConfig($CONFIG_JSON, $PROFILE))")
+PLAN=$(node "$ATS_REPO_ROOT/shared/cdp.mjs" eval $TAB "$(cat "$ATS_REPO_ROOT/shared/workday/workday_helpers.js"); JSON.stringify(Workday.applyCompanyConfig($CONFIG_JSON, $PROFILE_JSON))")
 echo "$PLAN" | jq .
 ```
 
@@ -88,7 +92,7 @@ The plan looks like:
 { "ok": true, "step": {...}, "detectedStep": {...}, "plan": [
   {"action": "typetext", "selector": "[data-automation-id='legalName--firstName']", "value": "Lee"},
   {"action": "select",   "autoId": "addressSection_countryRegion", "value": "California"},
-  {"action": "upload",   "selector": "[data-automation-id='file-upload-input-ref']", "value": "/Users/lee/Desktop/Lee_Lin_Resume.pdf"},
+  {"action": "upload",   "selector": "[data-automation-id='file-upload-input-ref']", "value": "<resume_path from config.json>"},
   {"action": "missing",  "autoId": "...", "profile_path": "..."}  // required field has no value
 ]}
 ```

@@ -40,13 +40,19 @@ This is Lee's actual daily-use form: one command, walk away, come back to a repo
 跑这些。任何一项 fail → 报告退出。
 
 ```bash
+# 0. ats-skills env (v1.0 multi-tenant)
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
+
 # 1. CDP 9222 alive?
 curl -sf http://localhost:9222/json/version > /dev/null \
-  || { echo "Chrome CDP 9222 not up. Run: bash shared/chrome-cdp-launcher.sh"; exit 1; }
+  || { echo "Chrome CDP 9222 not up. Run: bash $ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"; exit 1; }
 
 # 2. profile.json 存在且必填字段非空
-PROFILE=/Users/lee/Projects/ats-skills/shared/profile.json
-[ -f "$PROFILE" ] || { echo "Missing $PROFILE — run ./setup.sh first"; exit 1; }
+PROFILE="$ATS_HOME/profile.json"
+[ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy fallback
+[ -f "$PROFILE" ] || { echo "Missing profile.json — run /ats-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
 const need = [['personal','first_name'],['personal','last_name'],['personal','email'],
@@ -65,7 +71,7 @@ mkdir -p /tmp/ats-skills/log/$(date +%F)
 # 5. Notion has "✅ Approved" status enum (v0.5 requirement)
 #    Ping the DB and verify the 状态 select includes "✅ Approved".
 node -e "
-import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
   try {
     const rows = await m.queryApprovedView();
     console.log('Approved view OK, ' + rows.length + ' rows visible');
@@ -141,14 +147,14 @@ v0.5 不再读「🔵 未投」全表；只读 Lee 在 dashboard 里手动 / AI 
 
 ```bash
 node -e "
-import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
   const rows = await m.queryApprovedView();
   console.log(JSON.stringify(rows, null, 2));
 });
 " > /tmp/ats-skills/queue.json
 ```
 
-`queryApprovedView()` 内部用 Notion REST API 过滤 `状态 == "✅ Approved"`（DB id 默认 `94b728d7-526d-4c9f-96f4-a8cb92c0f5fe`，可经 `NOTION_JOB_DB_ID` env 覆盖）。返回每行：
+`queryApprovedView()` 内部用 Notion REST API 过滤 `状态 == "✅ Approved"`。DB id 解析顺序: `NOTION_JOB_DB_ID` env → `~/.ats-skills/config.json.notion_db_id` → legacy default. 返回每行：
 
 ```js
 {
@@ -518,7 +524,7 @@ v0.5 在 success 和 fail 两条路径上都写 feedback——success 沉淀"哪
 
 ```bash
 node -e "
-import('/Users/lee/Projects/ats-skills/shared/notion_sync.mjs').then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
   const r = await m.markApplied('$PAGE_ID', {
     bot_note: 'ats-skills v0.5 batch',
     confirmation_url: '$CONFIRMATION_URL'  // 如有, e.g. submit 后落地页 URL
@@ -538,7 +544,7 @@ Notion update 失败 → log warning 但**不**算 fail（已经投出去了，�
 
 ```bash
 node -e "
-import('/Users/lee/Projects/ats-skills/shared/feedback.mjs').then(m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`).then(m => {
   m.append({
     company: '$COMPANY',
     role: '$ROLE',
@@ -610,7 +616,7 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 
 ## v0.5 feedback loop status
 
-跑一遍 `node -e "import('/Users/lee/Projects/ats-skills/shared/feedback.mjs').then(m => console.log(JSON.stringify(m.summarize(m.loadRecent(50)), null, 2)))"`，
+跑一遍 `node -e "import(`${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`).then(m => console.log(JSON.stringify(m.summarize(m.loadRecent(50)), null, 2)))"`，
 列出 top-3 skip 模式 (累积 50 条):
 
   • "Wrong Role" × 12 → 下次 sourcing 会 inject "user keeps rejecting senior-level non-intern roles"
@@ -772,6 +778,6 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 - `shared/profile.json` — 用户填的真实 profile (gitignored)
 - `.claude/skills/ats-greenhouse/SKILL.md` — single-URL Greenhouse flow (本 skill 是 batch 版)
 - `.claude/skills/ats-ashby/SKILL.md` — single-URL Ashby flow
-- Lee Notion ATS workspace: `94b728d7-526d-4c9f-96f4-a8cb92c0f5fe` (db) / `6995653c-4fab-4622-b174-d10892620ad8` (data_source)
+- Notion DB / data_source IDs come from `~/.ats-skills/config.json` (see `shared/config.template.json`). For Lee's legacy setup the defaults in `shared/paths.mjs` apply.
 - Harness classifier rule: `feedback_ats_auto_apply_strategy_2026.md`
 - react-select mousedown trick: `feedback_ats_react_select_mousedown.md`

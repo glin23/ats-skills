@@ -1,0 +1,13 @@
+{
+  "_comment": "Written to ~/.ats-skills/config.json by /ats-init. Edit only if you know what you're doing.",
+  "notion_db_id": "",
+  "notion_data_source_id": "",
+  "notion_root_page_id": "",
+  "views": {
+    "ai_sourced": "",
+    "approved": "",
+    "skipped": "",
+    "large_company": ""
+  },
+  "resume_path": ""
+}

@@ -13,8 +13,8 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
    ```bash
    ./shared/chrome-cdp-launcher.sh    # open -na 强制独立 instance
    ```
-2. **`profile.json` 已填**（仓库根）— name/email/phone/LinkedIn/visa 等
-3. **简历 PDF 存在** — 默认 `/Users/lee/Desktop/Lee_Lin_Resume.pdf`
+2. **`~/.ats-skills/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/ats-init` 生成）
+3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
@@ -26,11 +26,15 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
 
 ### 1. 健康检查
 ```bash
-curl -s http://localhost:9222/json/version > /dev/null || ./shared/chrome-cdp-launcher.sh
-ls /Users/lee/Desktop/Lee_Lin_Resume.pdf
-cat profile.json | head -1   # 验证有效 JSON
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"
+RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
+[ -f "$RESUME" ] || { echo "Resume not found: $RESUME"; exit 1; }
+[ -f "$PROFILE" ] && jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```
-如缺：报错退出，提示用户跑 `./setup.sh`。
+如缺：报错退出，提示用户跑 `/ats-init`。
 
 ### 2. 导航
 ```bash
@@ -46,7 +50,7 @@ node shared/cdp.mjs eval $TAB "$(cat shared/ashby_helpers.js); JSON.stringify(As
 
 ### 4. 上传简历（plan 里第一个 upload 项）
 ```bash
-node shared/cdp.mjs upload $TAB "#_systemfield_resume" /Users/lee/Desktop/Lee_Lin_Resume.pdf
+node "$ATS_REPO_ROOT/shared/cdp.mjs" upload $TAB "#_systemfield_resume" "$RESUME"
 ```
 Ashby 不像 Lever 有 100MB upload bug，直接 hidden file input 即可。
 

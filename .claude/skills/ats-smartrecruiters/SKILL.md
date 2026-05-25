@@ -25,7 +25,7 @@ description: Automate SmartRecruiters ATS application form filling via Chrome CD
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— name/email/phone/LinkedIn 等
-3. **简历 PDF 存在** — 默认 `/Users/lee/Desktop/Lee_Lin_Resume.pdf`
+3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
@@ -40,9 +40,13 @@ Apply URL 形如 `https://jobs.smartrecruiters.com/<CompanySlug>/<uuid>`。
 
 ### 1. 健康检查
 ```bash
-curl -s http://localhost:9222/json/version > /dev/null || ./shared/chrome-cdp-launcher.sh
-ls /Users/lee/Desktop/Lee_Lin_Resume.pdf
-cat profile.json | head -1   # 验证有效 JSON
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"
+RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
+ls "$RESUME"
+jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```
 如缺：报错退出，提示用户跑 `./setup.sh`。
 
@@ -70,7 +74,7 @@ node shared/cdp.mjs eval $TAB "$(cat shared/smartrecruiters_helpers.js); JSON.st
 
 ### 4. 上传简历（plan 里 upload 项）
 ```bash
-node shared/cdp.mjs upload $TAB "<resume_selector>" /Users/lee/Desktop/Lee_Lin_Resume.pdf
+node shared/cdp.mjs upload $TAB "<resume_selector>" "$RESUME"
 ```
 `<resume_selector>` 来自 `SR.uploadResume()` 的返回。SmartRecruiters resume input 通常 name 含 `resume` 或 `cv`。
 

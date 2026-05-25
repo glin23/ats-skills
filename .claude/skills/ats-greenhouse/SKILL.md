@@ -24,7 +24,7 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少包含 `first_name / last_name / email / phone / phone_country / linkedin_url / resume_path / country_label`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`profile.resume_path`（Lee 默认 `/Users/lee/Desktop/Lee_Lin_Resume.pdf`）。
+3. **简历 PDF 可读**：`profile.resume_path` 或 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。
@@ -55,7 +55,7 @@ node shared/cdp.mjs eval "$TAB" "$(cat shared/greenhouse_helpers.js)"
 
 ### 5. 调用 `GH.fillForm(profile)` 填表
 ```bash
-PROFILE=$(cat shared/profile.json)
+ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"; PROFILE=$(cat "$ATS_HOME/profile.json" 2>/dev/null || cat shared/profile.json)
 node shared/cdp.mjs eval "$TAB" "(async () => { return await GH.fillForm($PROFILE); })()"
 ```
 读返回的 `{filled, errors}`。errors 非空时，把缺的字段列出来 — 后续用户授权前由 skill 或用户手动补。
@@ -63,7 +63,7 @@ node shared/cdp.mjs eval "$TAB" "(async () => { return await GH.fillForm($PROFIL
 ### 6. 上传简历
 JS 没文件系统访问，必须走 CDP `DOM.setFileInputFiles`：
 ```bash
-node shared/cdp.mjs upload "$TAB" "#resume_input" "$(jq -r .resume_path shared/profile.json)"
+node shared/cdp.mjs upload "$TAB" "#resume_input" "$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path shared/profile.json)"
 ```
 Greenhouse 常见 selector：`#resume_input` / `input[type=file][name=resume]` — 哪个 query 到用哪个。
 
@@ -121,4 +121,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 
 - `shared/greenhouse_helpers.js` — 所有 react-select v5 / iti phone trick 的实现
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
-- Lee 的 ATS 标准答案库（Notion）：page `35d1e8ce818581e697a9fb4bfd36f250`
+- ATS 标准答案库（Notion）：用户自己 workspace 的 root page，id 在 `~/.ats-skills/config.json.notion_root_page_id`

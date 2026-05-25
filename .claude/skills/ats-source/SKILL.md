@@ -50,9 +50,15 @@ This is the Step 1 of the v0.3 funnel: **source → approve → /ats-skills batc
   exit 1; \
 }
 
+# 0. ats-skills env (v1.0 multi-tenant)
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
+
 # 3. profile.json 存在 + 含 target_filters
-PROFILE=/Users/lee/Projects/ats-skills/shared/profile.json
-[ -f "$PROFILE" ] || { echo "Missing $PROFILE — run ./setup.sh first"; exit 1; }
+PROFILE="$ATS_HOME/profile.json"
+[ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy
+[ -f "$PROFILE" ] || { echo "Missing profile.json — run /ats-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
 const tf = p.target_filters;
@@ -63,7 +69,7 @@ if (!tf || !Array.isArray(tf.role_types) || tf.role_types.length === 0) {
 "
 
 # 4. company_list.json 存在 + 有公司
-LIST=/Users/lee/Projects/ats-skills/shared/sourcing/company_list.json
+LIST="$ATS_REPO_ROOT/shared/sourcing/company_list.json"
 [ -f "$LIST" ] || { echo "Missing $LIST"; exit 1; }
 node -e "
 const l = require('$LIST');
@@ -93,7 +99,7 @@ mkdir -p /tmp/ats-skills/log/$(date +%F)
 - Role 过滤:   intern + new_grad_FT （按 profile.target_filters.role_types）
 - AI scorer:   Claude Sonnet，~$0.003/job
 - 预计成本:    ~M 个候选 jobs × $0.003 = ~$X
-- Notion DB:   📋 岗位追踪（94b728d7-526d-4c9f-96f4-a8cb92c0f5fe）
+- Notion DB:   📋 岗位追踪（id 来自 ~/.ats-skills/config.json）
                 - 新 row 状态 = 🤖 AI sourced
                 - 已存在 row 仅刷新 fit_score 字段，保留 状态/Bot 备注
 - 反馈 loop:   load 最近 20 条 ~/.ats-skills/feedback.jsonl skip 喂进 system prompt
@@ -124,14 +130,14 @@ mkdir -p /tmp/ats-skills/log/$(date +%F)
 mkdir -p /tmp/ats-source
 cat > /tmp/ats-source/source_jobs.mjs <<'NODE'
 import { readFile } from 'node:fs/promises';
-import * as GH from '/Users/lee/Projects/ats-skills/shared/sourcing/greenhouse_board_api.mjs';
-import * as Ashby from '/Users/lee/Projects/ats-skills/shared/sourcing/ashby_board_api.mjs';
+import * as GH from `${process.env.ATS_REPO_ROOT}/shared/sourcing/greenhouse_board_api.mjs`;
+import * as Ashby from `${process.env.ATS_REPO_ROOT}/shared/sourcing/ashby_board_api.mjs`;
 
 const list = JSON.parse(
-  await readFile('/Users/lee/Projects/ats-skills/shared/sourcing/company_list.json', 'utf8'),
+  await readFile(`${process.env.ATS_REPO_ROOT}/shared/sourcing/company_list.json`, 'utf8'),
 );
 const profile = JSON.parse(
-  await readFile('/Users/lee/Projects/ats-skills/shared/profile.json', 'utf8'),
+  await readFile(`${process.env.ATS_REPO_ROOT}/shared/profile.json`, 'utf8'),
 );
 const roleTypes = profile.target_filters?.role_types || ['intern', 'new_grad_FT'];
 
@@ -195,11 +201,11 @@ node /tmp/ats-source/source_jobs.mjs > /tmp/ats-source/raw_jobs.json
 ```bash
 cat > /tmp/ats-source/score_jobs.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
-import { scoreBatch } from '/Users/lee/Projects/ats-skills/shared/matching/ai_scorer.mjs';
-import { loadRecent } from '/Users/lee/Projects/ats-skills/shared/feedback.mjs';
+import { scoreBatch } from `${process.env.ATS_REPO_ROOT}/shared/matching/ai_scorer.mjs`;
+import { loadRecent } from `${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`;
 
 const profile = JSON.parse(
-  await readFile('/Users/lee/Projects/ats-skills/shared/profile.json', 'utf8'),
+  await readFile(`${process.env.ATS_REPO_ROOT}/shared/profile.json`, 'utf8'),
 );
 const { jobs, errors } = JSON.parse(
   await readFile('/tmp/ats-source/raw_jobs.json', 'utf8'),
@@ -277,13 +283,13 @@ node /tmp/ats-source/score_jobs.mjs
 ```bash
 cat > /tmp/ats-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
-import { batchUpsert } from '/Users/lee/Projects/ats-skills/shared/notion_sync.mjs';
+import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`;
 
 const { scored, fetch_errors } = JSON.parse(
   await readFile('/tmp/ats-source/scored_jobs.json', 'utf8'),
 );
 const companyList = JSON.parse(
-  await readFile('/Users/lee/Projects/ats-skills/shared/sourcing/company_list.json', 'utf8'),
+  await readFile(`${process.env.ATS_REPO_ROOT}/shared/sourcing/company_list.json`, 'utf8'),
 );
 const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
 

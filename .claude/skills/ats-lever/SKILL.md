@@ -26,7 +26,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`profile.resume_path`（Lee 默认 `/Users/lee/Desktop/Lee_Lin_Resume.pdf`）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
+3. **简历 PDF 可读**：`~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。
@@ -164,4 +164,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 - `shared/sourcing/lever_board_api.mjs` — sourcing client（含 `salary` 提取）
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - `~/.claude/projects/-Users-lee/memory/feedback_ats_auto_apply_strategy_2026.md` — 5/13 Palantir 实战 + harness classifier 行为
-- Lee 的 ATS 标准答案库（Notion）：page `35d1e8ce818581e697a9fb4bfd36f250`
+- ATS 标准答案库（Notion）：用户 workspace root page，id 在 `~/.ats-skills/config.json.notion_root_page_id`
