@@ -16,7 +16,7 @@
  *       the exact same frame the CDP main loop was looking at)
  *   (b) Build vision prompts for Claude to follow
  *   (c) Decide whether to escalate to vision (cap attempts, only on required)
- *   (d) Append structured telemetry to ~/.ats-skills/log/locator.jsonl
+ *   (d) Append structured telemetry to ~/.mrweirdo-jobs/log/locator.jsonl
  *   (e) Produce a "fill plan" of MCP actions for caller Claude to execute
  *       when no CSS selector can be derived from vision (coord-based fill)
  *
@@ -53,7 +53,7 @@ export const MAX_VISION_ATTEMPTS_PER_FORM = 3;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const LOG_DIR = join(homedir(), '.ats-skills', 'log');
+const LOG_DIR = join(homedir(), '.mrweirdo-jobs', 'log');
 const LOG_FILE = join(LOG_DIR, 'locator.jsonl');
 const FRAME_DIR = '/tmp/ats-skills';
 const FRAME_PATH = join(FRAME_DIR, 'locator-frame.png');
@@ -201,7 +201,7 @@ export function fillViaCoordsPlan(x, y, text) {
 /**
  * logAttempt(entry) → void
  *
- * Append a single locator attempt to ~/.ats-skills/log/locator.jsonl.
+ * Append a single locator attempt to ~/.mrweirdo-jobs/log/locator.jsonl.
  * Used for telemetry: what labels need vision most, hit-rate, confidence,
  * cost (each call is several seconds + tokens).
  *

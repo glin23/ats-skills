@@ -51,13 +51,13 @@ This is the Step 1 of the v0.3 funnel: **source → approve → /mrweirdo-jobs b
 }
 
 # 0. ats-skills env (v1.0 multi-tenant)
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+[ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
 
 # 3. profile.json 存在 + 含 target_filters
-PROFILE="$ATS_HOME/profile.json"
-[ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy
+PROFILE="$MRWEIRDO_HOME/profile.json"
+[ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"  # legacy
 [ -f "$PROFILE" ] || { echo "Missing profile.json — run /mrweirdo-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
@@ -69,7 +69,7 @@ if (!tf || !Array.isArray(tf.role_types) || tf.role_types.length === 0) {
 "
 
 # 4. company_list.json 存在 + 有公司
-LIST="$ATS_REPO_ROOT/shared/sourcing/company_list.json"
+LIST="$MRWEIRDO_REPO_ROOT/shared/sourcing/company_list.json"
 [ -f "$LIST" ] || { echo "Missing $LIST"; exit 1; }
 node -e "
 const l = require('$LIST');
@@ -99,10 +99,10 @@ mkdir -p /tmp/mrweirdo-jobs/log/$(date +%F)
 - Role 过滤:   intern + new_grad_FT （按 profile.target_filters.role_types）
 - AI scorer:   Claude Sonnet，~$0.003/job
 - 预计成本:    ~M 个候选 jobs × $0.003 = ~$X
-- Notion DB:   📋 岗位追踪（id 来自 ~/.ats-skills/config.json）
+- Notion DB:   📋 岗位追踪（id 来自 ~/.mrweirdo-jobs/config.json）
                 - 新 row 状态 = 🤖 AI sourced
                 - 已存在 row 仅刷新 fit_score 字段，保留 状态/Bot 备注
-- 反馈 loop:   load 最近 20 条 ~/.ats-skills/feedback.jsonl skip 喂进 system prompt
+- 反馈 loop:   load 最近 20 条 ~/.mrweirdo-jobs/feedback.jsonl skip 喂进 system prompt
 
 回 "go" 开始
    "skip <company>"  从本次 source 移除某家（可重复）
@@ -129,12 +129,12 @@ mkdir -p /tmp/mrweirdo-jobs/log/$(date +%F)
 ```bash
 mkdir -p /tmp/mrweirdo-source
 cat > /tmp/mrweirdo-source/source_jobs.mjs <<'NODE'
-import * as GH from `${process.env.ATS_REPO_ROOT}/shared/sourcing/greenhouse_board_api.mjs`;
-import * as Ashby from `${process.env.ATS_REPO_ROOT}/shared/sourcing/ashby_board_api.mjs`;
-import { loadCompanyList, loadProfile } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
+import * as GH from `${process.env.MRWEIRDO_REPO_ROOT}/shared/sourcing/greenhouse_board_api.mjs`;
+import * as Ashby from `${process.env.MRWEIRDO_REPO_ROOT}/shared/sourcing/ashby_board_api.mjs`;
+import { loadCompanyList, loadProfile } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/paths.mjs`;
 
-const list = loadCompanyList();         // merges baseline + ~/.ats-skills/company_list.user.json
-const profile = loadProfile();          // ~/.ats-skills/profile.json (or legacy shared/profile.json)
+const list = loadCompanyList();         // merges baseline + ~/.mrweirdo-jobs/company_list.user.json
+const profile = loadProfile();          // ~/.mrweirdo-jobs/profile.json (or legacy shared/profile.json)
 const roleTypes = profile.target_filters?.role_types || ['intern', 'new_grad_FT'];
 
 const all = [];
@@ -197,11 +197,11 @@ node /tmp/mrweirdo-source/source_jobs.mjs > /tmp/mrweirdo-source/raw_jobs.json
 ```bash
 cat > /tmp/mrweirdo-source/score_jobs.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
-import { scoreBatch } from `${process.env.ATS_REPO_ROOT}/shared/matching/ai_scorer.mjs`;
-import { loadRecent } from `${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`;
+import { scoreBatch } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/matching/ai_scorer.mjs`;
+import { loadRecent } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/feedback.mjs`;
 
 const profile = JSON.parse(
-  await readFile(`${process.env.ATS_REPO_ROOT}/shared/profile.json`, 'utf8'),
+  await readFile(`${process.env.MRWEIRDO_REPO_ROOT}/shared/profile.json`, 'utf8'),
 );
 const { jobs, errors } = JSON.parse(
   await readFile('/tmp/mrweirdo-source/raw_jobs.json', 'utf8'),
@@ -279,14 +279,14 @@ node /tmp/mrweirdo-source/score_jobs.mjs
 ```bash
 cat > /tmp/mrweirdo-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
-import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`;
-import { loadCompanyList } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
-import { isCapReached } from `${process.env.ATS_REPO_ROOT}/shared/quota.mjs`;
+import { batchUpsert } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`;
+import { loadCompanyList } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/paths.mjs`;
+import { isCapReached } from `${process.env.MRWEIRDO_REPO_ROOT}/shared/quota.mjs`;
 
 const { scored, fetch_errors } = JSON.parse(
   await readFile('/tmp/mrweirdo-source/scored_jobs.json', 'utf8'),
 );
-const companyList = loadCompanyList();   // merged baseline + ~/.ats-skills/company_list.user.json
+const companyList = loadCompanyList();   // merged baseline + ~/.mrweirdo-jobs/company_list.user.json
 const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
 
 // Map scored → SQLite row payload (column names match local_db schema)
@@ -511,7 +511,7 @@ Claude: [Step 2 fetch] [fetch] Cresta ...  [fetch] Notion ...  → 47 role-filte
 - `shared/matching/ai_scorer.mjs` — `scoreFit`, `scoreBatch`, `buildProfileSummary`（Claude Sonnet, $0.003/job）
 - `shared/matching/prompt_template.md` — AI scorer system prompt template（multi-dim output）
 - `shared/local_db.mjs` — `upsertJob`, `batchUpsert`, `queryApprovedView`, `queryAiSourcedPending`（zero-dep SQLite via node:sqlite）
-- `shared/feedback.mjs` — `loadRecent(20)`, `formatForPrompt`, `summarize` (~/.ats-skills/feedback.jsonl)
+- `shared/feedback.mjs` — `loadRecent(20)`, `formatForPrompt`, `summarize` (~/.mrweirdo-jobs/feedback.jsonl)
 - `shared/profile.json` — 含 `target_filters` schema（v0.3 新增字段）
 - `.claude/skills/mrweirdo-jobs/SKILL.md` — Step 2 的 batch apply orchestrator（消费本 skill 写的 ✅ Approved view）
 - `.claude/plans/peaceful-bouncing-karp.md` v0.3 phase plan — 完整 PRD

@@ -63,7 +63,7 @@
  *   6. Throttle: 1 navigation per 3s (more conservative than ashby/greenhouse
  *      since we're scraping DOM, not hitting an official API).
  *   7. Honor Handshake daily 300 cap with a per-day request counter persisted
- *      to `~/.ats-skills/handshake_quota.json`.
+ *      to `~/.mrweirdo-jobs/handshake_quota.json`.
  *
  * Until then, the public functions below throw a clear "not yet implemented"
  * error so callers fail fast rather than silently treat handshake as empty.

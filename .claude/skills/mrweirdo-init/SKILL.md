@@ -1,19 +1,19 @@
 ---
 name: mrweirdo-init
-description: First-run onboarding for ats-skills v1.1. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.ats-skills/jobs.db. Persists everything to ~/.ats-skills/. Run once per user. After this, /mrweirdo-source + /mrweirdo-jobs + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
+description: First-run onboarding for ats-skills v1.1. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.mrweirdo-jobs/jobs.db. Persists everything to ~/.mrweirdo-jobs/. Run once per user. After this, /mrweirdo-source + /mrweirdo-jobs + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
 ---
 
 # ats-init — Onboarding Orchestrator (v1.1, SQLite-backed)
 
-**何时跑**：用户首次使用 ats-skills，或想 reset 配置。一次性 setup，之后所有其它 skill (ats-source / ats-skills / ats-greenhouse / ats-ashby / ats-lever / ats-confirm 等) 都从 `~/.ats-skills/` 读配置。
+**何时跑**：用户首次使用 ats-skills，或想 reset 配置。一次性 setup，之后所有其它 skill (ats-source / ats-skills / ats-greenhouse / ats-ashby / ats-lever / ats-confirm 等) 都从 `~/.mrweirdo-jobs/` 读配置。
 
-**何时不要跑**：用户已经有 `~/.ats-skills/jobs.db` 且能正常 sourcing — 直接走 /mrweirdo-source。
+**何时不要跑**：用户已经有 `~/.mrweirdo-jobs/jobs.db` 且能正常 sourcing — 直接走 /mrweirdo-source。
 
 ---
 
 ## v1.1 关键变化 vs v1.0
 
-**Notion 已下线**。Job tracking 数据库改为本地 SQLite (`~/.ats-skills/jobs.db`)。Onboarding 从 9 步 → **6 步**：
+**Notion 已下线**。Job tracking 数据库改为本地 SQLite (`~/.mrweirdo-jobs/jobs.db`)。Onboarding 从 9 步 → **6 步**：
 
 | v1.0 (Notion) | v1.1 (SQLite) |
 |---|---|
@@ -23,16 +23,16 @@ description: First-run onboarding for ats-skills v1.1. Collects the Anthropic AP
 | MCP 建 4 个 view | 用 SQL VIEW (datasette 自动呈现) |
 | 写 config.json (notion ids + view ids) | 不写 (db path 由 paths.mjs 算) |
 
-可选：用户跑 `datasette serve ~/.ats-skills/jobs.db --open` 起一个本地 web UI 看 row + filter + export，~1s 启动。
+可选：用户跑 `datasette serve ~/.mrweirdo-jobs/jobs.db --open` 起一个本地 web UI 看 row + filter + export，~1s 启动。
 
 ---
 
 ## 关键设计原则
 
 1. **一次性 setup**：跑一遍生成所有 file，之后不再问用户基础信息
-2. **secrets 不进 git**：API key 写 `~/.ats-skills/.env` (`chmod 600`)
+2. **secrets 不进 git**：API key 写 `~/.mrweirdo-jobs/.env` (`chmod 600`)
 3. **resume PDF AI 解析**：用户上传简历 → Claude Sonnet 抽出 personal/education/work_auth → 用户审核改正再保存
-4. **DB 本地**：所有 job row 写 SQLite `~/.ats-skills/jobs.db`。零 cloud。
+4. **DB 本地**：所有 job row 写 SQLite `~/.mrweirdo-jobs/jobs.db`。零 cloud。
 5. **不打 Notion**：v1.1 完全 self-contained
 
 ---
@@ -40,14 +40,14 @@ description: First-run onboarding for ats-skills v1.1. Collects the Anthropic AP
 ## Step 0: 环境准备
 
 ```bash
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-mkdir -p "$ATS_HOME"/{log}
-[ -f "$ATS_HOME/.env" ] || (touch "$ATS_HOME/.env" && chmod 600 "$ATS_HOME/.env")
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+[ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+mkdir -p "$MRWEIRDO_HOME"/{log}
+[ -f "$MRWEIRDO_HOME/.env" ] || (touch "$MRWEIRDO_HOME/.env" && chmod 600 "$MRWEIRDO_HOME/.env")
 ```
 
-报告：「环境准备好。$ATS_HOME 已建。」
+报告：「环境准备好。$MRWEIRDO_HOME 已建。」
 
 ---
 
@@ -56,15 +56,15 @@ mkdir -p "$ATS_HOME"/{log}
 直接问（不要走 AskUserQuestion — secret 不通过选项 UI）：
 
 > 请去 https://console.anthropic.com/settings/keys 建一个 API key，粘贴到这里。
-> 这个 key 会写到 `~/.ats-skills/.env` (chmod 600)，repo 永远不收。
+> 这个 key 会写到 `~/.mrweirdo-jobs/.env` (chmod 600)，repo 永远不收。
 
 写入：
 
 ```bash
-grep -v '^ANTHROPIC_API_KEY=' "$ATS_HOME/.env" > "$ATS_HOME/.env.tmp" 2>/dev/null || true
-echo "ANTHROPIC_API_KEY=$ANTHROPIC_KEY" >> "$ATS_HOME/.env.tmp"
-mv "$ATS_HOME/.env.tmp" "$ATS_HOME/.env"
-chmod 600 "$ATS_HOME/.env"
+grep -v '^ANTHROPIC_API_KEY=' "$MRWEIRDO_HOME/.env" > "$MRWEIRDO_HOME/.env.tmp" 2>/dev/null || true
+echo "ANTHROPIC_API_KEY=$ANTHROPIC_KEY" >> "$MRWEIRDO_HOME/.env.tmp"
+mv "$MRWEIRDO_HOME/.env.tmp" "$MRWEIRDO_HOME/.env"
+chmod 600 "$MRWEIRDO_HOME/.env"
 ```
 
 验证可用：
@@ -92,15 +92,15 @@ ANTHROPIC_API_KEY=$ANTHROPIC_KEY curl -sf -X POST https://api.anthropic.com/v1/m
 ```bash
 RESUME_INPUT="<user-provided-path>"
 [ -f "$RESUME_INPUT" ] || { echo "PDF not found at $RESUME_INPUT"; exit 1; }
-cp "$RESUME_INPUT" "$ATS_HOME/resume.pdf"
-chmod 600 "$ATS_HOME/resume.pdf"
+cp "$RESUME_INPUT" "$MRWEIRDO_HOME/resume.pdf"
+chmod 600 "$MRWEIRDO_HOME/resume.pdf"
 ```
 
 AI 解析（~10 sec, ~$0.02）：
 
 ```bash
-node "$ATS_REPO_ROOT/shared/onboarding/resume_parser.mjs" "$ATS_HOME/resume.pdf" > "$ATS_HOME/profile.parsed.json"
-cat "$ATS_HOME/profile.parsed.json" | jq .
+node "$MRWEIRDO_REPO_ROOT/shared/onboarding/resume_parser.mjs" "$MRWEIRDO_HOME/resume.pdf" > "$MRWEIRDO_HOME/profile.parsed.json"
+cat "$MRWEIRDO_HOME/profile.parsed.json" | jq .
 ```
 
 Show parsed JSON 给用户审核 (邮箱 / 学校 / 毕业日期 / work_authorization 是 hot fields)。等用户修正确认。
@@ -109,18 +109,18 @@ Show parsed JSON 给用户审核 (邮箱 / 学校 / 毕业日期 / work_authoriz
 
 ```bash
 node --no-warnings -e "
-import('$ATS_REPO_ROOT/shared/paths.mjs').then(async () => {
+import('$MRWEIRDO_REPO_ROOT/shared/paths.mjs').then(async () => {
   const fs = await import('node:fs/promises');
-  const parsed = JSON.parse(await fs.readFile('$ATS_HOME/profile.parsed.json', 'utf8'));
-  const template = JSON.parse(await fs.readFile('$ATS_REPO_ROOT/shared/profile.template.json', 'utf8'));
+  const parsed = JSON.parse(await fs.readFile('$MRWEIRDO_HOME/profile.parsed.json', 'utf8'));
+  const template = JSON.parse(await fs.readFile('$MRWEIRDO_REPO_ROOT/shared/profile.template.json', 'utf8'));
   const profile = {
     ...parsed,
-    resume_path: '$ATS_HOME/resume.pdf',
+    resume_path: '$MRWEIRDO_HOME/resume.pdf',
     standard_qa: template.standard_qa || {},
     batch_pace: { min_seconds_between_jobs: 120, max_seconds_between_jobs: 300, daily_apply_cap: 50 },
     target_filters: {} // filled in Step 3
   };
-  await fs.writeFile('$ATS_HOME/profile.json', JSON.stringify(profile, null, 2));
+  await fs.writeFile('$MRWEIRDO_HOME/profile.json', JSON.stringify(profile, null, 2));
   console.log('profile.json written');
 });
 "
@@ -160,7 +160,7 @@ import('$ATS_REPO_ROOT/shared/paths.mjs').then(async () => {
 ```bash
 node --no-warnings -e "
 const fs = require('node:fs');
-const p = JSON.parse(fs.readFileSync('$ATS_HOME/profile.json', 'utf8'));
+const p = JSON.parse(fs.readFileSync('$MRWEIRDO_HOME/profile.json', 'utf8'));
 p.target_filters = {
   role_types: <user-selected>,
   locations: <user-selected, expand US if picked>,
@@ -168,7 +168,7 @@ p.target_filters = {
   min_fit_score: <user-selected>,
   visa_must_sponsor: false
 };
-fs.writeFileSync('$ATS_HOME/profile.json', JSON.stringify(p, null, 2));
+fs.writeFileSync('$MRWEIRDO_HOME/profile.json', JSON.stringify(p, null, 2));
 console.log('target_filters saved');
 "
 ```
@@ -178,13 +178,13 @@ console.log('target_filters saved');
 ## Step 4: 初始化 SQLite database
 
 ```bash
-node --no-warnings "$ATS_REPO_ROOT/shared/local_db.mjs" init
+node --no-warnings "$MRWEIRDO_REPO_ROOT/shared/local_db.mjs" init
 ```
 
-输出: `{"ok":true,"path":"<ATS_HOME>/jobs.db"}` 即 DB 已 ready（表 / view / 索引全部 idempotent 建好）。
+输出: `{"ok":true,"path":"<MRWEIRDO_HOME>/jobs.db"}` 即 DB 已 ready（表 / view / 索引全部 idempotent 建好）。
 
 ```bash
-node --no-warnings "$ATS_REPO_ROOT/shared/local_db.mjs" summary
+node --no-warnings "$MRWEIRDO_REPO_ROOT/shared/local_db.mjs" summary
 ```
 
 输出: `{"total":0,"byStatus":[],"recentSubmits":0,"db_path":"..."}` — DB 空 + 准备好接 sourcing.
@@ -197,7 +197,7 @@ node --no-warnings "$ATS_REPO_ROOT/shared/local_db.mjs" summary
 
 ```bash
 node --no-warnings -e "
-import('$ATS_REPO_ROOT/shared/sourcing/greenhouse_board_api.mjs').then(async m => {
+import('$MRWEIRDO_REPO_ROOT/shared/sourcing/greenhouse_board_api.mjs').then(async m => {
   const jobs = await m.fetchBoard('cresta', 10);
   console.log('Cresta GH fetch ok: ' + jobs.length + ' jobs');
 });
@@ -216,7 +216,7 @@ jobs > 0 → smoke pass.
 # 装 datasette (一次性)
 pip install datasette || pip3 install datasette
 # 启动 — 自动打开浏览器
-datasette serve "$ATS_HOME/jobs.db" --open --port 8001
+datasette serve "$MRWEIRDO_HOME/jobs.db" --open --port 8001
 ```
 
 打开后看到几个 view：
@@ -228,14 +228,14 @@ datasette serve "$ATS_HOME/jobs.db" --open --port 8001
 
 Datasette 自带 SQL query + filter + JSON export + CSV export，比 Notion 还快（zero web 加载）。
 
-如果用户不想装 datasette，可以用任何 SQLite 客户端（TablePlus / DBeaver / Datagrip / `sqlite3` CLI）打 `~/.ats-skills/jobs.db`。
+如果用户不想装 datasette，可以用任何 SQLite 客户端（TablePlus / DBeaver / Datagrip / `sqlite3` CLI）打 `~/.mrweirdo-jobs/jobs.db`。
 
 ---
 
 ## Step 7: 打印 next steps
 
 ```
-🎉 ats-init 完成！~/.ats-skills/ 已配齐：
+🎉 ats-init 完成！~/.mrweirdo-jobs/ 已配齐：
   - .env (ANTHROPIC_API_KEY, chmod 600)
   - profile.json (你的 personal/education/target_filters)
   - jobs.db (SQLite, 含 schema + 5 个 view)
@@ -248,7 +248,7 @@ Datasette 自带 SQL query + filter + JSON export + CSV export，比 Notion 还�
   /mrweirdo-jobs           — 从 v_approved 批量投递 (在 datasette 里改 status 为 ✅ Approved)
   /mrweirdo-confirm          — 抓 Gmail confirmation 邮件 → mark v_submitted 行
 
-可选: datasette serve "$ATS_HOME/jobs.db" --open --port 8001
+可选: datasette serve "$MRWEIRDO_HOME/jobs.db" --open --port 8001
 ```
 
 ---
@@ -261,7 +261,7 @@ Datasette 自带 SQL query + filter + JSON export + CSV export，比 Notion 还�
 | 简历 PDF 太大 (> 20MB) | 报错，让用户压缩 |
 | 简历 parse 出 null 太多 | 让用户手动 review + 补充 |
 | node:sqlite 不可用 | 提示用户升级到 Node 24.7+ |
-| SQLite 写 jobs.db 失败 | 检查 ~/.ats-skills/ 权限 |
+| SQLite 写 jobs.db 失败 | 检查 ~/.mrweirdo-jobs/ 权限 |
 
 ---
 

@@ -1,5 +1,5 @@
 // quota.mjs — track large-company submission quota across sessions
-// Append-only JSONL at ~/.ats-skills/quota.jsonl. Each line = one submission.
+// Append-only JSONL at ~/.mrweirdo-jobs/quota.jsonl. Each line = one submission.
 //
 // Usage:
 //   import { recordApply, getRemaining, isCapReached } from './quota.mjs';

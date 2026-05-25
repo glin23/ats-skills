@@ -28,7 +28,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **Handshake 账号已登录** — Handshake 所有 job pages 都需要 student SSO。隔离 profile 第一次跑时会要 Lee 手动登录一次。
-3. **`~/.ats-skills/profile.json` 存在**（由 `/mrweirdo-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
+3. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
 4. **简历已在 Handshake Documents 上传** — Handshake 的"上传简历"是 document picker（选已传的 PDF），不是 file input。Lee 必须事先在 Handshake 个人 documents store 传过简历。
 5. **Node 24+**。
 
@@ -51,10 +51,10 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 ### 2. 健康检查
 ```bash
 curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
-ls "$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")" > /dev/null
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+ls "$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")" > /dev/null
 ```
 缺 → 报错退出。
 

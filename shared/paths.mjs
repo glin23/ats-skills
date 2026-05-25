@@ -2,7 +2,7 @@
 // Node 24+. Zero deps.
 //
 // Layout (after `ats-init`):
-//   $HOME/.ats-skills/
+//   $HOME/.mrweirdo-jobs/
 //   ├── .env                # ANTHROPIC_API_KEY, NOTION_API_KEY
 //   ├── profile.json        # user's resume-derived profile + target_filters
 //   ├── config.json         # Notion DB id / view ids / resume_path
@@ -13,7 +13,7 @@
 //   └── repo/               # git clone of ats-skills repo
 //
 // All `shared/*.mjs` should import from this module instead of hard-coding paths.
-// SKILL.md files set `ATS_HOME` + `ATS_REPO_ROOT` env at top and pass via process.env.
+// SKILL.md files set `MRWEIRDO_HOME` + `MRWEIRDO_REPO_ROOT` env at top and pass via process.env.
 
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
@@ -23,12 +23,12 @@ import { homedir } from 'node:os';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // repo root = parent of /shared
-export const repoRoot = () => process.env.ATS_REPO_ROOT || resolve(__dirname, '..');
+export const repoRoot = () => process.env.MRWEIRDO_REPO_ROOT || resolve(__dirname, '..');
 
 // user state dir
-export const atsHome = () => process.env.ATS_HOME || join(homedir(), '.ats-skills');
+export const atsHome = () => process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
 
-// profile.json — prefer ~/.ats-skills/profile.json, fall back to in-repo (Lee's legacy setup)
+// profile.json — prefer ~/.mrweirdo-jobs/profile.json, fall back to in-repo (Lee's legacy setup)
 export const profilePath = () => {
   const userPath = join(atsHome(), 'profile.json');
   if (existsSync(userPath)) return userPath;
@@ -36,7 +36,7 @@ export const profilePath = () => {
   return existsSync(legacyPath) ? legacyPath : userPath; // returns userPath even if missing — caller will error
 };
 
-// config.json — only lives in ~/.ats-skills (no in-repo fallback)
+// config.json — only lives in ~/.mrweirdo-jobs (no in-repo fallback)
 export const configPath = () => join(atsHome(), 'config.json');
 
 // resume PDF path comes from config.json.resume_path
@@ -69,7 +69,7 @@ export const loadConfig = () => {
   }
 };
 
-// company_list — merge baseline (in-repo) with user increment (in ~/.ats-skills)
+// company_list — merge baseline (in-repo) with user increment (in ~/.mrweirdo-jobs)
 // `user` entries override `baseline` by name (case-insensitive).
 // Returns { _notes, companies: [...] } matching the on-disk schema.
 export const loadCompanyList = () => {
@@ -100,7 +100,7 @@ export const loadCompanyList = () => {
 };
 
 // ---------- env loader ----------
-// Reads ~/.ats-skills/.env (KEY=value, one per line) into process.env unless already set.
+// Reads ~/.mrweirdo-jobs/.env (KEY=value, one per line) into process.env unless already set.
 // Idempotent.
 export const loadEnv = () => {
   const envPath = join(atsHome(), '.env');

@@ -73,7 +73,7 @@ Rules:
 export async function parseResumePdf(pdfPath) {
   loadEnv();
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set in env or ~/.ats-skills/.env');
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set in env or ~/.mrweirdo-jobs/.env');
 
   const pdfBytes = await readFile(pdfPath);
   const pdfBase64 = pdfBytes.toString('base64');

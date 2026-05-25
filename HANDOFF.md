@@ -205,7 +205,7 @@ ats-skills/
 │   ├── handshake_helpers.js    (545)     ⚠️ beta
 │   ├── workday_helpers.js      (477)     ⚠️ config-driven
 │   ├── computer_use_locator.mjs (224)    # vision fallback
-│   ├── feedback.mjs            (132)     # ~/.ats-skills/feedback.jsonl R/W
+│   ├── feedback.mjs            (132)     # ~/.mrweirdo-jobs/feedback.jsonl R/W
 │   ├── patterns.mjs            (191)     # 借鉴 Career-Ops 系统性偏差分析
 │   ├── notion_sync.mjs         (358)     # HTTP Notion API client, 不走 MCP
 │   ├── sourcing/

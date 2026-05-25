@@ -4,13 +4,13 @@
 # Uses `open -na` to start an independent process group, so the launched
 # window does NOT take over (or get killed by) your daily Chrome.
 #
-# Profile lives at ~/.ats-skills/chrome-profile — log into LinkedIn etc.
+# Profile lives at ~/.mrweirdo-jobs/chrome-profile — log into LinkedIn etc.
 # there. Your default Chrome profile is untouched.
 
 set -e
 
 PORT="${ATS_CDP_PORT:-9222}"
-PROFILE_DIR="${ATS_CHROME_PROFILE:-$HOME/.ats-skills/chrome-profile}"
+PROFILE_DIR="${MRWEIRDO_CHROME_PROFILE:-$HOME/.mrweirdo-jobs/chrome-profile}"
 CHROME_APP="/Applications/Google Chrome.app"
 CHROME_BIN="$CHROME_APP/Contents/MacOS/Google Chrome"
 

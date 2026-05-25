@@ -11,7 +11,7 @@ description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "�
 
 **v0.5 (2026-05-23)**: Queue source = Notion "✅ Approved" view; URL-based ATS dispatch; Computer Use visual fallback for unknown selectors; feedback.jsonl write on success+fail; auto-mark Notion 已投 with confirmation_url.
 
-One trigger. Skill loads the "✅ Approved (Ready to Apply)" Notion view (curated by Lee in the dashboard after AI sourcing scored + Lee approved), asks for a **single batch authorization** ("回 'go' 开始投这 N 家"), then dispatches each URL to its matching ATS helper (Greenhouse / Ashby) and runs end-to-end: fill → upload → submit → verify → mark Notion → append feedback. Failures are logged, skipped, and written to `~/.ats-skills/feedback.jsonl` so the next sourcing run learns from them. Ends with a dashboard + feedback-loop status.
+One trigger. Skill loads the "✅ Approved (Ready to Apply)" Notion view (curated by Lee in the dashboard after AI sourcing scored + Lee approved), asks for a **single batch authorization** ("回 'go' 开始投这 N 家"), then dispatches each URL to its matching ATS helper (Greenhouse / Ashby) and runs end-to-end: fill → upload → submit → verify → mark Notion → append feedback. Failures are logged, skipped, and written to `~/.mrweirdo-jobs/feedback.jsonl` so the next sourcing run learns from them. Ends with a dashboard + feedback-loop status.
 
 This is Lee's actual daily-use form: one command, walk away, come back to a report.
 
@@ -41,17 +41,17 @@ This is Lee's actual daily-use form: one command, walk away, come back to a repo
 
 ```bash
 # 0. ats-skills env (v1.0 multi-tenant)
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+[ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
 
 # 1. CDP 9222 alive?
 curl -sf http://localhost:9222/json/version > /dev/null \
-  || { echo "Chrome CDP 9222 not up. Run: bash $ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"; exit 1; }
+  || { echo "Chrome CDP 9222 not up. Run: bash $MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"; exit 1; }
 
 # 2. profile.json 存在且必填字段非空
-PROFILE="$ATS_HOME/profile.json"
-[ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy fallback
+PROFILE="$MRWEIRDO_HOME/profile.json"
+[ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"  # legacy fallback
 [ -f "$PROFILE" ] || { echo "Missing profile.json — run /mrweirdo-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
@@ -70,7 +70,7 @@ mkdir -p /tmp/mrweirdo-jobs/log/$(date +%F)
 
 # 5. local_db jobs.db exists + has Approved rows
 node --no-warnings -e "
-import(\`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
+import(\`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
   try {
     const rows = m.queryApprovedView();
     console.log('Approved view OK, ' + rows.length + ' rows visible');
@@ -85,8 +85,8 @@ import(\`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
 });
 "
 
-# 6. ~/.ats-skills feedback dir
-mkdir -p "$ATS_HOME"
+# 6. ~/.mrweirdo-jobs feedback dir
+mkdir -p "$MRWEIRDO_HOME"
 ```
 
 **输出给用户**："Pre-flight OK. CDP ✓ profile ✓ resume ✓ Approved view ✓ ($RESUME)."
@@ -125,7 +125,7 @@ const sleepS = cfg.jitter[0] + Math.random() * (cfg.jitter[1] - cfg.jitter[0]);
 Step 3 loop 内每个 job 完成后:
 - `await sleep(jitter_range[pace])` —— jitter 是 uniform random in `[min, max]` seconds
 - 检查今日已投递数 (`success_count + fail_count`) >= `daily_cap` → break batch 并提示"今日 cap N 已达，明日再 trigger / 或临时切 fast pace"
-- 写 progress 到 `~/.ats-skills/batch_progress.json` (含 `pace`, `started_at`, `last_job_at`, `success_count`, `fail_count`, `remaining_urls[]`)
+- 写 progress 到 `~/.mrweirdo-jobs/batch_progress.json` (含 `pace`, `started_at`, `last_job_at`, `success_count`, `fail_count`, `remaining_urls[]`)
 - 容许中断恢复：下次 `/mrweirdo-jobs resume` 读 progress.json 接着跑（v0.8 stretch）
 - 过夜跑 (stealth + 30 cap): 显示预计完成时间 = `now + remaining * avg_jitter`
 
@@ -133,7 +133,7 @@ Step 3 loop 内每个 job 完成后:
 
 - 计数包含**所有触发的 attempt**（success + fail + skipped），不是只算 success
 - 跨日界限以本地时区 `America/New_York` 0:00 为准（Lee 默认时区）
-- daily cap counter 存 `~/.ats-skills/daily_count.json`，按日期 key 累计
+- daily cap counter 存 `~/.mrweirdo-jobs/daily_count.json`，按日期 key 累计
 
 ---
 
@@ -145,14 +145,14 @@ v1.1 query 本地 SQLite，过滤 `status = '✅ Approved'`。用户在 Datasett
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const rows = await m.queryApprovedView();
   console.log(JSON.stringify(rows, null, 2));
 });
 " > /tmp/mrweirdo-jobs/queue.json
 ```
 
-`queryApprovedView()` 在 `~/.ats-skills/jobs.db` 上跑 `SELECT * FROM jobs WHERE status = '✅ Approved' ORDER BY fit_score DESC`. DB path 可通过 `ATS_DB_PATH` env 覆盖。返回每行：
+`queryApprovedView()` 在 `~/.mrweirdo-jobs/jobs.db` 上跑 `SELECT * FROM jobs WHERE status = '✅ Approved' ORDER BY fit_score DESC`. DB path 可通过 `MRWEIRDO_DB_PATH` env 覆盖。返回每行：
 
 ```js
 {
@@ -490,7 +490,7 @@ for i, c in enumerate(list, 1):
    - `confidence < 0.5` → log + skip 这个 field
    - `selector` 非空 → 切回 CDP 快路径：`node shared/cdp.mjs typetext $TAB "<selector>" "<value>"`
    - `selector` 空但有 `x, y` → 调 `fillViaCoordsPlan(x, y, text)` 拿 action 数组，用 `mcp__computer-use__left_click` + `mcp__computer-use__type` 顺序执行
-5. 每次尝试调 `logAttempt({fieldLabel, strategy, result, confidence, attempt, ats})` 写 `~/.ats-skills/log/locator.jsonl`
+5. 每次尝试调 `logAttempt({fieldLabel, strategy, result, confidence, attempt, ats})` 写 `~/.mrweirdo-jobs/log/locator.jsonl`
 6. 同一 form 内 vision 升级最多 3 次（`MAX_VISION_ATTEMPTS_PER_FORM`）；超过即不再 escalate
 
 **3 轮 Claude 兜底 + Computer Use vision fallback 都跑完仍有空 required** → return `{ok: false, error: "still N empty required after 3 rounds + vision: <labels>"}` → caller skip + feedback log。
@@ -522,7 +522,7 @@ v0.5 在 success 和 fail 两条路径上都写 feedback——success 沉淀"哪
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const r = await m.markApplied('$PAGE_ID', {
     bot_note: 'ats-skills v0.5 batch',
     confirmation_url: '$CONFIRMATION_URL'  // 如有, e.g. submit 后落地页 URL
@@ -542,7 +542,7 @@ DB update 失败 → log warning 但**不**算 fail（已经投出去了，人�
 
 ```bash
 node -e "
-import(\`\${process.env.ATS_REPO_ROOT}/shared/quota.mjs\`).then(async m => {
+import(\`\${process.env.MRWEIRDO_REPO_ROOT}/shared/quota.mjs\`).then(async m => {
   // Only call if the company has a quota cap
   const company = '$COMPANY';
   const quota_limit = $APPLY_QUOTA_LIMIT || 0;   // from company_list.json
@@ -571,7 +571,7 @@ import(\`\${process.env.ATS_REPO_ROOT}/shared/quota.mjs\`).then(async m => {
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`).then(m => {
+import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/feedback.mjs`).then(m => {
   m.append({
     company: '$COMPANY',
     role: '$ROLE',
@@ -584,7 +584,7 @@ import(`${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`).then(m => {
 "
 ```
 
-`feedback.append` 会写到 `~/.ats-skills/feedback.jsonl`（每行一个 JSON 记录，含 `ts`）。
+`feedback.append` 会写到 `~/.mrweirdo-jobs/feedback.jsonl`（每行一个 JSON 记录，含 `ts`）。
 
 下次 sourcing pipeline 起手时 (`shared/feedback.mjs` 的 `loadRecent(20)` + `formatForPrompt`) 会把最近 skip 注入 AI scorer 的 system prompt，让 scorer 学会"上周 Sierra/Ramp 这种 FT recruiter role 用户嫌弃 → 这次别推"。
 
@@ -639,11 +639,11 @@ Inbox check: confirmation emails 到用户注册邮箱 (Greenhouse 通常有, As
 
 Log: /tmp/mrweirdo-jobs/log/2026-05-23.jsonl
 Screenshots: /tmp/mrweirdo-jobs/log/2026-05-23/
-Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
+Feedback log: ~/.mrweirdo-jobs/feedback.jsonl (新 append 2 条 fail 记录)
 
 ## v0.5 feedback loop status
 
-跑一遍 `node -e "import(`${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`).then(m => console.log(JSON.stringify(m.summarize(m.loadRecent(50)), null, 2)))"`，
+跑一遍 `node -e "import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/feedback.mjs`).then(m => console.log(JSON.stringify(m.summarize(m.loadRecent(50)), null, 2)))"`，
 列出 top-3 skip 模式 (累积 50 条):
 
   • "Wrong Role" × 12 → 下次 sourcing 会 inject "user keeps rejecting senior-level non-intern roles"
@@ -667,7 +667,7 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 下次触发:
   - 等本地时间 0:00 (America/New_York) 后跑 `/mrweirdo-jobs`，剩余 37 家自动续接。
   - 临时切 fast pace: 把 profile.json 的 batch_pace 改成 "normal" 或 "fast" → 立刻可以接着跑（但平台反爬风险↑）。
-  - 跑 `/mrweirdo-jobs resume` 直接从 ~/.ats-skills/batch_progress.json 续接（v0.8 stretch）。
+  - 跑 `/mrweirdo-jobs resume` 直接从 ~/.mrweirdo-jobs/batch_progress.json 续接（v0.8 stretch）。
 ```
 
 如果是因为 `ClassifierBlocked` 提前 break：
@@ -712,7 +712,7 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 1. lookup `shared/sourcing/company_list.json` 的对应公司 entry（用 URL 解析或 Notion row 上的 company 名）
 2. 若 entry 含 `apply_quota.enabled == true` → 跳过本 row，**不 break batch，只 skip**：
    - print `⚠️ {company} 是限投公司 (cap {limit}/{period}). 跳过 batch. 请用 /ats-{ats} <url> 单独投递。`
-   - 写 `~/.ats-skills/feedback.jsonl` 一条 `skip_reason=quota_protect` 记录
+   - 写 `~/.mrweirdo-jobs/feedback.jsonl` 一条 `skip_reason=quota_protect` 记录
    - Notion 上 mark `状态 = ⚠️ 跳过未投` + `skip_reason = Other` + `user_note = Quota protect — manual single-URL only`
    - `continue` 跳到下一家
 3. 否则继续 v0.8 dispatch logic
@@ -805,6 +805,6 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 - `shared/profile.json` — 用户填的真实 profile (gitignored)
 - `.claude/skills/mrweirdo-greenhouse/SKILL.md` — single-URL Greenhouse flow (本 skill 是 batch 版)
 - `.claude/skills/mrweirdo-ashby/SKILL.md` — single-URL Ashby flow
-- Notion DB / data_source IDs come from `~/.ats-skills/config.json` (see `shared/config.template.json`). For Lee's legacy setup the defaults in `shared/paths.mjs` apply.
+- Notion DB / data_source IDs come from `~/.mrweirdo-jobs/config.json` (see `shared/config.template.json`). For Lee's legacy setup the defaults in `shared/paths.mjs` apply.
 - Harness classifier rule: `feedback_ats_auto_apply_strategy_2026.md`
 - react-select mousedown trick: `feedback_ats_react_select_mousedown.md`

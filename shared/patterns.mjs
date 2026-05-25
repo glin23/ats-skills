@@ -1,5 +1,5 @@
 // shared/patterns.mjs
-// Analyzes ~/.ats-skills/feedback.jsonl for systematic biases and suggests
+// Analyzes ~/.mrweirdo-jobs/feedback.jsonl for systematic biases and suggests
 // profile.json updates. Inspired by Career-Ops patterns skill.
 // Node 24 ESM, zero-dep.
 //
