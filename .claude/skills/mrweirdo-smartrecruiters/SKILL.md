@@ -25,7 +25,7 @@ description: Automate SmartRecruiters ATS application form filling via Chrome CD
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— name/email/phone/LinkedIn 等
-3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）
+3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-init` 设置）
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
@@ -40,11 +40,11 @@ Apply URL 形如 `https://jobs.smartrecruiters.com/<CompanySlug>/<uuid>`。
 
 ### 1. 健康检查
 ```bash
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-PROFILE="$ATS_HOME/profile.json"
-RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
-curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+PROFILE="$MRWEIRDO_HOME/profile.json"
+RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+curl -s http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 ls "$RESUME"
 jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```

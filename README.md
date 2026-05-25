@@ -16,9 +16,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/se
 
 This will:
 1. Verify Node 24+, Chrome, git
-2. Clone the repo to `~/.ats-skills/repo`
+2. Clone the repo to `~/.mrweirdo-jobs/repo`
 3. Symlink `.claude/skills/*` into `~/.claude/skills/` so Claude Code picks them up
-4. Create `~/.ats-skills/{log,.env}` layout
+4. Create `~/.mrweirdo-jobs/{log,.env}` layout
 
 Then open Claude Code (any directory) and run:
 
@@ -27,10 +27,10 @@ Then open Claude Code (any directory) and run:
 ```
 
 `/mrweirdo-init` walks you through:
-- Anthropic API key (paste; written to `~/.ats-skills/.env`, chmod 600)
+- Anthropic API key (paste; written to `~/.mrweirdo-jobs/.env`, chmod 600)
 - Resume PDF → Claude Sonnet parses out personal/education/work_auth
 - 4 questions → `target_filters` (role types, locations, exclude keywords, min fit score)
-- Local SQLite DB auto-created at `~/.ats-skills/jobs.db` (zero schema config required)
+- Local SQLite DB auto-created at `~/.mrweirdo-jobs/jobs.db` (zero schema config required)
 - Smoke test 1 Greenhouse fetch
 
 After `/mrweirdo-init` everything is ready. **No Notion / cloud account anywhere in the loop.**
@@ -41,7 +41,7 @@ To browse / filter / approve jobs visually:
 
 ```bash
 pip install datasette
-datasette serve ~/.ats-skills/jobs.db --open --port 8001
+datasette serve ~/.mrweirdo-jobs/jobs.db --open --port 8001
 ```
 
 Opens a local web UI showing 5 pre-built views:
@@ -60,7 +60,7 @@ Datasette supports SQL queries, CSV / JSON export, link-shareable filters. You c
 | Command | Purpose |
 |---|---|
 | `/mrweirdo-init` | First-run setup. Run once. |
-| `/mrweirdo-source` | Pull jobs from ~250 companies' Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite boards → AI score (Sonnet, ~$0.003/job) → write `~/.ats-skills/jobs.db`. |
+| `/mrweirdo-source` | Pull jobs from ~250 companies' Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite boards → AI score (Sonnet, ~$0.003/job) → write `~/.mrweirdo-jobs/jobs.db`. |
 | `/mrweirdo-jobs` | Read `✅ Approved` rows from local DB → batch CDP fill each application form → human Submit per app → mark `✅ 已投`. |
 | `/mrweirdo-greenhouse <url>` | Single Greenhouse application. |
 | `/mrweirdo-ashby <url>` | Single Ashby application. |
@@ -101,7 +101,7 @@ Per-company public API. ~250 companies seeded in `shared/sourcing/company_list.j
 | Recruitee / Personio / BambooHR / Rippling | ✅ | manual |
 | Wellfound / YC WAAS | ⚠️ stub | manual |
 
-You add your own companies to `~/.ats-skills/company_list.user.json` — they merge on top of the baseline (no need to fork the repo).
+You add your own companies to `~/.mrweirdo-jobs/company_list.user.json` — they merge on top of the baseline (no need to fork the repo).
 
 Sourcing uses 6 AI dimensions (role_fit / skills_match / location_fit / visa_compatible / seniority_match / exclude_check) and feeds the last 20 skip reasons back into the prompt so the recommender learns from your taste.
 
@@ -117,7 +117,7 @@ Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, etc. typically cap how many 
 
 ## Local SQLite dashboard
 
-`/mrweirdo-init` creates `~/.ats-skills/jobs.db` with the `jobs` table (25+ columns) plus 5 pre-built views (see Datasette section above). Status transitions:
+`/mrweirdo-init` creates `~/.mrweirdo-jobs/jobs.db` with the `jobs` table (25+ columns) plus 5 pre-built views (see Datasette section above). Status transitions:
 
 ```
 🤖 AI sourced  →  ✅ Approved  →  ✅ 已投  →  ✅ 已确认
@@ -161,7 +161,7 @@ Idempotent — safe to re-run.
 ## File layout
 
 ```
-~/.ats-skills/                  # All user state (never committed)
+~/.mrweirdo-jobs/                  # All user state (never committed)
 ├── .env                        # ANTHROPIC_API_KEY (chmod 600)
 ├── profile.json                # Your parsed resume + target_filters
 ├── jobs.db                     # SQLite — main job tracker (queryable via Datasette)
@@ -172,7 +172,7 @@ Idempotent — safe to re-run.
 ├── log/                        # Per-skill jsonl logs
 └── repo/                       # git clone of mrweirdo-jobs
 
-~/.claude/skills/               # Symlinks → ~/.ats-skills/repo/.claude/skills/*
+~/.claude/skills/               # Symlinks → ~/.mrweirdo-jobs/repo/.claude/skills/*
 ├── ats-init/SKILL.md
 ├── ats-source/SKILL.md
 ├── ats-skills/SKILL.md
@@ -192,7 +192,7 @@ Idempotent — safe to re-run.
 ## Updating
 
 ```bash
-git -C ~/.ats-skills/repo pull
+git -C ~/.mrweirdo-jobs/repo pull
 ```
 
 Or re-run the install command — `setup.sh` is idempotent and will fast-forward your checkout.
@@ -201,8 +201,8 @@ Or re-run the install command — `setup.sh` is idempotent and will fast-forward
 
 ## Privacy
 
-- All API keys live in `~/.ats-skills/.env` (chmod 600). Never leaves your machine.
-- **Job data stays on your machine in `~/.ats-skills/jobs.db`** (SQLite). No cloud DB. Zero network egress for job tracking.
+- All API keys live in `~/.mrweirdo-jobs/.env` (chmod 600). Never leaves your machine.
+- **Job data stays on your machine in `~/.mrweirdo-jobs/jobs.db`** (SQLite). No cloud DB. Zero network egress for job tracking.
 - Anthropic API calls (resume parse, AI scoring, confirmation email parse) go directly to `api.anthropic.com`. No proxy.
 - Gmail reading uses Anthropic's bundled Gmail MCP under the same OAuth you already granted Claude. The skill only reads threads with the `applied-jobs` label.
 

@@ -50,7 +50,7 @@
 
 import { notionDbId, notionDataSourceId, notionViewId, loadEnv } from './paths.mjs';
 
-// load ~/.ats-skills/.env into process.env on import (no-op if already set)
+// load ~/.mrweirdo-jobs/.env into process.env on import (no-op if already set)
 loadEnv();
 
 const NOTION_API_KEY = process.env.NOTION_API_KEY;

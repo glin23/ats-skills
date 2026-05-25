@@ -13,8 +13,8 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
    ```bash
    ./shared/chrome-cdp-launcher.sh    # open -na 强制独立 instance
    ```
-2. **`~/.ats-skills/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/mrweirdo-init` 生成）
-3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`
+2. **`~/.mrweirdo-jobs/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/mrweirdo-init` 生成）
+3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
@@ -26,11 +26,11 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
 
 ### 1. 健康检查
 ```bash
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-PROFILE="$ATS_HOME/profile.json"
-RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
-curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+PROFILE="$MRWEIRDO_HOME/profile.json"
+RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+curl -s http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 [ -f "$RESUME" ] || { echo "Resume not found: $RESUME"; exit 1; }
 [ -f "$PROFILE" ] && jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```
@@ -50,7 +50,7 @@ node shared/cdp.mjs eval $TAB "$(cat shared/ashby_helpers.js); JSON.stringify(As
 
 ### 4. 上传简历（plan 里第一个 upload 项）
 ```bash
-node "$ATS_REPO_ROOT/shared/cdp.mjs" upload $TAB "#_systemfield_resume" "$RESUME"
+node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" upload $TAB "#_systemfield_resume" "$RESUME"
 ```
 Ashby 不像 Lever 有 100MB upload bug，直接 hidden file input 即可。
 

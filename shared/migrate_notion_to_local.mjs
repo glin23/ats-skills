@@ -3,7 +3,7 @@
 // Useful for v1.0 users who have Notion 「📋 岗位追踪」 data and want to switch
 // to v1.1's local SQLite jobs.db without losing history.
 //
-// Env required (loaded from ~/.ats-skills/.env automatically):
+// Env required (loaded from ~/.mrweirdo-jobs/.env automatically):
 //   NOTION_API_KEY        — integration token with read access to your DB
 //   NOTION_JOB_DB_ID      — id of your job tracking DB (e.g. 94b728d7-...)
 //
@@ -27,11 +27,11 @@ const NOTION_VERSION = '2022-06-28';
 const API_BASE = 'https://api.notion.com/v1';
 
 if (!NOTION_API_KEY) {
-  console.error('Missing NOTION_API_KEY. Add it to ~/.ats-skills/.env and re-run.');
+  console.error('Missing NOTION_API_KEY. Add it to ~/.mrweirdo-jobs/.env and re-run.');
   process.exit(1);
 }
 if (!NOTION_DB_ID) {
-  console.error('Missing NOTION_JOB_DB_ID. Add it to ~/.ats-skills/.env and re-run.');
+  console.error('Missing NOTION_JOB_DB_ID. Add it to ~/.mrweirdo-jobs/.env and re-run.');
   process.exit(1);
 }
 

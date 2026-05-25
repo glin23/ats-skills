@@ -26,7 +26,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
+3. **简历 PDF 可读**：`~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。
@@ -60,10 +60,10 @@ node shared/cdp.mjs eval "$TAB" "$(cat shared/lever_helpers.js)"
 把简历 `cp` 到 `/tmp/` 沙盒，然后 upload 到 hidden file input（**不要**对 drag-drop zone — GOTCHA #5）：
 
 ```bash
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
-SRC_RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+SRC_RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 cp "$SRC_RESUME" /tmp/
 RESUME=/tmp/$(basename "$SRC_RESUME")
 node shared/cdp.mjs upload "$TAB" "input[name=resume][type=file]" "$RESUME"
@@ -168,4 +168,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 - `shared/sourcing/lever_board_api.mjs` — sourcing client（含 `salary` 提取）
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - `~/.claude/projects/-Users-lee/memory/feedback_ats_auto_apply_strategy_2026.md` — 5/13 Palantir 实战 + harness classifier 行为
-- ATS 标准答案库（Notion）：用户 workspace root page，id 在 `~/.ats-skills/config.json.notion_root_page_id`
+- ATS 标准答案库（Notion）：用户 workspace root page，id 在 `~/.mrweirdo-jobs/config.json.notion_root_page_id`

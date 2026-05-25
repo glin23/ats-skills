@@ -11,7 +11,7 @@ cd ~/.claude/skills/ats-skills
 ./setup.sh
 # edit shared/profile.json — name/email/phone/linkedin/resume_path/standard_qa
 bash shared/chrome-cdp-launcher.sh
-# new Chrome window opens on CDP 9222 with profile at ~/.ats-skills/chrome-profile
+# new Chrome window opens on CDP 9222 with profile at ~/.mrweirdo-jobs/chrome-profile
 # log into your CV upload host + linkedin inside that window
 ```
 
@@ -89,5 +89,5 @@ Cost: $0 (no AI scoring in v0.2)
 - **Sourcing**: AI auto-fetches via Greenhouse + Ashby APIs → eliminates manual URL hunting.
 - **Filtering**: `target_filters` in profile.json catches FT roles like Ramp/Sierra before they hit batch.
 - **Location combobox**: v0.3 helpers handle Google Places autocomplete (Twilio/EnergyHub will work).
-- **Feedback loop**: Sierra/Ramp skip reasons accumulate in `~/.ats-skills/feedback.jsonl` → next sourcing rejects similar roles.
+- **Feedback loop**: Sierra/Ramp skip reasons accumulate in `~/.mrweirdo-jobs/feedback.jsonl` → next sourcing rejects similar roles.
 - **Computer Use fallback**: For unknown selectors, vision finds elements (no more silent failures).

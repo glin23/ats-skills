@@ -5,19 +5,19 @@
 #
 # What it does:
 #   1. Verify Node 24+, Chrome installed, git available
-#   2. Clone (or update) the repo to ~/.ats-skills/repo
+#   2. Clone (or update) the repo to ~/.mrweirdo-jobs/repo
 #   3. Symlink .claude/skills/* into ~/.claude/skills/ so Claude Code picks them up
-#   4. Create ~/.ats-skills/ layout (log/, empty .env with chmod 600)
+#   4. Create ~/.mrweirdo-jobs/ layout (log/, empty .env with chmod 600)
 #   5. Print next-step: "open Claude Code, run /mrweirdo-init"
 #
 # Re-runnable. Idempotent.
 
 set -e
 
-REPO_URL="${ATS_SKILLS_REPO_URL:-https://github.com/glin23/mrweirdo-jobs.git}"
-REPO_BRANCH="${ATS_SKILLS_BRANCH:-main}"
-ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+REPO_URL="${MRWEIRDO_REPO_URL:-https://github.com/glin23/mrweirdo-jobs.git}"
+REPO_BRANCH="${MRWEIRDO_BRANCH:-main}"
+MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 CHROME_APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
@@ -58,27 +58,27 @@ fi
 green "  git ✓"
 
 # ---------- 4. Clone or update repo ----------
-mkdir -p "$ATS_HOME"
-if [ ! -d "$ATS_REPO_ROOT/.git" ]; then
-  blue "Cloning $REPO_URL → $ATS_REPO_ROOT"
-  git clone --branch "$REPO_BRANCH" "$REPO_URL" "$ATS_REPO_ROOT"
+mkdir -p "$MRWEIRDO_HOME"
+if [ ! -d "$MRWEIRDO_REPO_ROOT/.git" ]; then
+  blue "Cloning $REPO_URL → $MRWEIRDO_REPO_ROOT"
+  git clone --branch "$REPO_BRANCH" "$REPO_URL" "$MRWEIRDO_REPO_ROOT"
   green "  Cloned ✓"
 else
-  blue "Updating existing checkout at $ATS_REPO_ROOT"
-  git -C "$ATS_REPO_ROOT" fetch origin "$REPO_BRANCH" --quiet
+  blue "Updating existing checkout at $MRWEIRDO_REPO_ROOT"
+  git -C "$MRWEIRDO_REPO_ROOT" fetch origin "$REPO_BRANCH" --quiet
   # Don't auto-merge if user has local changes — just print
-  if [ -n "$(git -C "$ATS_REPO_ROOT" status --porcelain)" ]; then
-    yellow "  Local changes present. Skipping git pull. Run: git -C $ATS_REPO_ROOT pull"
+  if [ -n "$(git -C "$MRWEIRDO_REPO_ROOT" status --porcelain)" ]; then
+    yellow "  Local changes present. Skipping git pull. Run: git -C $MRWEIRDO_REPO_ROOT pull"
   else
-    git -C "$ATS_REPO_ROOT" pull --ff-only origin "$REPO_BRANCH" --quiet || \
-      yellow "  Fast-forward pull failed (diverged?). Resolve manually in $ATS_REPO_ROOT"
+    git -C "$MRWEIRDO_REPO_ROOT" pull --ff-only origin "$REPO_BRANCH" --quiet || \
+      yellow "  Fast-forward pull failed (diverged?). Resolve manually in $MRWEIRDO_REPO_ROOT"
     green "  Updated ✓"
   fi
 fi
 
 # ---------- 5. Symlink Claude Code skills ----------
 mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill_dir in "$ATS_REPO_ROOT/.claude/skills"/*/; do
+for skill_dir in "$MRWEIRDO_REPO_ROOT/.claude/skills"/*/; do
   skill_name=$(basename "$skill_dir")
   target="$CLAUDE_SKILLS_DIR/$skill_name"
   if [ -L "$target" ]; then
@@ -97,10 +97,10 @@ for skill_dir in "$ATS_REPO_ROOT/.claude/skills"/*/; do
   green "  ${skill_name} ✓ linked"
 done
 
-# ---------- 6. ~/.ats-skills/ layout ----------
-mkdir -p "$ATS_HOME"/log
-[ -f "$ATS_HOME/.env" ] || (touch "$ATS_HOME/.env" && chmod 600 "$ATS_HOME/.env")
-green "  ~/.ats-skills/ layout ✓"
+# ---------- 6. ~/.mrweirdo-jobs/ layout ----------
+mkdir -p "$MRWEIRDO_HOME"/log
+[ -f "$MRWEIRDO_HOME/.env" ] || (touch "$MRWEIRDO_HOME/.env" && chmod 600 "$MRWEIRDO_HOME/.env")
+green "  ~/.mrweirdo-jobs/ layout ✓"
 
 # ---------- 7. Next steps ----------
 echo ""
@@ -119,6 +119,6 @@ echo "      /mrweirdo-ashby      <url>  — single Ashby URL"
 echo "      /mrweirdo-lever      <url>  — single Lever URL"
 echo "      /mrweirdo-confirm           — Gmail confirmation → Notion mark"
 echo ""
-echo "  Update later with:  git -C $ATS_REPO_ROOT pull"
+echo "  Update later with:  git -C $MRWEIRDO_REPO_ROOT pull"
 echo ""
 green "Done."

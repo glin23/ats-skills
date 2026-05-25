@@ -1,5 +1,5 @@
 // shared/feedback.mjs
-// Manages ~/.ats-skills/feedback.jsonl — append, load, format for AI prompt, summarize.
+// Manages ~/.mrweirdo-jobs/feedback.jsonl — append, load, format for AI prompt, summarize.
 // Node 24 ESM, zero-dep.
 //
 // Each entry:
@@ -12,7 +12,7 @@ import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 
-const FEEDBACK_PATH = join(homedir(), '.ats-skills', 'feedback.jsonl');
+const FEEDBACK_PATH = join(homedir(), '.mrweirdo-jobs', 'feedback.jsonl');
 
 export function getFeedbackPath() {
   return FEEDBACK_PATH;

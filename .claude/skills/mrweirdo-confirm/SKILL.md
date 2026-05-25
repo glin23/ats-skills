@@ -9,7 +9,7 @@ description: Close the loop after batch apply. Reads Gmail threads labeled "appl
 
 **前置 (用户一次性 setup)**:
 1. Gmail 里建一个 filter — `from:noreply@greenhouse.io OR from:noreply@ashbyhq.com OR from:jobs@lever.co OR (subject:"thanks for applying" OR subject:"application received")` — 设 action = `Apply label "applied-jobs"`
-2. 用户已经跑过 `/mrweirdo-init`，`~/.ats-skills/config.json` 已有 notion_db_id
+2. 用户已经跑过 `/mrweirdo-init`，`~/.mrweirdo-jobs/config.json` 已有 notion_db_id
 3. Claude Code 已连 Gmail MCP（`mcp__claude_ai_Gmail__*`）
 
 **为什么用 Gmail filter 而不是写 scope**：所有邮件流量留在用户自己 Gmail 端，skill 只查带 label 的子集（隐私让步最少；用户掌控数据流）。
@@ -19,13 +19,13 @@ description: Close the loop after batch apply. Reads Gmail threads labeled "appl
 ## Step 0: 环境准备
 
 ```bash
-export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
-export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
-[ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
+[ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 
 # Verify config
-[ -f "$ATS_HOME/config.json" ] || { echo "Missing ~/.ats-skills/config.json — run /mrweirdo-init first"; exit 1; }
-NOTION_DB_ID=$(jq -r .notion_db_id "$ATS_HOME/config.json")
+[ -f "$MRWEIRDO_HOME/config.json" ] || { echo "Missing ~/.mrweirdo-jobs/config.json — run /mrweirdo-init first"; exit 1; }
+NOTION_DB_ID=$(jq -r .notion_db_id "$MRWEIRDO_HOME/config.json")
 [ -n "$NOTION_DB_ID" ] && [ "$NOTION_DB_ID" != "null" ] || { echo "config.json missing notion_db_id"; exit 1; }
 ```
 
@@ -85,7 +85,7 @@ Confidence 启发式：
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const rows = await m.queryRecentlyApplied(14);
   console.log(JSON.stringify(rows, null, 2));
 }).catch(e => { console.error(e); process.exit(1); });
@@ -113,7 +113,7 @@ import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const result = await m.markConfirmed(
     '<page_id>',
     { confirmed_at: '<email date ISO>', email_id: '<thread_id>' }

@@ -19,7 +19,7 @@ const NOTION_VERSION = '2022-06-28';
 const API_BASE = 'https://api.notion.com/v1';
 
 async function notionFetch(method, path, body) {
-  if (!NOTION_API_KEY) throw new Error('NOTION_API_KEY not set in env or ~/.ats-skills/.env');
+  if (!NOTION_API_KEY) throw new Error('NOTION_API_KEY not set in env or ~/.mrweirdo-jobs/.env');
   const res = await fetch(`${API_BASE}/${path}`, {
     method,
     headers: {
