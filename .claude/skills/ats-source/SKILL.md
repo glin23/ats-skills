@@ -129,16 +129,12 @@ mkdir -p /tmp/ats-skills/log/$(date +%F)
 ```bash
 mkdir -p /tmp/ats-source
 cat > /tmp/ats-source/source_jobs.mjs <<'NODE'
-import { readFile } from 'node:fs/promises';
 import * as GH from `${process.env.ATS_REPO_ROOT}/shared/sourcing/greenhouse_board_api.mjs`;
 import * as Ashby from `${process.env.ATS_REPO_ROOT}/shared/sourcing/ashby_board_api.mjs`;
+import { loadCompanyList, loadProfile } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
 
-const list = JSON.parse(
-  await readFile(`${process.env.ATS_REPO_ROOT}/shared/sourcing/company_list.json`, 'utf8'),
-);
-const profile = JSON.parse(
-  await readFile(`${process.env.ATS_REPO_ROOT}/shared/profile.json`, 'utf8'),
-);
+const list = loadCompanyList();         // merges baseline + ~/.ats-skills/company_list.user.json
+const profile = loadProfile();          // ~/.ats-skills/profile.json (or legacy shared/profile.json)
 const roleTypes = profile.target_filters?.role_types || ['intern', 'new_grad_FT'];
 
 const all = [];
@@ -284,13 +280,13 @@ node /tmp/ats-source/score_jobs.mjs
 cat > /tmp/ats-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
 import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`;
+import { loadCompanyList } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
+import { isCapReached } from `${process.env.ATS_REPO_ROOT}/shared/quota.mjs`;
 
 const { scored, fetch_errors } = JSON.parse(
   await readFile('/tmp/ats-source/scored_jobs.json', 'utf8'),
 );
-const companyList = JSON.parse(
-  await readFile(`${process.env.ATS_REPO_ROOT}/shared/sourcing/company_list.json`, 'utf8'),
-);
+const companyList = loadCompanyList();   // merged baseline + ~/.ats-skills/company_list.user.json
 const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
 
 // Map scored → Notion row payload (see notion_sync.buildProperties for fields)

@@ -71,16 +71,32 @@ export const loadConfig = () => {
 
 // company_list — merge baseline (in-repo) with user increment (in ~/.ats-skills)
 // `user` entries override `baseline` by name (case-insensitive).
+// Returns { _notes, companies: [...] } matching the on-disk schema.
 export const loadCompanyList = () => {
   const baseline = JSON.parse(
     readFileSync(join(repoRoot(), 'shared', 'sourcing', 'company_list.json'), 'utf8')
   );
   const userListPath = join(atsHome(), 'company_list.user.json');
   if (!existsSync(userListPath)) return baseline;
-  const user = JSON.parse(readFileSync(userListPath, 'utf8'));
-  const byName = new Map(baseline.map((c) => [c.name.toLowerCase(), c]));
-  for (const c of user) byName.set(c.name.toLowerCase(), { ...byName.get(c.name.toLowerCase()), ...c });
-  return [...byName.values()];
+  let user;
+  try {
+    user = JSON.parse(readFileSync(userListPath, 'utf8'));
+  } catch {
+    return baseline;
+  }
+  // Accept user file as either {companies: [...]} or bare [...]
+  const userCompanies = Array.isArray(user) ? user : (user.companies || []);
+  const byName = new Map((baseline.companies || []).map((c) => [c.name.toLowerCase(), c]));
+  for (const c of userCompanies) {
+    if (!c?.name) continue;
+    const k = c.name.toLowerCase();
+    byName.set(k, { ...(byName.get(k) || {}), ...c });
+  }
+  return {
+    _notes: baseline._notes,
+    _user_overlay_path: userListPath,
+    companies: [...byName.values()],
+  };
 };
 
 // ---------- env loader ----------
