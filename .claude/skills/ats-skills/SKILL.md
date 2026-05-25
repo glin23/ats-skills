@@ -68,27 +68,25 @@ RESUME=$(node -e "console.log(require('$PROFILE').resume_path)")
 # 4. log dir
 mkdir -p /tmp/ats-skills/log/$(date +%F)
 
-# 5. Notion has "✅ Approved" status enum (v0.5 requirement)
-#    Ping the DB and verify the 状态 select includes "✅ Approved".
-node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
+# 5. local_db jobs.db exists + has Approved rows
+node --no-warnings -e "
+import(\`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
   try {
-    const rows = await m.queryApprovedView();
+    const rows = m.queryApprovedView();
     console.log('Approved view OK, ' + rows.length + ' rows visible');
+    if (rows.length === 0) {
+      console.error('No rows with status \"✅ Approved\". Open datasette (or your SQLite client) and set status to \"✅ Approved\" for jobs you want to batch-apply.');
+      process.exit(1);
+    }
   } catch (e) {
-    console.error('Notion approved view query failed: ' + e.message);
+    console.error('local_db query failed: ' + e.message + '. Run /ats-init to initialize jobs.db.');
     process.exit(1);
   }
 });
-" || {
-  echo "Notion 「📋 岗位追踪」 DB is missing the '✅ Approved' status option."
-  echo "Add it manually: open the DB → 状态 property → + Add option → '✅ Approved'."
-  echo "Then re-run /ats-skills."
-  exit 1
-}
+"
 
 # 6. ~/.ats-skills feedback dir
-mkdir -p ~/.ats-skills
+mkdir -p "$ATS_HOME"
 ```
 
 **输出给用户**："Pre-flight OK. CDP ✓ profile ✓ resume ✓ Approved view ✓ ($RESUME)."
@@ -139,22 +137,22 @@ Step 3 loop 内每个 job 完成后:
 
 ---
 
-## Step 1: Load queue from Notion "✅ Approved" view (v0.5)
+## Step 1: Load queue from local_db `v_approved` view (v1.1)
 
-v0.5 不再读「🔵 未投」全表；只读 Lee 在 dashboard 里手动 / AI sourcing pipeline approve 过的岗位。
+v1.1 query 本地 SQLite，过滤 `status = '✅ Approved'`。用户在 Datasette UI（或任何 SQLite 客户端）把 AI sourced row 改成 ✅ Approved 后才会进 batch。
 
-调 `shared/notion_sync.mjs` 里的 `queryApprovedView()`：
+调 `shared/local_db.mjs` 里的 `queryApprovedView()`：
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const rows = await m.queryApprovedView();
   console.log(JSON.stringify(rows, null, 2));
 });
 " > /tmp/ats-skills/queue.json
 ```
 
-`queryApprovedView()` 内部用 Notion REST API 过滤 `状态 == "✅ Approved"`。DB id 解析顺序: `NOTION_JOB_DB_ID` env → `~/.ats-skills/config.json.notion_db_id` → legacy default. 返回每行：
+`queryApprovedView()` 在 `~/.ats-skills/jobs.db` 上跑 `SELECT * FROM jobs WHERE status = '✅ Approved' ORDER BY fit_score DESC`. DB path 可通过 `ATS_DB_PATH` env 覆盖。返回每行：
 
 ```js
 {
@@ -520,11 +518,11 @@ v0.5 在 success 和 fail 两条路径上都写 feedback——success 沉淀"哪
 
 ### Success path
 
-调 `shared/notion_sync.mjs` 的 `markApplied(page_id, info)`：
+调 `shared/local_db.mjs` 的 `markApplied(page_id, info)`：
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const r = await m.markApplied('$PAGE_ID', {
     bot_note: 'ats-skills v0.5 batch',
     confirmation_url: '$CONFIRMATION_URL'  // 如有, e.g. submit 后落地页 URL

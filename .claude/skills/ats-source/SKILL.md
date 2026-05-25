@@ -279,7 +279,7 @@ node /tmp/ats-source/score_jobs.mjs
 ```bash
 cat > /tmp/ats-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
-import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`;
+import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`;
 import { loadCompanyList } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
 import { isCapReached } from `${process.env.ATS_REPO_ROOT}/shared/quota.mjs`;
 
@@ -289,7 +289,7 @@ const { scored, fetch_errors } = JSON.parse(
 const companyList = loadCompanyList();   // merged baseline + ~/.ats-skills/company_list.user.json
 const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
 
-// Map scored → Notion row payload (see notion_sync.buildProperties for fields)
+// Map scored → SQLite row payload (column names match local_db schema)
 const rows = scored.map((j) => {
   const company = companyByName.get(j.company);
   const quota = company?.apply_quota;
@@ -378,7 +378,7 @@ Sourced summary:
   - Stripe (greenhouse): timeout after 12s
 
 ❌ Notion upsert errors (2):
-  - Faire — "Marketing Intern": Notion property "fit_score" not configured. Add via notion_sync.mjs header instructions.
+  - Faire — "Marketing Intern": local_db write error: <reason>. Re-run /ats-init to refresh schema if needed.
 
 下一步:
   1. 打开 Notion → 「📋 岗位追踪」 → "🤖 AI Sourced (Pending Review)" view
@@ -510,7 +510,7 @@ Claude: [Step 2 fetch] [fetch] Cresta ...  [fetch] Notion ...  → 47 role-filte
 - `shared/sourcing/company_list.json` — Lee 维护的高 fit 公司种子列表（PR 扩展）
 - `shared/matching/ai_scorer.mjs` — `scoreFit`, `scoreBatch`, `buildProfileSummary`（Claude Sonnet, $0.003/job）
 - `shared/matching/prompt_template.md` — AI scorer system prompt template（multi-dim output）
-- `shared/notion_sync.mjs` — `upsertJob`, `batchUpsert`, `queryApprovedView`, `queryAiSourcedPending`（zero-dep Notion HTTP）
+- `shared/local_db.mjs` — `upsertJob`, `batchUpsert`, `queryApprovedView`, `queryAiSourcedPending`（zero-dep SQLite via node:sqlite）
 - `shared/feedback.mjs` — `loadRecent(20)`, `formatForPrompt`, `summarize` (~/.ats-skills/feedback.jsonl)
 - `shared/profile.json` — 含 `target_filters` schema（v0.3 新增字段）
 - `.claude/skills/ats-skills/SKILL.md` — Step 2 的 batch apply orchestrator（消费本 skill 写的 ✅ Approved view）
