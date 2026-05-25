@@ -1,0 +1,7051 @@
+{
+  "generated_at": "2026-05-25T21:59:58.626Z",
+  "total_companies": 1173,
+  "buckets": {
+    "greenhouse": [],
+    "lever": [],
+    "ashby": [],
+    "workday": [],
+    "smartrecruiters": [],
+    "unknown": [
+      {
+        "yc_slug": "intelligence-factory",
+        "name": "Intelligence Factory",
+        "batch": "Spring 2026",
+        "website": "https://intelligence-factory.com"
+      },
+      {
+        "yc_slug": "asendia-ai",
+        "name": "Asendia AI",
+        "batch": "Spring 2026",
+        "website": "https://asendia.ai/"
+      },
+      {
+        "yc_slug": "indexable",
+        "name": "Indexable",
+        "batch": "Spring 2026",
+        "website": "https://ix.dev"
+      },
+      {
+        "yc_slug": "runtime",
+        "name": "Runtime",
+        "batch": "Spring 2026",
+        "website": "https://www.runtm.com/"
+      },
+      {
+        "yc_slug": "openwork",
+        "name": "OpenWork",
+        "batch": "Spring 2026",
+        "website": "https://openworklabs.com"
+      },
+      {
+        "yc_slug": "eden-robotics",
+        "name": "Eden Robotics",
+        "batch": "Spring 2026",
+        "website": "https://www.edenrobotics.ai"
+      },
+      {
+        "yc_slug": "anoria",
+        "name": "ANORIA",
+        "batch": "Spring 2026",
+        "website": "https://www.anoria.com"
+      },
+      {
+        "yc_slug": "biostack-platforms",
+        "name": "BioStack Platforms",
+        "batch": "Spring 2026",
+        "website": "https://www.getbiostack.com/"
+      },
+      {
+        "yc_slug": "tasklet-2",
+        "name": "Tasklet",
+        "batch": "Spring 2026",
+        "website": "https://tasklet.ai"
+      },
+      {
+        "yc_slug": "aseon-labs",
+        "name": "Aseon Labs",
+        "batch": "Spring 2026",
+        "website": "https://www.aseonlabs.com/"
+      },
+      {
+        "yc_slug": "minicor",
+        "name": "Minicor",
+        "batch": "Spring 2026",
+        "website": "https://minicor.com"
+      },
+      {
+        "yc_slug": "mount",
+        "name": "Mount",
+        "batch": "Spring 2026",
+        "website": "https://mount.insure"
+      },
+      {
+        "yc_slug": "gojiberry-ai",
+        "name": "Gojiberry AI",
+        "batch": "Spring 2026",
+        "website": "https://www.gojiberry.ai"
+      },
+      {
+        "yc_slug": "synphony",
+        "name": "Synphony",
+        "batch": "Spring 2026",
+        "website": "https://www.synphony.co/"
+      },
+      {
+        "yc_slug": "standout",
+        "name": "Standout",
+        "batch": "Spring 2026",
+        "website": "https://standout.work"
+      },
+      {
+        "yc_slug": "kinro",
+        "name": "Kinro",
+        "batch": "Spring 2026",
+        "website": "https://www.kinro.ai/"
+      },
+      {
+        "yc_slug": "the-company-company",
+        "name": "The Company Company",
+        "batch": "Spring 2026",
+        "website": "https://www.thecompany.company"
+      },
+      {
+        "yc_slug": "dayjob",
+        "name": "Dayjob",
+        "batch": "Spring 2026",
+        "website": "https://www.getdayjob.ai"
+      },
+      {
+        "yc_slug": "replicas",
+        "name": "Replicas",
+        "batch": "Spring 2026",
+        "website": "https://replicas.dev"
+      },
+      {
+        "yc_slug": "primitive",
+        "name": "primitive",
+        "batch": "Spring 2026",
+        "website": "https://primitive.dev"
+      },
+      {
+        "yc_slug": "hedge",
+        "name": "Hedge",
+        "batch": "Spring 2026",
+        "website": "https://www.hedgespecialty.com/"
+      },
+      {
+        "yc_slug": "trybloom",
+        "name": "Bloom",
+        "batch": "Spring 2026",
+        "website": "https://trybloom.ai"
+      },
+      {
+        "yc_slug": "superset",
+        "name": "Superset",
+        "batch": "Spring 2026",
+        "website": "https://www.superset.sh/"
+      },
+      {
+        "yc_slug": "9-mothers-corporation",
+        "name": "9 Mothers",
+        "batch": "Spring 2026",
+        "website": "https://9mothers.com"
+      },
+      {
+        "yc_slug": "cignara",
+        "name": "Cignara",
+        "batch": "Spring 2026",
+        "website": "https://cignara.com/"
+      },
+      {
+        "yc_slug": "clara-2",
+        "name": "Clara",
+        "batch": "Spring 2026",
+        "website": "http://askclara.com"
+      },
+      {
+        "yc_slug": "humwork",
+        "name": "Humwork",
+        "batch": "Spring 2026",
+        "website": "https://humwork.ai"
+      },
+      {
+        "yc_slug": "trycardinal-ai",
+        "name": "Cardinal",
+        "batch": "Winter 2026",
+        "website": "https://trycardinal.ai/"
+      },
+      {
+        "yc_slug": "wayco",
+        "name": "Wayco",
+        "batch": "Winter 2026",
+        "website": "https://wayco.ai"
+      },
+      {
+        "yc_slug": "aurorin-cad",
+        "name": "Aurorin CAD",
+        "batch": "Winter 2026",
+        "website": "https://aurorincad.com"
+      },
+      {
+        "yc_slug": "grazemate",
+        "name": "GrazeMate",
+        "batch": "Winter 2026",
+        "website": "https://grazemate.com"
+      },
+      {
+        "yc_slug": "zymbly",
+        "name": "Zymbly",
+        "batch": "Winter 2026",
+        "website": "https://www.zymbly.com"
+      },
+      {
+        "yc_slug": "voygr",
+        "name": "VOYGR",
+        "batch": "Winter 2026",
+        "website": "https://voygr.tech"
+      },
+      {
+        "yc_slug": "mochacare",
+        "name": "MochaCare",
+        "batch": "Winter 2026",
+        "website": "https://www.mochacare.com/"
+      },
+      {
+        "yc_slug": "vela",
+        "name": "Vela",
+        "batch": "Winter 2026",
+        "website": "https://tryvela.ai"
+      },
+      {
+        "yc_slug": "foreman",
+        "name": "Foreman",
+        "batch": "Winter 2026",
+        "website": "https://foreman.co"
+      },
+      {
+        "yc_slug": "booko",
+        "name": "Booko",
+        "batch": "Winter 2026",
+        "website": "https://bookoapp.com"
+      },
+      {
+        "yc_slug": "general-legal",
+        "name": "General Legal",
+        "batch": "Winter 2026",
+        "website": "https://general.legal"
+      },
+      {
+        "yc_slug": "fort",
+        "name": "Fort",
+        "batch": "Winter 2026",
+        "website": "https://fort.cx"
+      },
+      {
+        "yc_slug": "chasi",
+        "name": "Chasi",
+        "batch": "Winter 2026",
+        "website": "https://chasi.ai/"
+      },
+      {
+        "yc_slug": "polymath",
+        "name": "Polymath",
+        "batch": "Winter 2026",
+        "website": "https://polymathlabs.ai/"
+      },
+      {
+        "yc_slug": "pocket",
+        "name": "Pocket",
+        "batch": "Winter 2026",
+        "website": "https://heypocket.com/now"
+      },
+      {
+        "yc_slug": "constellation-space",
+        "name": "Constellation Space",
+        "batch": "Winter 2026",
+        "website": "https://constellation.space/"
+      },
+      {
+        "yc_slug": "mendral",
+        "name": "Mendral",
+        "batch": "Winter 2026",
+        "website": "https://mendral.com/"
+      },
+      {
+        "yc_slug": "oximy",
+        "name": "Oximy",
+        "batch": "Winter 2026",
+        "website": "https://oximy.com"
+      },
+      {
+        "yc_slug": "samora-ai",
+        "name": "Samora AI",
+        "batch": "Winter 2026",
+        "website": "https://samora.ai/"
+      },
+      {
+        "yc_slug": "human-archive",
+        "name": "Human Archive",
+        "batch": "Winter 2026",
+        "website": "https://www.humanarchive.ai/"
+      },
+      {
+        "yc_slug": "revion",
+        "name": "Revion",
+        "batch": "Winter 2026",
+        "website": "https://revion.inc"
+      },
+      {
+        "yc_slug": "maywood",
+        "name": "Maywood",
+        "batch": "Winter 2026",
+        "website": "https://maywoodai.com/"
+      },
+      {
+        "yc_slug": "seeing-systems",
+        "name": "Seeing Systems",
+        "batch": "Winter 2026",
+        "website": "https://www.seeing-systems.com"
+      },
+      {
+        "yc_slug": "jinba",
+        "name": "Jinba",
+        "batch": "Winter 2026",
+        "website": "https://jinba.io"
+      },
+      {
+        "yc_slug": "cardboard",
+        "name": "Cardboard",
+        "batch": "Winter 2026",
+        "website": "https://usecardboard.com"
+      },
+      {
+        "yc_slug": "rhizome-ai",
+        "name": "Rhizome AI",
+        "batch": "Winter 2026",
+        "website": "https://rhizomeai.com/"
+      },
+      {
+        "yc_slug": "pax-historia",
+        "name": "Pax Historia",
+        "batch": "Winter 2026",
+        "website": "https://www.paxhistoria.co"
+      },
+      {
+        "yc_slug": "hex-security",
+        "name": "Hex Security",
+        "batch": "Winter 2026",
+        "website": "https://hex.co?utm_source=bookface&utm_medium=referral&utm_campaign=hex-security-profile"
+      },
+      {
+        "yc_slug": "proximitty",
+        "name": "Proximitty",
+        "batch": "Winter 2026",
+        "website": "https://proximitty.ai"
+      },
+      {
+        "yc_slug": "stilta",
+        "name": "Stilta",
+        "batch": "Winter 2026",
+        "website": "https://stilta.com"
+      },
+      {
+        "yc_slug": "terranox-ai",
+        "name": "Terranox AI",
+        "batch": "Winter 2026",
+        "website": "https://terranox.ai"
+      },
+      {
+        "yc_slug": "ventura",
+        "name": "Ventura",
+        "batch": "Winter 2026",
+        "website": "https://www.ventura.ai"
+      },
+      {
+        "yc_slug": "sparkles",
+        "name": "Sparkles",
+        "batch": "Winter 2026",
+        "website": "https://sparkles.dev"
+      },
+      {
+        "yc_slug": "moritz",
+        "name": "Moritz",
+        "batch": "Winter 2026",
+        "website": "http://moritzlegal.com/"
+      },
+      {
+        "yc_slug": "ramain",
+        "name": "RamAIn",
+        "batch": "Winter 2026",
+        "website": "https://ramain.ai"
+      },
+      {
+        "yc_slug": "pirislabs",
+        "name": "Piris Labs",
+        "batch": "Winter 2026",
+        "website": "https://pirislabs.io/"
+      },
+      {
+        "yc_slug": "celltype",
+        "name": "CellType",
+        "batch": "Winter 2026",
+        "website": "https://www.celltype.com"
+      },
+      {
+        "yc_slug": "cofia",
+        "name": "Cofia",
+        "batch": "Winter 2026",
+        "website": "https://cofia.ai"
+      },
+      {
+        "yc_slug": "legalos",
+        "name": "LegalOS",
+        "batch": "Winter 2026",
+        "website": "https://www.legalos.ai"
+      },
+      {
+        "yc_slug": "10x-science",
+        "name": "10x Science",
+        "batch": "Winter 2026",
+        "website": "https://10xscience.com"
+      },
+      {
+        "yc_slug": "asimov",
+        "name": "Asimov",
+        "batch": "Winter 2026",
+        "website": "https://tryasimov.ai/"
+      },
+      {
+        "yc_slug": "lance",
+        "name": "Lance",
+        "batch": "Winter 2026",
+        "website": "https://www.lance.live"
+      },
+      {
+        "yc_slug": "lucent",
+        "name": "Lucent",
+        "batch": "Winter 2026",
+        "website": "https://lucenthq.com"
+      },
+      {
+        "yc_slug": "ruma-care",
+        "name": "Ruma Care",
+        "batch": "Winter 2026",
+        "website": "https://rumacare.com"
+      },
+      {
+        "yc_slug": "kita",
+        "name": "Kita",
+        "batch": "Winter 2026",
+        "website": "https://www.usekita.com/"
+      },
+      {
+        "yc_slug": "one-robot",
+        "name": "One Robot",
+        "batch": "Winter 2026",
+        "website": "https://www.onerobot.io/"
+      },
+      {
+        "yc_slug": "arc-prize-foundation",
+        "name": "ARC Prize Foundation",
+        "batch": "Winter 2026",
+        "website": "https://arcprize.org/"
+      },
+      {
+        "yc_slug": "catchback-cards",
+        "name": "CatchBack Cards",
+        "batch": "Winter 2026",
+        "website": "https://catchbackcards.com"
+      },
+      {
+        "yc_slug": "generalastro",
+        "name": "General Astronautics",
+        "batch": "Winter 2026",
+        "website": "https://generalastro.com/"
+      },
+      {
+        "yc_slug": "overdrive-health",
+        "name": "Overdrive Health",
+        "batch": "Winter 2026",
+        "website": "https://overdrive.health"
+      },
+      {
+        "yc_slug": "galactic-resource-utilization-space-inc-gru-space",
+        "name": "Galactic Resource Utilization Space, Inc. (GRU Space)",
+        "batch": "Winter 2026",
+        "website": "https://gru.space"
+      },
+      {
+        "yc_slug": "menza",
+        "name": "Menza",
+        "batch": "Winter 2026",
+        "website": "https://menza.ai/"
+      },
+      {
+        "yc_slug": "f2",
+        "name": "F2",
+        "batch": "Summer 2025",
+        "website": "http://f2.ai"
+      },
+      {
+        "yc_slug": "nox-metals",
+        "name": "Nox Metals",
+        "batch": "Summer 2025",
+        "website": "https://noxmetals.co/"
+      },
+      {
+        "yc_slug": "uplift-ai",
+        "name": "Uplift AI",
+        "batch": "Summer 2025",
+        "website": "https://upliftai.org/"
+      },
+      {
+        "yc_slug": "luminal",
+        "name": "Luminal",
+        "batch": "Summer 2025",
+        "website": "https://luminal.com"
+      },
+      {
+        "yc_slug": "freya",
+        "name": "Freya",
+        "batch": "Summer 2025",
+        "website": "https://freyavoice.ai/"
+      },
+      {
+        "yc_slug": "burnt",
+        "name": "burnt",
+        "batch": "Summer 2025",
+        "website": "https://getburnt.ai/"
+      },
+      {
+        "yc_slug": "avent",
+        "name": "Avent",
+        "batch": "Summer 2025",
+        "website": "https://www.aventindustrial.com"
+      },
+      {
+        "yc_slug": "veritus",
+        "name": "Veritus",
+        "batch": "Summer 2025",
+        "website": "https://www.veritus.com"
+      },
+      {
+        "yc_slug": "noso-labs",
+        "name": "NOSO LABS",
+        "batch": "Summer 2025",
+        "website": "https://noso.so"
+      },
+      {
+        "yc_slug": "vulcan-technologies",
+        "name": "Vulcan Technologies",
+        "batch": "Summer 2025",
+        "website": "https://vulcan.ai/"
+      },
+      {
+        "yc_slug": "interfere",
+        "name": "Interfere",
+        "batch": "Summer 2025",
+        "website": "https://interfere.com"
+      },
+      {
+        "yc_slug": "magnetic",
+        "name": "Magnetic",
+        "batch": "Summer 2025",
+        "website": "https://www.magnetictax.com"
+      },
+      {
+        "yc_slug": "fleetline",
+        "name": "Fleetline",
+        "batch": "Summer 2025",
+        "website": "https://fleetline.ai"
+      },
+      {
+        "yc_slug": "juxta",
+        "name": "Juxta",
+        "batch": "Summer 2025",
+        "website": "https://juxta.com"
+      },
+      {
+        "yc_slug": "rebulk",
+        "name": "Rebulk",
+        "batch": "Summer 2025",
+        "website": "https://www.rebulk.com"
+      },
+      {
+        "yc_slug": "reacher",
+        "name": "Reacher",
+        "batch": "Summer 2025",
+        "website": "https://reacherapp.com/"
+      },
+      {
+        "yc_slug": "hera-video",
+        "name": "Hera",
+        "batch": "Summer 2025",
+        "website": "https://hera.video/"
+      },
+      {
+        "yc_slug": "locata",
+        "name": "Locata",
+        "batch": "Summer 2025",
+        "website": "https://www.locatahealth.com/"
+      },
+      {
+        "yc_slug": "convexia",
+        "name": "Convexia",
+        "batch": "Summer 2025",
+        "website": "https://convexia.bio"
+      },
+      {
+        "yc_slug": "altur",
+        "name": "Altur",
+        "batch": "Summer 2025",
+        "website": "https://altur.io"
+      },
+      {
+        "yc_slug": "nautilus",
+        "name": "Nautilus",
+        "batch": "Summer 2025",
+        "website": "https://nautilus.co"
+      },
+      {
+        "yc_slug": "idler",
+        "name": "Idler",
+        "batch": "Summer 2025",
+        "website": "https://idler.ai/"
+      },
+      {
+        "yc_slug": "floot",
+        "name": "Floot",
+        "batch": "Summer 2025",
+        "website": "https://floot.com"
+      },
+      {
+        "yc_slug": "socratix-ai",
+        "name": "Socratix AI",
+        "batch": "Summer 2025",
+        "website": "https://getsocratix.ai"
+      },
+      {
+        "yc_slug": "autosana",
+        "name": "Autosana",
+        "batch": "Summer 2025",
+        "website": "https://autosana.ai"
+      },
+      {
+        "yc_slug": "procindex",
+        "name": "ProcIndex",
+        "batch": "Summer 2025",
+        "website": "https://procindex.com/"
+      },
+      {
+        "yc_slug": "iron-grid",
+        "name": "Iron Grid",
+        "batch": "Summer 2025",
+        "website": "https://getirongrid.com/"
+      },
+      {
+        "yc_slug": "finto-de",
+        "name": "Finto",
+        "batch": "Summer 2025",
+        "website": "https://www.gofinto.com/"
+      },
+      {
+        "yc_slug": "motives",
+        "name": "Motives",
+        "batch": "Summer 2025",
+        "website": "https://motives.ai/"
+      },
+      {
+        "yc_slug": "manufact",
+        "name": "Manufact (formerly mcp-use)",
+        "batch": "Summer 2025",
+        "website": "https://manufact.com"
+      },
+      {
+        "yc_slug": "novaflow",
+        "name": "Novaflow",
+        "batch": "Summer 2025",
+        "website": "https://www.novaflowapp.com/"
+      },
+      {
+        "yc_slug": "perseus-defense",
+        "name": "Perseus Defense",
+        "batch": "Summer 2025",
+        "website": "https://perseusdefense.com"
+      },
+      {
+        "yc_slug": "solva",
+        "name": "Solva",
+        "batch": "Summer 2025",
+        "website": "https://solvatechnology.com"
+      },
+      {
+        "yc_slug": "nozomio",
+        "name": "Nozomio",
+        "batch": "Summer 2025",
+        "website": "https://www.trynia.ai/"
+      },
+      {
+        "yc_slug": "vibeflow",
+        "name": "VibeFlow",
+        "batch": "Summer 2025",
+        "website": "https://vibeflow.ai/"
+      },
+      {
+        "yc_slug": "comena",
+        "name": "Comena",
+        "batch": "Summer 2025",
+        "website": "https://comena.ai"
+      },
+      {
+        "yc_slug": "embedder",
+        "name": "Embedder",
+        "batch": "Summer 2025",
+        "website": "https://www.embedder.com"
+      },
+      {
+        "yc_slug": "flai",
+        "name": "Flai",
+        "batch": "Summer 2025",
+        "website": "https://www.useflai.com/"
+      },
+      {
+        "yc_slug": "theinterface",
+        "name": "Interface",
+        "batch": "Summer 2025",
+        "website": "https://www.theinterface.com"
+      },
+      {
+        "yc_slug": "ironledger-ai",
+        "name": "IronLedger.ai",
+        "batch": "Summer 2025",
+        "website": "https://ironledger.ai"
+      },
+      {
+        "yc_slug": "kalinda",
+        "name": "Kalinda",
+        "batch": "Summer 2025",
+        "website": "https://www.kalinda.ai/"
+      },
+      {
+        "yc_slug": "bootloop",
+        "name": "BootLoop",
+        "batch": "Summer 2025",
+        "website": "https://bootloop.ai/"
+      },
+      {
+        "yc_slug": "careswift",
+        "name": "CareSwift",
+        "batch": "Summer 2025",
+        "website": "https://www.careswift.com/"
+      },
+      {
+        "yc_slug": "pangolin",
+        "name": "Pangolin",
+        "batch": "Summer 2025",
+        "website": "https://pangolin.net"
+      },
+      {
+        "yc_slug": "tesora",
+        "name": "Tesora",
+        "batch": "Summer 2025",
+        "website": "https://tesora.ai"
+      },
+      {
+        "yc_slug": "deepaware-ai",
+        "name": "DeepAware AI",
+        "batch": "Summer 2025",
+        "website": "https://roboticscenter.ai/"
+      },
+      {
+        "yc_slug": "proliferate",
+        "name": "Proliferate",
+        "batch": "Summer 2025",
+        "website": "https://proliferate.com?utm_source=yc&utm_medium=referral&utm_campaign=profile"
+      },
+      {
+        "yc_slug": "deepgrove",
+        "name": "DeepGrove",
+        "batch": "Summer 2025",
+        "website": "https://deepgrove.ai"
+      },
+      {
+        "yc_slug": "ondeck-ai",
+        "name": "OnDeck AI",
+        "batch": "Summer 2025",
+        "website": "https://www.ondeckai.com"
+      },
+      {
+        "yc_slug": "imprezia",
+        "name": "Imprezia",
+        "batch": "Summer 2025",
+        "website": "https://imprezia.ai"
+      },
+      {
+        "yc_slug": "wafer",
+        "name": "Wafer",
+        "batch": "Summer 2025",
+        "website": "https://www.wafer.ai"
+      },
+      {
+        "yc_slug": "orange-slice",
+        "name": "Orange Slice",
+        "batch": "Summer 2025",
+        "website": "https://orangeslice.ai"
+      },
+      {
+        "yc_slug": "effigov",
+        "name": "EffiGov",
+        "batch": "Summer 2025",
+        "website": "https://effigov.com"
+      },
+      {
+        "yc_slug": "verne-robotics",
+        "name": "Verne Robotics",
+        "batch": "Summer 2025",
+        "website": "https://vernerobotics.com/"
+      },
+      {
+        "yc_slug": "liva-ai",
+        "name": "Liva AI",
+        "batch": "Summer 2025",
+        "website": "https://www.theliva.ai"
+      },
+      {
+        "yc_slug": "lanesurf",
+        "name": "Lanesurf",
+        "batch": "Summer 2025",
+        "website": "https://www.lanesurf.com/"
+      },
+      {
+        "yc_slug": "blank-bio",
+        "name": "Blank Bio",
+        "batch": "Summer 2025",
+        "website": "http://blank.bio/"
+      },
+      {
+        "yc_slug": "truthsystems",
+        "name": "truthsystems",
+        "batch": "Summer 2025",
+        "website": "https://www.truthsystems.ai"
+      },
+      {
+        "yc_slug": "agentmail",
+        "name": "AgentMail",
+        "batch": "Summer 2025",
+        "website": "https://agentmail.to"
+      },
+      {
+        "yc_slug": "traceroot-ai",
+        "name": "TraceRoot.AI",
+        "batch": "Summer 2025",
+        "website": "https://traceroot.ai"
+      },
+      {
+        "yc_slug": "halluminate",
+        "name": "Halluminate",
+        "batch": "Summer 2025",
+        "website": "https://halluminate.ai/"
+      },
+      {
+        "yc_slug": "mangodesk",
+        "name": "MangoDesk",
+        "batch": "Summer 2025",
+        "website": "https://www.mangodesk.com/"
+      },
+      {
+        "yc_slug": "the-prompting-company",
+        "name": "The Prompting Company",
+        "batch": "Summer 2025",
+        "website": "https://www.promptingcompany.com"
+      },
+      {
+        "yc_slug": "acrely",
+        "name": "Acrely",
+        "batch": "Summer 2025",
+        "website": "https://www.acrely.ai"
+      },
+      {
+        "yc_slug": "dedalus-labs",
+        "name": "Dedalus Labs",
+        "batch": "Summer 2025",
+        "website": "https://www.dedaluslabs.ai/"
+      },
+      {
+        "yc_slug": "getasap",
+        "name": "GETASAP",
+        "batch": "Summer 2025",
+        "website": "https://www.getasap.us"
+      },
+      {
+        "yc_slug": "adaptional",
+        "name": "Adaptional",
+        "batch": "Summer 2025",
+        "website": "https://www.adaptional.com/"
+      },
+      {
+        "yc_slug": "pingo-ai",
+        "name": "Pingo AI",
+        "batch": "Summer 2025",
+        "website": "https://pingo.ai"
+      },
+      {
+        "yc_slug": "nixo",
+        "name": "Nixo",
+        "batch": "Summer 2025",
+        "website": "https://withnixo.com/"
+      },
+      {
+        "yc_slug": "wayline",
+        "name": "Wayline",
+        "batch": "Summer 2025",
+        "website": "https://wayline.com"
+      },
+      {
+        "yc_slug": "ambral",
+        "name": "Ambral",
+        "batch": "Summer 2025",
+        "website": "https://www.ambral.com/"
+      },
+      {
+        "yc_slug": "autumn",
+        "name": "Autumn",
+        "batch": "Summer 2025",
+        "website": "https://useautumn.com"
+      },
+      {
+        "yc_slug": "godela",
+        "name": "Godela",
+        "batch": "Spring 2025",
+        "website": "http://godela.ai"
+      },
+      {
+        "yc_slug": "cascade-space",
+        "name": "Cascade Space",
+        "batch": "Spring 2025",
+        "website": "https://cascade.space"
+      },
+      {
+        "yc_slug": "airweave",
+        "name": "Airweave",
+        "batch": "Spring 2025",
+        "website": "https://airweave.ai"
+      },
+      {
+        "yc_slug": "theorem-2",
+        "name": "Theorem",
+        "batch": "Spring 2025",
+        "website": "https://theorem.dev"
+      },
+      {
+        "yc_slug": "text-ai",
+        "name": "Text.ai",
+        "batch": "Spring 2025",
+        "website": "https://www.text.ai/"
+      },
+      {
+        "yc_slug": "starsling",
+        "name": "StarSling",
+        "batch": "Spring 2025",
+        "website": "https://www.starsling.dev/"
+      },
+      {
+        "yc_slug": "code-four",
+        "name": "Code Four",
+        "batch": "Spring 2025",
+        "website": "https://codefour.us/"
+      },
+      {
+        "yc_slug": "lumari",
+        "name": "Lumari",
+        "batch": "Spring 2025",
+        "website": "https://www.lumari.io/"
+      },
+      {
+        "yc_slug": "mindfort",
+        "name": "MindFort",
+        "batch": "Spring 2025",
+        "website": "https://www.mindfort.ai"
+      },
+      {
+        "yc_slug": "naive",
+        "name": "Naïve",
+        "batch": "Spring 2025",
+        "website": "https://usenaive.ai"
+      },
+      {
+        "yc_slug": "hemut",
+        "name": "Hemut",
+        "batch": "Spring 2025",
+        "website": "https://www.hemut.com/"
+      },
+      {
+        "yc_slug": "eloquent-ai",
+        "name": "Eloquent AI",
+        "batch": "Spring 2025",
+        "website": "https://www.eloquentai.co/"
+      },
+      {
+        "yc_slug": "morphoai",
+        "name": "MorphoAI",
+        "batch": "Spring 2025",
+        "website": "https://morpho.ai/"
+      },
+      {
+        "yc_slug": "third-chair",
+        "name": "Third Chair",
+        "batch": "Spring 2025",
+        "website": "https://usethirdchair.com"
+      },
+      {
+        "yc_slug": "besimple-ai",
+        "name": "Besimple AI",
+        "batch": "Spring 2025",
+        "website": "https://besimple.ai"
+      },
+      {
+        "yc_slug": "qualgent",
+        "name": "QualGent",
+        "batch": "Spring 2025",
+        "website": "https://www.qualgent.ai"
+      },
+      {
+        "yc_slug": "novoflow",
+        "name": "Novoflow",
+        "batch": "Spring 2025",
+        "website": "https://www.novoflow.io/"
+      },
+      {
+        "yc_slug": "throxy",
+        "name": "throxy",
+        "batch": "Spring 2025",
+        "website": "https://throxy.com/"
+      },
+      {
+        "yc_slug": "lucis",
+        "name": "Lucis",
+        "batch": "Spring 2025",
+        "website": "https://www.lucis.life"
+      },
+      {
+        "yc_slug": "casco",
+        "name": "Casco",
+        "batch": "Spring 2025",
+        "website": "https://casco.com"
+      },
+      {
+        "yc_slug": "labric",
+        "name": "Labric",
+        "batch": "Spring 2025",
+        "website": "https://labric.co"
+      },
+      {
+        "yc_slug": "photonium",
+        "name": "Photonium",
+        "batch": "Spring 2025",
+        "website": "https://www.photoniumoptics.com/"
+      },
+      {
+        "yc_slug": "sixtyfour",
+        "name": "Sixtyfour",
+        "batch": "Spring 2025",
+        "website": "https://www.sixtyfour.ai/"
+      },
+      {
+        "yc_slug": "combinely",
+        "name": "Combinely",
+        "batch": "Spring 2025",
+        "website": "https://combinely.ai"
+      },
+      {
+        "yc_slug": "jeevy-fabrication",
+        "name": "Jeevy Fabrication",
+        "batch": "Spring 2025",
+        "website": "https://www.jeevyfabrication.com/"
+      },
+      {
+        "yc_slug": "bluejay",
+        "name": "Bluejay",
+        "batch": "Spring 2025",
+        "website": "https://getbluejay.ai/"
+      },
+      {
+        "yc_slug": "attune",
+        "name": "Attune",
+        "batch": "Spring 2025",
+        "website": "https://attunehq.com"
+      },
+      {
+        "yc_slug": "pgdog",
+        "name": "PgDog",
+        "batch": "Spring 2025",
+        "website": "https://pgdog.dev"
+      },
+      {
+        "yc_slug": "mbodi-ai",
+        "name": "Mbodi AI",
+        "batch": "Spring 2025",
+        "website": "https://www.mbodi.ai/"
+      },
+      {
+        "yc_slug": "sim",
+        "name": "Sim",
+        "batch": "Spring 2025",
+        "website": "https://sim.ai"
+      },
+      {
+        "yc_slug": "claim-health",
+        "name": "Claim Health",
+        "batch": "Spring 2025",
+        "website": "https://www.claimhealth.com"
+      },
+      {
+        "yc_slug": "auctor",
+        "name": "Auctor",
+        "batch": "Spring 2025",
+        "website": "https://getauctor.com"
+      },
+      {
+        "yc_slug": "synthio-labs",
+        "name": "Synthio Labs",
+        "batch": "Spring 2025",
+        "website": "https://synthiolabs.com/"
+      },
+      {
+        "yc_slug": "cua",
+        "name": "Cua",
+        "batch": "Spring 2025",
+        "website": "https://cua.ai"
+      },
+      {
+        "yc_slug": "minerva",
+        "name": "Minerva",
+        "batch": "Spring 2025",
+        "website": "https://www.tryminerva.ai"
+      },
+      {
+        "yc_slug": "groundcontrol",
+        "name": "GroundControl",
+        "batch": "Spring 2025",
+        "website": "https://rungroundcontrol.com/"
+      },
+      {
+        "yc_slug": "avallon-ai",
+        "name": "Avallon AI",
+        "batch": "Spring 2025",
+        "website": "https://www.avallon.ai/"
+      },
+      {
+        "yc_slug": "bloom-4",
+        "name": "Bloom",
+        "batch": "Spring 2025",
+        "website": "https://bloom.diy/"
+      },
+      {
+        "yc_slug": "cubic",
+        "name": "cubic",
+        "batch": "Spring 2025",
+        "website": "https://cubic.dev/"
+      },
+      {
+        "yc_slug": "nao-labs",
+        "name": "nao Labs",
+        "batch": "Spring 2025",
+        "website": "https://getnao.io/"
+      },
+      {
+        "yc_slug": "aravolta",
+        "name": "Aravolta",
+        "batch": "Spring 2025",
+        "website": "https://www.aravolta.com/"
+      },
+      {
+        "yc_slug": "plexe",
+        "name": "Plexe",
+        "batch": "Spring 2025",
+        "website": "https://plexe.ai"
+      },
+      {
+        "yc_slug": "chestnut",
+        "name": "Chestnut",
+        "batch": "Spring 2025",
+        "website": "https://chestnutmortgage.com/"
+      },
+      {
+        "yc_slug": "qfex",
+        "name": "QFEX",
+        "batch": "Spring 2025",
+        "website": "https://qfex.com"
+      },
+      {
+        "yc_slug": "blaxel",
+        "name": "Blaxel",
+        "batch": "Spring 2025",
+        "website": "https://blaxel.ai"
+      },
+      {
+        "yc_slug": "atlog",
+        "name": "Atlog",
+        "batch": "Spring 2025",
+        "website": "https://atlog.ai"
+      },
+      {
+        "yc_slug": "partcl",
+        "name": "Partcl",
+        "batch": "Spring 2025",
+        "website": "https://partcl.com/"
+      },
+      {
+        "yc_slug": "willow",
+        "name": "Willow",
+        "batch": "Spring 2025",
+        "website": "https://willowvoice.com/"
+      },
+      {
+        "yc_slug": "leeroo",
+        "name": "用户roo",
+        "batch": "Spring 2025",
+        "website": "https://www.leeroo.com/"
+      },
+      {
+        "yc_slug": "artifact-2",
+        "name": "Artifact",
+        "batch": "Winter 2025",
+        "website": "https://www.artifact.engineer/"
+      },
+      {
+        "yc_slug": "joindex",
+        "name": "Dex",
+        "batch": "Winter 2025",
+        "website": "https://joindex.com"
+      },
+      {
+        "yc_slug": "sammy-labs",
+        "name": "SAMMY Labs",
+        "batch": "Winter 2025",
+        "website": "https://www.sammylabs.com"
+      },
+      {
+        "yc_slug": "mercura",
+        "name": "Mercura",
+        "batch": "Winter 2025",
+        "website": "https://www.mercura.ai"
+      },
+      {
+        "yc_slug": "browser-use",
+        "name": "Browser Use",
+        "batch": "Winter 2025",
+        "website": "https://browser-use.com"
+      },
+      {
+        "yc_slug": "ergo",
+        "name": "Ergo",
+        "batch": "Winter 2025",
+        "website": "https://joinergo.com"
+      },
+      {
+        "yc_slug": "paratus-health",
+        "name": "Paratus Health",
+        "batch": "Winter 2025",
+        "website": "https://paratushealth.com/"
+      },
+      {
+        "yc_slug": "dalus",
+        "name": "Dalus",
+        "batch": "Winter 2025",
+        "website": "https://dalus.io"
+      },
+      {
+        "yc_slug": "rebolt",
+        "name": "Rebolt",
+        "batch": "Winter 2025",
+        "website": "https://rebolt.ai"
+      },
+      {
+        "yc_slug": "spott",
+        "name": "Spott",
+        "batch": "Winter 2025",
+        "website": "https://spott.io"
+      },
+      {
+        "yc_slug": "woz",
+        "name": "Woz",
+        "batch": "Winter 2025",
+        "website": "https://www.wozcode.com/"
+      },
+      {
+        "yc_slug": "proception-inc",
+        "name": "Proception Inc",
+        "batch": "Winter 2025",
+        "website": "https://proception.ai/"
+      },
+      {
+        "yc_slug": "wildcard",
+        "name": "Wildcard",
+        "batch": "Winter 2025",
+        "website": "https://wild-card.ai"
+      },
+      {
+        "yc_slug": "reditus-space",
+        "name": "Reditus Space",
+        "batch": "Winter 2025",
+        "website": "https://www.reditus.space/"
+      },
+      {
+        "yc_slug": "optifye-ai",
+        "name": "Optifye.ai",
+        "batch": "Winter 2025",
+        "website": "https://www.optifye.ai"
+      },
+      {
+        "yc_slug": "archon",
+        "name": "Archon",
+        "batch": "Winter 2025",
+        "website": "https://archon.inc"
+      },
+      {
+        "yc_slug": "afterquery",
+        "name": "AfterQuery",
+        "batch": "Winter 2025",
+        "website": "https://afterquery.com"
+      },
+      {
+        "yc_slug": "misprint",
+        "name": "Misprint",
+        "batch": "Winter 2025",
+        "website": "https://www.misprint.com"
+      },
+      {
+        "yc_slug": "fuseai",
+        "name": "FuseAI",
+        "batch": "Winter 2025",
+        "website": "https://tryfuse.ai/"
+      },
+      {
+        "yc_slug": "miyagi-labs",
+        "name": "Miyagi Labs",
+        "batch": "Winter 2025",
+        "website": "https://miyagilabs.ai"
+      },
+      {
+        "yc_slug": "peppr-ai",
+        "name": "Peppr AI",
+        "batch": "Winter 2025",
+        "website": "https://www.usepeppr.ai/"
+      },
+      {
+        "yc_slug": "infinite",
+        "name": "Infinite",
+        "batch": "Winter 2025",
+        "website": "https://infinite.dev"
+      },
+      {
+        "yc_slug": "orbital-operations",
+        "name": "Orbital Operations",
+        "batch": "Winter 2025",
+        "website": "https://www.orbitalops.tech/"
+      },
+      {
+        "yc_slug": "mesh-2",
+        "name": "Mesh",
+        "batch": "Winter 2025",
+        "website": "http://www.usemesh.com"
+      },
+      {
+        "yc_slug": "harper",
+        "name": "Harper",
+        "batch": "Winter 2025",
+        "website": "https://www.harperinsure.com/"
+      },
+      {
+        "yc_slug": "calltree",
+        "name": "Calltree",
+        "batch": "Winter 2025",
+        "website": "https://calltree.ai"
+      },
+      {
+        "yc_slug": "karsa",
+        "name": "Karsa",
+        "batch": "Winter 2025",
+        "website": "https://gokarsa.com/"
+      },
+      {
+        "yc_slug": "confident-ai",
+        "name": "Confident AI",
+        "batch": "Winter 2025",
+        "website": "https://confident-ai.com"
+      },
+      {
+        "yc_slug": "waypoint-transit",
+        "name": "Waypoint Transit",
+        "batch": "Winter 2025",
+        "website": "https://waypointtransit.com"
+      },
+      {
+        "yc_slug": "solidroad",
+        "name": "Solidroad",
+        "batch": "Winter 2025",
+        "website": "https://solidroad.com"
+      },
+      {
+        "yc_slug": "trata",
+        "name": "Trata",
+        "batch": "Winter 2025",
+        "website": "https://www.trytrata.com/"
+      },
+      {
+        "yc_slug": "candor-security",
+        "name": "Candor",
+        "batch": "Winter 2025",
+        "website": "https://candor.security/"
+      },
+      {
+        "yc_slug": "pluto",
+        "name": "Pluto",
+        "batch": "Winter 2025",
+        "website": "https://www.pluto.trade"
+      },
+      {
+        "yc_slug": "athenahq",
+        "name": "AthenaHQ",
+        "batch": "Winter 2025",
+        "website": "https://www.athenahq.ai"
+      },
+      {
+        "yc_slug": "lucid",
+        "name": "Lucid",
+        "batch": "Winter 2025",
+        "website": "https://lucid.ai"
+      },
+      {
+        "yc_slug": "macadamia",
+        "name": "Macadamia",
+        "batch": "Winter 2025",
+        "website": "https://macadamialabs.com"
+      },
+      {
+        "yc_slug": "asteroid",
+        "name": "Asteroid",
+        "batch": "Winter 2025",
+        "website": "https://asteroid.ai"
+      },
+      {
+        "yc_slug": "pave-robotics",
+        "name": "Pave Robotics",
+        "batch": "Winter 2025",
+        "website": "https://pave-robotics.com"
+      },
+      {
+        "yc_slug": "pax-markets",
+        "name": "PAX Markets",
+        "batch": "Winter 2025",
+        "website": "https://pax.markets/"
+      },
+      {
+        "yc_slug": "olive",
+        "name": "Olive",
+        "batch": "Winter 2025",
+        "website": "https://fromolive.com"
+      },
+      {
+        "yc_slug": "hud",
+        "name": "hud",
+        "batch": "Winter 2025",
+        "website": "https://www.hud.ai"
+      },
+      {
+        "yc_slug": "10x",
+        "name": "10x",
+        "batch": "Winter 2025",
+        "website": "https://www.10xdental.com/"
+      },
+      {
+        "yc_slug": "healthkey",
+        "name": "HealthKey",
+        "batch": "Winter 2025",
+        "website": "https://gethealthkey.com/"
+      },
+      {
+        "yc_slug": "osmosis",
+        "name": "Osmosis",
+        "batch": "Winter 2025",
+        "website": "https://osmosis.ai/"
+      },
+      {
+        "yc_slug": "mosaic-2",
+        "name": "Mosaic",
+        "batch": "Winter 2025",
+        "website": "https://mosaic.so"
+      },
+      {
+        "yc_slug": "zeroentropy",
+        "name": "ZeroEntropy",
+        "batch": "Winter 2025",
+        "website": "https://www.zeroentropy.dev"
+      },
+      {
+        "yc_slug": "rally-3",
+        "name": "Rally",
+        "batch": "Winter 2025",
+        "website": "https://www.getrally.com/"
+      },
+      {
+        "yc_slug": "adam",
+        "name": "Adam",
+        "batch": "Winter 2025",
+        "website": "https://adam.new/"
+      },
+      {
+        "yc_slug": "deployparagon",
+        "name": "Paragon",
+        "batch": "Winter 2025",
+        "website": "https://www.runparagon.com"
+      },
+      {
+        "yc_slug": "salespatriot",
+        "name": "SalesPatriot",
+        "batch": "Winter 2025",
+        "website": "https://www.salespatriot.com/"
+      },
+      {
+        "yc_slug": "weave-3",
+        "name": "Weave",
+        "batch": "Winter 2025",
+        "website": "https://workweave.dev"
+      },
+      {
+        "yc_slug": "maritime-fusion",
+        "name": "Maritime Fusion",
+        "batch": "Winter 2025",
+        "website": "https://maritimefusion.com"
+      },
+      {
+        "yc_slug": "a0-dev",
+        "name": "a0.dev",
+        "batch": "Winter 2025",
+        "website": "https://a0.dev"
+      },
+      {
+        "yc_slug": "a1zap-by-a1base",
+        "name": "A1Zap by A1Base",
+        "batch": "Winter 2025",
+        "website": "https://www.a1zap.com/"
+      },
+      {
+        "yc_slug": "toothy-ai",
+        "name": "Toothy AI",
+        "batch": "Winter 2025",
+        "website": "https://www.toothy.ai/"
+      },
+      {
+        "yc_slug": "contrario",
+        "name": "Contrario",
+        "batch": "Winter 2025",
+        "website": "https://contrario.ai"
+      },
+      {
+        "yc_slug": "closure",
+        "name": "Closure",
+        "batch": "Winter 2025",
+        "website": "https://closure-intel.com/"
+      },
+      {
+        "yc_slug": "promptless",
+        "name": "Promptless",
+        "batch": "Winter 2025",
+        "website": "https://promptless.ai/"
+      },
+      {
+        "yc_slug": "scout-4",
+        "name": "Scout",
+        "batch": "Winter 2025",
+        "website": "https://scoutforschools.com/"
+      },
+      {
+        "yc_slug": "splash-inc",
+        "name": "Splash Inc.",
+        "batch": "Winter 2025",
+        "website": "https://splash9.com/"
+      },
+      {
+        "yc_slug": "bud",
+        "name": "Bud",
+        "batch": "Winter 2025",
+        "website": "https://bud.app/"
+      },
+      {
+        "yc_slug": "axiom",
+        "name": "Axiom",
+        "batch": "Winter 2025",
+        "website": "https://axiom.trade"
+      },
+      {
+        "yc_slug": "hey-telo",
+        "name": "Hey Telo",
+        "batch": "Winter 2025",
+        "website": "https://www.heytelo.com"
+      },
+      {
+        "yc_slug": "flowtel",
+        "name": "Flowtel",
+        "batch": "Winter 2025",
+        "website": "https://flowtel.ai"
+      },
+      {
+        "yc_slug": "leaping-ai",
+        "name": "Leaping AI",
+        "batch": "Winter 2025",
+        "website": "https://www.leapingai.com"
+      },
+      {
+        "yc_slug": "bild-ai",
+        "name": "Bild AI",
+        "batch": "Winter 2025",
+        "website": "https://www.bild.ai"
+      },
+      {
+        "yc_slug": "revise-robotics",
+        "name": "Revise Robotics",
+        "batch": "Winter 2025",
+        "website": "https://www.reviserobotics.com/"
+      },
+      {
+        "yc_slug": "enhanced-radar",
+        "name": "Enhanced Radar",
+        "batch": "Winter 2025",
+        "website": "https://www.enhancedradar.com/"
+      },
+      {
+        "yc_slug": "edexia",
+        "name": "Edexia",
+        "batch": "Winter 2025",
+        "website": "https://www.edexia.com/"
+      },
+      {
+        "yc_slug": "onlook",
+        "name": "Onlook",
+        "batch": "Winter 2025",
+        "website": "https://onlook.com/"
+      },
+      {
+        "yc_slug": "youshift",
+        "name": "YouShift",
+        "batch": "Winter 2025",
+        "website": "https://www.you-shift.com/"
+      },
+      {
+        "yc_slug": "overstand-labs",
+        "name": "Overstand Labs",
+        "batch": "Winter 2025",
+        "website": "https://overstandlabs.com"
+      },
+      {
+        "yc_slug": "outerport",
+        "name": "Outerport",
+        "batch": "Summer 2024",
+        "website": "https://outerport.com"
+      },
+      {
+        "yc_slug": "conductor",
+        "name": "Conductor",
+        "batch": "Summer 2024",
+        "website": "https://conductor.build"
+      },
+      {
+        "yc_slug": "syntra",
+        "name": "Syntra",
+        "batch": "Summer 2024",
+        "website": "https://www.syntra.com"
+      },
+      {
+        "yc_slug": "pathpilot",
+        "name": "PathPilot",
+        "batch": "Summer 2024",
+        "website": "https://www.getpathpilot.com/"
+      },
+      {
+        "yc_slug": "simcare",
+        "name": "SimCare",
+        "batch": "Summer 2024",
+        "website": "https://simcare.ai"
+      },
+      {
+        "yc_slug": "merlin-ai",
+        "name": "Merlin AI",
+        "batch": "Summer 2024",
+        "website": "https://www.merlinai.co"
+      },
+      {
+        "yc_slug": "arva-ai",
+        "name": "Arva AI",
+        "batch": "Summer 2024",
+        "website": "https://www.arva.ai"
+      },
+      {
+        "yc_slug": "capitol-ai",
+        "name": "Capitol AI",
+        "batch": "Summer 2024",
+        "website": "https://www.capitol.ai/"
+      },
+      {
+        "yc_slug": "anglera",
+        "name": "Anglera",
+        "batch": "Summer 2024",
+        "website": "https://www.anglera.com/"
+      },
+      {
+        "yc_slug": "terra-2",
+        "name": "Terra",
+        "batch": "Summer 2024",
+        "website": "https://useterra.com/"
+      },
+      {
+        "yc_slug": "diode-computers-inc",
+        "name": "Diode Computers, Inc.",
+        "batch": "Summer 2024",
+        "website": "https://diode.computer"
+      },
+      {
+        "yc_slug": "surebright",
+        "name": "SureBright",
+        "batch": "Summer 2024",
+        "website": "https://surebright.com/"
+      },
+      {
+        "yc_slug": "usul",
+        "name": "Usul",
+        "batch": "Summer 2024",
+        "website": "https://www.usul.com"
+      },
+      {
+        "yc_slug": "bucket-robotics",
+        "name": "Bucket Robotics",
+        "batch": "Summer 2024",
+        "website": "https://bucket.bot"
+      },
+      {
+        "yc_slug": "oway",
+        "name": "Oway",
+        "batch": "Summer 2024",
+        "website": "https://www.shipoway.com"
+      },
+      {
+        "yc_slug": "elayne",
+        "name": "Elayne",
+        "batch": "Summer 2024",
+        "website": "https://www.elayne.com/"
+      },
+      {
+        "yc_slug": "blaze-2",
+        "name": "Blaze",
+        "batch": "Summer 2024",
+        "website": "https://blaze.money"
+      },
+      {
+        "yc_slug": "rentflow",
+        "name": "RentFlow",
+        "batch": "Summer 2024",
+        "website": "https://www.therentflow.com"
+      },
+      {
+        "yc_slug": "assembly-hoa",
+        "name": "Assembly HOA",
+        "batch": "Summer 2024",
+        "website": "https://assemblyhoa.com"
+      },
+      {
+        "yc_slug": "kontigo",
+        "name": "Kontigo",
+        "batch": "Summer 2024",
+        "website": "https://kontigo.lat/"
+      },
+      {
+        "yc_slug": "vendra",
+        "name": "Vendra",
+        "batch": "Summer 2024",
+        "website": "https://vendra-marketplace.io/"
+      },
+      {
+        "yc_slug": "dataleap",
+        "name": "Dataleap",
+        "batch": "Summer 2024",
+        "website": "https://dataleap.ai/"
+      },
+      {
+        "yc_slug": "helium",
+        "name": "Helium",
+        "batch": "Summer 2024",
+        "website": "https://tryhelium.com"
+      },
+      {
+        "yc_slug": "finosu",
+        "name": "Finosu",
+        "batch": "Summer 2024",
+        "website": "https://www.finosu.com"
+      },
+      {
+        "yc_slug": "sonatoria",
+        "name": "Sonatoria",
+        "batch": "Summer 2024",
+        "website": "https://sonatoria.com"
+      },
+      {
+        "yc_slug": "cartage",
+        "name": "Cartage",
+        "batch": "Summer 2024",
+        "website": "https://cartage.ai"
+      },
+      {
+        "yc_slug": "paasa",
+        "name": "Paasa",
+        "batch": "Summer 2024",
+        "website": "https://paasa.com"
+      },
+      {
+        "yc_slug": "refactor",
+        "name": "Refactor",
+        "batch": "Summer 2024",
+        "website": "https://refactor.co"
+      },
+      {
+        "yc_slug": "simple-ai",
+        "name": "Simple AI",
+        "batch": "Summer 2024",
+        "website": "https://www.usesimple.ai"
+      },
+      {
+        "yc_slug": "guardian-rf",
+        "name": "Guardian RF",
+        "batch": "Summer 2024",
+        "website": "https://guardianrf.com/"
+      },
+      {
+        "yc_slug": "cerulion",
+        "name": "Cerulion",
+        "batch": "Summer 2024",
+        "website": "https://www.cerulion.com"
+      },
+      {
+        "yc_slug": "presti-ai",
+        "name": "Presti AI",
+        "batch": "Summer 2024",
+        "website": "https://www.presti.ai/"
+      },
+      {
+        "yc_slug": "the-forecasting-company",
+        "name": "The Forecasting Company",
+        "batch": "Summer 2024",
+        "website": "https://www.theforecastingcompany.com"
+      },
+      {
+        "yc_slug": "zettascale",
+        "name": "Zettascale",
+        "batch": "Summer 2024",
+        "website": "https://zscc.ai"
+      },
+      {
+        "yc_slug": "brighterway",
+        "name": "Brighterway",
+        "batch": "Summer 2024",
+        "website": "https://www.brighterway.ai/"
+      },
+      {
+        "yc_slug": "mineflow",
+        "name": "Mineflow",
+        "batch": "Summer 2024",
+        "website": "http://mineflow.ai/"
+      },
+      {
+        "yc_slug": "soff",
+        "name": "Soff",
+        "batch": "Summer 2024",
+        "website": "https://soff.ai"
+      },
+      {
+        "yc_slug": "intryc",
+        "name": "Intryc",
+        "batch": "Summer 2024",
+        "website": "https://intryc.com"
+      },
+      {
+        "yc_slug": "thunder-compute",
+        "name": "Thunder Compute",
+        "batch": "Summer 2024",
+        "website": "https://www.thundercompute.com"
+      },
+      {
+        "yc_slug": "emergent",
+        "name": "Emergent",
+        "batch": "Summer 2024",
+        "website": "https://emergent.sh"
+      },
+      {
+        "yc_slug": "zeit-ai",
+        "name": "Zeit AI",
+        "batch": "Summer 2024",
+        "website": "https://zeit-ai.com/"
+      },
+      {
+        "yc_slug": "mage-legal",
+        "name": "Mage Legal",
+        "batch": "Summer 2024",
+        "website": "https://magelegal.com"
+      },
+      {
+        "yc_slug": "david-ai",
+        "name": "David AI",
+        "batch": "Summer 2024",
+        "website": "https://www.withdavid.ai/"
+      },
+      {
+        "yc_slug": "pax",
+        "name": "Pax",
+        "batch": "Summer 2024",
+        "website": "https://paxai.com/"
+      },
+      {
+        "yc_slug": "conductor-quantum",
+        "name": "Conductor Quantum",
+        "batch": "Summer 2024",
+        "website": "https://www.conductorquantum.com"
+      },
+      {
+        "yc_slug": "drillbit",
+        "name": "Drillbit",
+        "batch": "Summer 2024",
+        "website": "https://www.drillbit.com"
+      },
+      {
+        "yc_slug": "dimely",
+        "name": "Dimely",
+        "batch": "Summer 2024",
+        "website": "https://dimely.com/"
+      },
+      {
+        "yc_slug": "planbase",
+        "name": "Planbase",
+        "batch": "Summer 2024",
+        "website": "https://www.joinplanbase.com/"
+      },
+      {
+        "yc_slug": "anara",
+        "name": "Anara",
+        "batch": "Summer 2024",
+        "website": "https://anara.com"
+      },
+      {
+        "yc_slug": "hestus-inc",
+        "name": "Hestus, Inc.",
+        "batch": "Summer 2024",
+        "website": "https://www.hestus.co"
+      },
+      {
+        "yc_slug": "finny-ai",
+        "name": "FINNY AI",
+        "batch": "Summer 2024",
+        "website": "https://www.finny.com/"
+      },
+      {
+        "yc_slug": "saturn",
+        "name": "Saturn",
+        "batch": "Summer 2024",
+        "website": "https://www.SaturnOS.com"
+      },
+      {
+        "yc_slug": "clearly-ai",
+        "name": "Clearly AI",
+        "batch": "Summer 2024",
+        "website": "https://clearly-ai.com"
+      },
+      {
+        "yc_slug": "conveo",
+        "name": "Conveo",
+        "batch": "Summer 2024",
+        "website": "https://conveo.ai/"
+      },
+      {
+        "yc_slug": "creativemode",
+        "name": "CreativeMode",
+        "batch": "Summer 2024",
+        "website": "https://creativemode.net"
+      },
+      {
+        "yc_slug": "kastle",
+        "name": "Kastle",
+        "batch": "Summer 2024",
+        "website": "https://kastle.ai/"
+      },
+      {
+        "yc_slug": "anthrogen",
+        "name": "Anthrogen",
+        "batch": "Summer 2024",
+        "website": "https://anthrogen.com"
+      },
+      {
+        "yc_slug": "taxgpt",
+        "name": "TaxGPT",
+        "batch": "Summer 2024",
+        "website": "https://www.taxgpt.com"
+      },
+      {
+        "yc_slug": "substrate",
+        "name": "Substrate",
+        "batch": "Summer 2024",
+        "website": "https://www.substrate.cc/"
+      },
+      {
+        "yc_slug": "lighthouz-ai",
+        "name": "Lighthouz AI",
+        "batch": "Summer 2024",
+        "website": "https://lighthouz.ai/"
+      },
+      {
+        "yc_slug": "plume",
+        "name": "Plume",
+        "batch": "Summer 2024",
+        "website": "http://www.plumefinder.com"
+      },
+      {
+        "yc_slug": "pulse-3",
+        "name": "Pulse",
+        "batch": "Summer 2024",
+        "website": "https://www.runpulse.com/"
+      },
+      {
+        "yc_slug": "dench-com",
+        "name": "Dench.com",
+        "batch": "Summer 2024",
+        "website": "https://dench.com"
+      },
+      {
+        "yc_slug": "gauge",
+        "name": "Gauge",
+        "batch": "Summer 2024",
+        "website": "https://withgauge.com"
+      },
+      {
+        "yc_slug": "weave-robotics",
+        "name": "Weave Robotics",
+        "batch": "Summer 2024",
+        "website": "https://www.weaverobots.com"
+      },
+      {
+        "yc_slug": "tandem-2",
+        "name": "Tandem",
+        "batch": "Summer 2024",
+        "website": "https://tandemspace.com/"
+      },
+      {
+        "yc_slug": "tivara",
+        "name": "Tivara",
+        "batch": "Summer 2024",
+        "website": "https://tivara.com"
+      },
+      {
+        "yc_slug": "parahelp",
+        "name": "Parahelp",
+        "batch": "Summer 2024",
+        "website": "https://parahelp.com/"
+      },
+      {
+        "yc_slug": "dodo",
+        "name": "Dodo",
+        "batch": "Summer 2024",
+        "website": "https://www.dodo.ai/"
+      },
+      {
+        "yc_slug": "elevate-2",
+        "name": "Elevate",
+        "batch": "Summer 2024",
+        "website": "https://www.useelevate.dev/"
+      },
+      {
+        "yc_slug": "offstream",
+        "name": "Offstream",
+        "batch": "Summer 2024",
+        "website": "https://www.useoffstream.com/"
+      },
+      {
+        "yc_slug": "deepsim-inc",
+        "name": "DeepSim, Inc.",
+        "batch": "Summer 2024",
+        "website": "https://www.deepsim.io"
+      },
+      {
+        "yc_slug": "cloudglue",
+        "name": "Cloudglue",
+        "batch": "Summer 2024",
+        "website": "https://cloudglue.dev"
+      },
+      {
+        "yc_slug": "silurian",
+        "name": "Silurian",
+        "batch": "Summer 2024",
+        "website": "https://silurian.ai/"
+      },
+      {
+        "yc_slug": "unbound",
+        "name": "Unbound",
+        "batch": "Summer 2024",
+        "website": "https://getunbound.ai/"
+      },
+      {
+        "yc_slug": "retrofix",
+        "name": "RetroFix",
+        "batch": "Summer 2024",
+        "website": "https://www.retrofix.ai/"
+      },
+      {
+        "yc_slug": "azalea-robotics-corporation",
+        "name": "Azalea Robotics Corporation",
+        "batch": "Summer 2024",
+        "website": "https://azalearobotics.com/"
+      },
+      {
+        "yc_slug": "stardrift",
+        "name": "Stardrift",
+        "batch": "Summer 2024",
+        "website": "https://stardrift.ai"
+      },
+      {
+        "yc_slug": "firstwork",
+        "name": "FirstWork",
+        "batch": "Summer 2024",
+        "website": "https://firstwork.com"
+      },
+      {
+        "yc_slug": "wordware",
+        "name": "Wordware",
+        "batch": "Summer 2024",
+        "website": "https://wordware.ai/"
+      },
+      {
+        "yc_slug": "maitai",
+        "name": "Maitai",
+        "batch": "Summer 2024",
+        "website": "https://trymaitai.com"
+      },
+      {
+        "yc_slug": "corgi-insurance",
+        "name": "Corgi Insurance",
+        "batch": "Summer 2024",
+        "website": "https://corgi.com"
+      },
+      {
+        "yc_slug": "phonely",
+        "name": "Phonely",
+        "batch": "Summer 2024",
+        "website": "https://phonely.ai"
+      },
+      {
+        "yc_slug": "videogen",
+        "name": "VideoGen",
+        "batch": "Summer 2024",
+        "website": "https://videogen.io"
+      },
+      {
+        "yc_slug": "sagecare",
+        "name": "Sage Care",
+        "batch": "Summer 2024",
+        "website": "https://sagecare.ai"
+      },
+      {
+        "yc_slug": "tabula",
+        "name": "Tabula",
+        "batch": "Summer 2024",
+        "website": "https://www.tabula.de"
+      },
+      {
+        "yc_slug": "bayesline",
+        "name": "Bayesline",
+        "batch": "Summer 2024",
+        "website": "https://bayesline.com"
+      },
+      {
+        "yc_slug": "unsloth-ai",
+        "name": "Unsloth AI",
+        "batch": "Summer 2024",
+        "website": "https://unsloth.ai/"
+      },
+      {
+        "yc_slug": "codes-health",
+        "name": "Codes Health",
+        "batch": "Summer 2024",
+        "website": "https://www.codeshealth.com/"
+      },
+      {
+        "yc_slug": "entangl",
+        "name": "Entangl",
+        "batch": "Summer 2024",
+        "website": "https://www.entangl.com/"
+      },
+      {
+        "yc_slug": "claimsorted",
+        "name": "ClaimSorted",
+        "batch": "Summer 2024",
+        "website": "https://claimsorted.com"
+      },
+      {
+        "yc_slug": "mdhub",
+        "name": "mdhub",
+        "batch": "Summer 2024",
+        "website": "https://www.mdhub.ai/"
+      },
+      {
+        "yc_slug": "hamming-ai",
+        "name": "Hamming AI",
+        "batch": "Summer 2024",
+        "website": "https://hamming.ai/"
+      },
+      {
+        "yc_slug": "prohostai",
+        "name": "ProhostAI",
+        "batch": "Summer 2024",
+        "website": "https://www.prohost.ai/"
+      },
+      {
+        "yc_slug": "educato",
+        "name": "Educato",
+        "batch": "Summer 2024",
+        "website": "https://www.educato.com/"
+      },
+      {
+        "yc_slug": "spaceium-inc",
+        "name": "Spaceium Inc",
+        "batch": "Summer 2024",
+        "website": "https://spaceium.com"
+      },
+      {
+        "yc_slug": "saphira-ai",
+        "name": "Saphira AI",
+        "batch": "Summer 2024",
+        "website": "https://saphira.ai"
+      },
+      {
+        "yc_slug": "mem0",
+        "name": "Mem0",
+        "batch": "Summer 2024",
+        "website": "https://mem0.ai"
+      },
+      {
+        "yc_slug": "domu-technology-inc",
+        "name": "Domu Technology Inc.",
+        "batch": "Summer 2024",
+        "website": "https://www.domu.ai/"
+      },
+      {
+        "yc_slug": "apten",
+        "name": "Apten",
+        "batch": "Summer 2024",
+        "website": "https://www.apten.ai/"
+      },
+      {
+        "yc_slug": "spherecast",
+        "name": "Spherecast",
+        "batch": "Summer 2024",
+        "website": "https://www.spherecast.ai/"
+      },
+      {
+        "yc_slug": "roger-2",
+        "name": "Roger",
+        "batch": "Summer 2024",
+        "website": "https://hireroger.com"
+      },
+      {
+        "yc_slug": "ultra",
+        "name": "Ultra",
+        "batch": "Summer 2024",
+        "website": "https://ultra.tech"
+      },
+      {
+        "yc_slug": "coval",
+        "name": "Coval",
+        "batch": "Summer 2024",
+        "website": "https://coval.dev"
+      },
+      {
+        "yc_slug": "spur",
+        "name": "Spur",
+        "batch": "Summer 2024",
+        "website": "https://www.spurtest.com/"
+      },
+      {
+        "yc_slug": "poka-labs",
+        "name": "Poka Labs",
+        "batch": "Summer 2024",
+        "website": "https://www.pokalabs.com/"
+      },
+      {
+        "yc_slug": "indemni",
+        "name": "Indemni",
+        "batch": "Winter 2024",
+        "website": "http://www.indemni.com"
+      },
+      {
+        "yc_slug": "getcrux",
+        "name": "GetCrux",
+        "batch": "Winter 2024",
+        "website": "http://getcrux.ai/"
+      },
+      {
+        "yc_slug": "reprompt",
+        "name": "Reprompt",
+        "batch": "Winter 2024",
+        "website": "https://repromptai.com"
+      },
+      {
+        "yc_slug": "inspectmind-ai",
+        "name": "InspectMind AI",
+        "batch": "Winter 2024",
+        "website": "https://www.inspectmind.ai"
+      },
+      {
+        "yc_slug": "yarn-2",
+        "name": "Yarn",
+        "batch": "Winter 2024",
+        "website": "https://www.yarn.so"
+      },
+      {
+        "yc_slug": "blacksmith",
+        "name": "Blacksmith",
+        "batch": "Winter 2024",
+        "website": "https://blacksmith.sh/"
+      },
+      {
+        "yc_slug": "haplotype-labs",
+        "name": "Haplotype Labs",
+        "batch": "Winter 2024",
+        "website": "https://www.haplotypelabs.com/"
+      },
+      {
+        "yc_slug": "healia",
+        "name": "Healia",
+        "batch": "Winter 2024",
+        "website": "https://www.healiahealth.com/"
+      },
+      {
+        "yc_slug": "trueclaim",
+        "name": "TrueClaim",
+        "batch": "Winter 2024",
+        "website": "https://www.trytrueclaim.com"
+      },
+      {
+        "yc_slug": "reform",
+        "name": "Reform",
+        "batch": "Winter 2024",
+        "website": "https://www.reformhq.com"
+      },
+      {
+        "yc_slug": "piramidal",
+        "name": "Piramidal",
+        "batch": "Winter 2024",
+        "website": "https://piramidal.ai"
+      },
+      {
+        "yc_slug": "senso",
+        "name": "Senso",
+        "batch": "Winter 2024",
+        "website": "http://www.senso.ai"
+      },
+      {
+        "yc_slug": "powder",
+        "name": "Powder",
+        "batch": "Winter 2024",
+        "website": "https://www.powderfi.com/"
+      },
+      {
+        "yc_slug": "commodityai",
+        "name": "CommodityAI",
+        "batch": "Winter 2024",
+        "website": "https://commodityai.io/"
+      },
+      {
+        "yc_slug": "xpay",
+        "name": "xPay",
+        "batch": "Winter 2024",
+        "website": "https://www.xpaycheckout.com/"
+      },
+      {
+        "yc_slug": "deepnight",
+        "name": "Deepnight",
+        "batch": "Winter 2024",
+        "website": "https://www.deepnight.ai/"
+      },
+      {
+        "yc_slug": "ocular-ai",
+        "name": "Ocular AI",
+        "batch": "Winter 2024",
+        "website": "https://useocular.com"
+      },
+      {
+        "yc_slug": "retell-ai",
+        "name": "Retell AI",
+        "batch": "Winter 2024",
+        "website": "https://retellai.com"
+      },
+      {
+        "yc_slug": "rove",
+        "name": "Rove",
+        "batch": "Winter 2024",
+        "website": "https://rove.com"
+      },
+      {
+        "yc_slug": "spark",
+        "name": "Spark",
+        "batch": "Winter 2024",
+        "website": "https://www.sparkhq.ai"
+      },
+      {
+        "yc_slug": "terrakotta",
+        "name": "Terrakotta",
+        "batch": "Winter 2024",
+        "website": "https://www.terrakotta.ai/"
+      },
+      {
+        "yc_slug": "stacksync",
+        "name": "Stacksync",
+        "batch": "Winter 2024",
+        "website": "https://www.stacksync.com/"
+      },
+      {
+        "yc_slug": "sonauto",
+        "name": "Sonauto",
+        "batch": "Winter 2024",
+        "website": "https://sonauto.ai/"
+      },
+      {
+        "yc_slug": "zep-ai",
+        "name": "Zep AI",
+        "batch": "Winter 2024",
+        "website": "https://www.getzep.com/"
+      },
+      {
+        "yc_slug": "openmart",
+        "name": "Openmart",
+        "batch": "Winter 2024",
+        "website": "https://www.openmart.com"
+      },
+      {
+        "yc_slug": "deep24",
+        "name": "Deep24",
+        "batch": "Winter 2024",
+        "website": "https://deep24.com"
+      },
+      {
+        "yc_slug": "brainbase-labs",
+        "name": "Brainbase Labs",
+        "batch": "Winter 2024",
+        "website": "https://brainbaselabs.com"
+      },
+      {
+        "yc_slug": "artos",
+        "name": "Artos",
+        "batch": "Winter 2024",
+        "website": "https://www.artosai.com/"
+      },
+      {
+        "yc_slug": "model-ml",
+        "name": "Model ML",
+        "batch": "Winter 2024",
+        "website": "https://www.modelml.com/"
+      },
+      {
+        "yc_slug": "betterbasket",
+        "name": "BetterBasket",
+        "batch": "Winter 2024",
+        "website": "http://www.betterbasket.com"
+      },
+      {
+        "yc_slug": "circleback",
+        "name": "Circleback",
+        "batch": "Winter 2024",
+        "website": "https://circleback.ai"
+      },
+      {
+        "yc_slug": "justai",
+        "name": "JustAI",
+        "batch": "Winter 2024",
+        "website": "https://getjust.ai"
+      },
+      {
+        "yc_slug": "yondu",
+        "name": "Yondu",
+        "batch": "Winter 2024",
+        "website": "https://yondu.ai/"
+      },
+      {
+        "yc_slug": "raindrop",
+        "name": "Raindrop",
+        "batch": "Winter 2024",
+        "website": "https://www.raindrop.ai"
+      },
+      {
+        "yc_slug": "prosights",
+        "name": "ProSights",
+        "batch": "Winter 2024",
+        "website": "https://prosights.co/"
+      },
+      {
+        "yc_slug": "opencall",
+        "name": "Opencall",
+        "batch": "Winter 2024",
+        "website": "https://opencall.ai"
+      },
+      {
+        "yc_slug": "offdeal",
+        "name": "OffDeal",
+        "batch": "Winter 2024",
+        "website": "https://offdeal.io"
+      },
+      {
+        "yc_slug": "andy-ai",
+        "name": "Andy AI",
+        "batch": "Winter 2024",
+        "website": "https://with-andy.com"
+      },
+      {
+        "yc_slug": "shiboleth",
+        "name": "Shiboleth",
+        "batch": "Winter 2024",
+        "website": "https://www.shiboleth.ai/"
+      },
+      {
+        "yc_slug": "conduit-ai",
+        "name": "Conduit",
+        "batch": "Winter 2024",
+        "website": "https://conduit.ai/?utm_source=referral&utm_medium=organic&utm_campaign=ycombinator"
+      },
+      {
+        "yc_slug": "whip",
+        "name": "Whip",
+        "batch": "Winter 2024",
+        "website": "https://whip.run/"
+      },
+      {
+        "yc_slug": "carma",
+        "name": "Carma",
+        "batch": "Winter 2024",
+        "website": "https://www.joincarma.com/"
+      },
+      {
+        "yc_slug": "astro-mechanica",
+        "name": "Astro Mechanica",
+        "batch": "Winter 2024",
+        "website": "https://astromecha.co/"
+      },
+      {
+        "yc_slug": "codeant-ai",
+        "name": "CodeAnt AI",
+        "batch": "Winter 2024",
+        "website": "https://codeant.ai/"
+      },
+      {
+        "yc_slug": "draftaid",
+        "name": "Draftaid",
+        "batch": "Winter 2024",
+        "website": "https://draftaid.io/"
+      },
+      {
+        "yc_slug": "ellipsis",
+        "name": "Ellipsis",
+        "batch": "Winter 2024",
+        "website": "https://ellipsis.dev"
+      },
+      {
+        "yc_slug": "dime-2",
+        "name": "Dime",
+        "batch": "Winter 2024",
+        "website": "https://www.dimehealth.ai/"
+      },
+      {
+        "yc_slug": "open",
+        "name": "Open",
+        "batch": "Winter 2024",
+        "website": "https://open.cx"
+      },
+      {
+        "yc_slug": "centralize",
+        "name": "Centralize",
+        "batch": "Winter 2024",
+        "website": "https://www.usecentralize.com/"
+      },
+      {
+        "yc_slug": "firebender",
+        "name": "Firebender",
+        "batch": "Winter 2024",
+        "website": "https://firebender.com"
+      },
+      {
+        "yc_slug": "infinity",
+        "name": "Infinity",
+        "batch": "Winter 2024",
+        "website": "https://www.infinityapp.in/"
+      },
+      {
+        "yc_slug": "14-ai",
+        "name": "14.ai",
+        "batch": "Winter 2024",
+        "website": "https://14.ai"
+      },
+      {
+        "yc_slug": "tamarind-bio",
+        "name": "Tamarind Bio",
+        "batch": "Winter 2024",
+        "website": "https://www.tamarind.bio"
+      },
+      {
+        "yc_slug": "clarion",
+        "name": "Clarion",
+        "batch": "Winter 2024",
+        "website": "https://clarionhealth.com"
+      },
+      {
+        "yc_slug": "cpgscout",
+        "name": "Scout",
+        "batch": "Winter 2024",
+        "website": "https://cpgscout.ai/"
+      },
+      {
+        "yc_slug": "omniai",
+        "name": "OmniAI",
+        "batch": "Winter 2024",
+        "website": "https://getomni.ai"
+      },
+      {
+        "yc_slug": "respan",
+        "name": "Respan",
+        "batch": "Winter 2024",
+        "website": "https://respan.ai"
+      },
+      {
+        "yc_slug": "promptarmor",
+        "name": "PromptArmor",
+        "batch": "Winter 2024",
+        "website": "https://promptarmor.com/"
+      },
+      {
+        "yc_slug": "zaymo",
+        "name": "Zaymo",
+        "batch": "Winter 2024",
+        "website": "https://zaymo.com"
+      },
+      {
+        "yc_slug": "cloudcruise",
+        "name": "CloudCruise",
+        "batch": "Winter 2024",
+        "website": "https://cloudcruise.com"
+      },
+      {
+        "yc_slug": "yoneda-labs",
+        "name": "Yoneda Labs",
+        "batch": "Winter 2024",
+        "website": "https://www.yonedalabs.com"
+      },
+      {
+        "yc_slug": "trellis-ai",
+        "name": "Trellis AI",
+        "batch": "Winter 2024",
+        "website": "https://runtrellis.com/"
+      },
+      {
+        "yc_slug": "greenboard",
+        "name": "Greenboard",
+        "batch": "Winter 2024",
+        "website": "https://www.greenboard.com"
+      },
+      {
+        "yc_slug": "artisan",
+        "name": "Artisan",
+        "batch": "Winter 2024",
+        "website": "https://artisan.co/?utm_source=ycombinator"
+      },
+      {
+        "yc_slug": "roe",
+        "name": "ROE",
+        "batch": "Winter 2024",
+        "website": "https://getroe.ai"
+      },
+      {
+        "yc_slug": "furtherai",
+        "name": "FurtherAI",
+        "batch": "Winter 2024",
+        "website": "https://www.furtherai.com/"
+      },
+      {
+        "yc_slug": "arini",
+        "name": "Arini",
+        "batch": "Winter 2024",
+        "website": "https://www.arini.ai"
+      },
+      {
+        "yc_slug": "paradigm",
+        "name": "Paradigm",
+        "batch": "Winter 2024",
+        "website": "https://www.paradigmai.com/"
+      },
+      {
+        "yc_slug": "pointone",
+        "name": "PointOne",
+        "batch": "Winter 2024",
+        "website": "https://pointone.com/"
+      },
+      {
+        "yc_slug": "averyiq",
+        "name": "AveryIQ",
+        "batch": "Winter 2024",
+        "website": "https://averyiq.com"
+      },
+      {
+        "yc_slug": "wavelength",
+        "name": "Wavelength",
+        "batch": "Winter 2024",
+        "website": "https://wavelength.cx/"
+      },
+      {
+        "yc_slug": "fractal-labs",
+        "name": "Fractal Labs",
+        "batch": "Winter 2024",
+        "website": "https://fractal-labs.gg/"
+      },
+      {
+        "yc_slug": "pivot-robotics",
+        "name": "Pivot Robotics",
+        "batch": "Winter 2024",
+        "website": "https://pivotrobotics.com"
+      },
+      {
+        "yc_slug": "garage-2",
+        "name": "Garage",
+        "batch": "Winter 2024",
+        "website": "https://www.shopgarage.com/"
+      },
+      {
+        "yc_slug": "alex-com",
+        "name": "Alex",
+        "batch": "Winter 2024",
+        "website": "https://alex.com"
+      },
+      {
+        "yc_slug": "newton",
+        "name": "Newton",
+        "batch": "Winter 2024",
+        "website": "https://joinnewton.com"
+      },
+      {
+        "yc_slug": "tuesday-lab",
+        "name": "Tuesday Lab",
+        "batch": "Winter 2024",
+        "website": "https://www.tuesdaylab.com"
+      },
+      {
+        "yc_slug": "momentic",
+        "name": "Momentic",
+        "batch": "Winter 2024",
+        "website": "https://momentic.ai"
+      },
+      {
+        "yc_slug": "reducto",
+        "name": "Reducto",
+        "batch": "Winter 2024",
+        "website": "https://reducto.ai"
+      },
+      {
+        "yc_slug": "tracecat",
+        "name": "Tracecat",
+        "batch": "Winter 2024",
+        "website": "https://tracecat.com"
+      },
+      {
+        "yc_slug": "kabilah",
+        "name": "Kabilah",
+        "batch": "Winter 2024",
+        "website": "https://www.kabilah.com"
+      },
+      {
+        "yc_slug": "sonia",
+        "name": "Sonia",
+        "batch": "Winter 2024",
+        "website": "https://soniahealth.com"
+      },
+      {
+        "yc_slug": "maihem",
+        "name": "Maihem",
+        "batch": "Winter 2024",
+        "website": "https://www.maihem.com"
+      },
+      {
+        "yc_slug": "duckie",
+        "name": "Duckie",
+        "batch": "Winter 2024",
+        "website": "https://duckie.ai/"
+      },
+      {
+        "yc_slug": "ubicloud",
+        "name": "Ubicloud",
+        "batch": "Winter 2024",
+        "website": "https://www.ubicloud.com"
+      },
+      {
+        "yc_slug": "greptile",
+        "name": "Greptile",
+        "batch": "Winter 2024",
+        "website": "https://www.greptile.com"
+      },
+      {
+        "yc_slug": "ego",
+        "name": "ego",
+        "batch": "Winter 2024",
+        "website": "https://egoai.com"
+      },
+      {
+        "yc_slug": "legora",
+        "name": "Legora",
+        "batch": "Winter 2024",
+        "website": "https://www.legora.com/"
+      },
+      {
+        "yc_slug": "scritch",
+        "name": "Scritch",
+        "batch": "Winter 2024",
+        "website": "https://www.scritchai.com"
+      },
+      {
+        "yc_slug": "relari",
+        "name": "Relari",
+        "batch": "Winter 2024",
+        "website": "https://www.relari.ai/"
+      },
+      {
+        "yc_slug": "drymerge",
+        "name": "DryMerge",
+        "batch": "Winter 2024",
+        "website": "https://www.drymerge.com"
+      },
+      {
+        "yc_slug": "navier-ai",
+        "name": "Navier AI",
+        "batch": "Winter 2024",
+        "website": "http://navier.ai"
+      },
+      {
+        "yc_slug": "upsolve-ai",
+        "name": "Upsolve AI",
+        "batch": "Winter 2024",
+        "website": "https://upsolve.ai/"
+      },
+      {
+        "yc_slug": "event-horizon-labs",
+        "name": "Event Horizon Labs",
+        "batch": "Winter 2024",
+        "website": "https://www.ehl.markets/"
+      },
+      {
+        "yc_slug": "gumloop",
+        "name": "Gumloop",
+        "batch": "Winter 2024",
+        "website": "https://www.gumloop.com/"
+      },
+      {
+        "yc_slug": "onyx",
+        "name": "Onyx",
+        "batch": "Winter 2024",
+        "website": "https://www.onyx.app/"
+      },
+      {
+        "yc_slug": "governgpt",
+        "name": "GovernGPT",
+        "batch": "Winter 2024",
+        "website": "https://www.governgpt.com/"
+      },
+      {
+        "yc_slug": "flex",
+        "name": "Flex",
+        "batch": "Summer 2023",
+        "website": "https://www.withflex.com/shop"
+      },
+      {
+        "yc_slug": "healthtech-1",
+        "name": "Healthtech 1",
+        "batch": "Summer 2023",
+        "website": "https://www.healthtech1.uk/"
+      },
+      {
+        "yc_slug": "feanix-biotechnologies",
+        "name": "Feanix Biotechnologies",
+        "batch": "Summer 2023",
+        "website": "https://www.feanixbio.com/"
+      },
+      {
+        "yc_slug": "coba",
+        "name": "Coba",
+        "batch": "Summer 2023",
+        "website": "https://www.coba.ai"
+      },
+      {
+        "yc_slug": "tempo-2",
+        "name": "Tempo",
+        "batch": "Summer 2023",
+        "website": "https://www.tempo.new"
+      },
+      {
+        "yc_slug": "morph",
+        "name": "Morph",
+        "batch": "Summer 2023",
+        "website": "https://morphllm.com"
+      },
+      {
+        "yc_slug": "nowadays",
+        "name": "Nowadays",
+        "batch": "Summer 2023",
+        "website": "http://nowadays.ai/"
+      },
+      {
+        "yc_slug": "structured-labs",
+        "name": "Structured Labs",
+        "batch": "Summer 2023",
+        "website": "https://www.structuredlabs.com/"
+      },
+      {
+        "yc_slug": "giga",
+        "name": "Giga",
+        "batch": "Summer 2023",
+        "website": "https://giga.ai/"
+      },
+      {
+        "yc_slug": "shadeform",
+        "name": "Shadeform",
+        "batch": "Summer 2023",
+        "website": "https://www.shadeform.ai/"
+      },
+      {
+        "yc_slug": "cargo",
+        "name": "Cargo",
+        "batch": "Summer 2023",
+        "website": "https://getcargo.io"
+      },
+      {
+        "yc_slug": "roame",
+        "name": "Roame",
+        "batch": "Summer 2023",
+        "website": "https://roame.travel/"
+      },
+      {
+        "yc_slug": "dili",
+        "name": "dili",
+        "batch": "Summer 2023",
+        "website": "https://www.dili.com"
+      },
+      {
+        "yc_slug": "trayd",
+        "name": "Trayd",
+        "batch": "Summer 2023",
+        "website": "https://www.buildtrayd.com/"
+      },
+      {
+        "yc_slug": "cair-health",
+        "name": "Cair Health",
+        "batch": "Summer 2023",
+        "website": "https://www.cairhealth.com/"
+      },
+      {
+        "yc_slug": "paradedb",
+        "name": "ParadeDB",
+        "batch": "Summer 2023",
+        "website": "https://paradedb.com"
+      },
+      {
+        "yc_slug": "quill-bills",
+        "name": "Quill Bills",
+        "batch": "Summer 2023",
+        "website": "https://quillbills.com"
+      },
+      {
+        "yc_slug": "strada",
+        "name": "Strada",
+        "batch": "Summer 2023",
+        "website": "https://www.getstrada.com/"
+      },
+      {
+        "yc_slug": "happyrobot",
+        "name": "HappyRobot",
+        "batch": "Summer 2023",
+        "website": "https://happyrobot.ai"
+      },
+      {
+        "yc_slug": "pure",
+        "name": "Pure",
+        "batch": "Summer 2023",
+        "website": "https://www.collectpure.com/"
+      },
+      {
+        "yc_slug": "sante",
+        "name": "Santé",
+        "batch": "Summer 2023",
+        "website": "https://santehq.com/"
+      },
+      {
+        "yc_slug": "langdock",
+        "name": "Langdock",
+        "batch": "Summer 2023",
+        "website": "https://langdock.com"
+      },
+      {
+        "yc_slug": "inventive-ai",
+        "name": "Inventive AI",
+        "batch": "Summer 2023",
+        "website": "https://www.inventive.ai/"
+      },
+      {
+        "yc_slug": "syntheticfi",
+        "name": "SyntheticFi",
+        "batch": "Summer 2023",
+        "website": "https://www.syntheticfi.com/"
+      },
+      {
+        "yc_slug": "sendblue",
+        "name": "Sendblue",
+        "batch": "Summer 2023",
+        "website": "https://www.sendblue.com"
+      },
+      {
+        "yc_slug": "sweep",
+        "name": "Sweep",
+        "batch": "Summer 2023",
+        "website": "https://sweep.dev/"
+      },
+      {
+        "yc_slug": "silimate",
+        "name": "Silimate",
+        "batch": "Summer 2023",
+        "website": "https://www.silimate.com"
+      },
+      {
+        "yc_slug": "andromeda-surgical",
+        "name": "Andromeda Surgical",
+        "batch": "Summer 2023",
+        "website": "http://www.andromedasurgical.com"
+      },
+      {
+        "yc_slug": "roundtable",
+        "name": "Roundtable",
+        "batch": "Summer 2023",
+        "website": "https://roundtable.ai"
+      },
+      {
+        "yc_slug": "vectorshift",
+        "name": "VectorShift",
+        "batch": "Summer 2023",
+        "website": "https://www.vectorshift.ai"
+      },
+      {
+        "yc_slug": "safetykit",
+        "name": "SafetyKit",
+        "batch": "Summer 2023",
+        "website": "https://www.safetykit.com/"
+      },
+      {
+        "yc_slug": "sola",
+        "name": "Sola",
+        "batch": "Summer 2023",
+        "website": "https://www.sola-solutions.com/"
+      },
+      {
+        "yc_slug": "inlet-2",
+        "name": "Inlet",
+        "batch": "Summer 2023",
+        "website": "https://inletai.com"
+      },
+      {
+        "yc_slug": "converge",
+        "name": "Converge",
+        "batch": "Summer 2023",
+        "website": "http://www.runconverge.com"
+      },
+      {
+        "yc_slug": "osium-ai",
+        "name": "Osium AI",
+        "batch": "Summer 2023",
+        "website": "https://osium.ai/"
+      },
+      {
+        "yc_slug": "rimward",
+        "name": "Rimward",
+        "batch": "Summer 2023",
+        "website": "https://rimward.ai/"
+      },
+      {
+        "yc_slug": "letter-ai",
+        "name": "Letter AI",
+        "batch": "Summer 2023",
+        "website": "https://www.letter.ai"
+      },
+      {
+        "yc_slug": "guac",
+        "name": "Guac",
+        "batch": "Summer 2023",
+        "website": "https://www.guac.com/"
+      },
+      {
+        "yc_slug": "empirical-health",
+        "name": "Empirical Health",
+        "batch": "Summer 2023",
+        "website": "https://empirical.health"
+      },
+      {
+        "yc_slug": "fortuna-health",
+        "name": "Fortuna Health",
+        "batch": "Summer 2023",
+        "website": "https://fortunahealth.com/"
+      },
+      {
+        "yc_slug": "aglide",
+        "name": "Aglide",
+        "batch": "Summer 2023",
+        "website": "https://aglide.com"
+      },
+      {
+        "yc_slug": "agentcollect",
+        "name": "AgentCollect",
+        "batch": "Summer 2023",
+        "website": "https://www.agentcollect.com"
+      },
+      {
+        "yc_slug": "bretton-ai",
+        "name": "Bretton AI",
+        "batch": "Summer 2023",
+        "website": "https://www.bretton.com/"
+      },
+      {
+        "yc_slug": "metalware",
+        "name": "Metalware",
+        "batch": "Summer 2023",
+        "website": "https://www.metalware.com/"
+      },
+      {
+        "yc_slug": "upstream",
+        "name": "Upstream",
+        "batch": "Summer 2023",
+        "website": "https://www.upstream.do/"
+      },
+      {
+        "yc_slug": "surface-labs",
+        "name": "Surface Labs",
+        "batch": "Summer 2023",
+        "website": "https://withsurface.com"
+      },
+      {
+        "yc_slug": "maintouch",
+        "name": "maintouch",
+        "batch": "Summer 2023",
+        "website": "https://maintouch.com/?utm_source=bookface&utm_medium=social&utm_campaign=profile"
+      },
+      {
+        "yc_slug": "vetrec",
+        "name": "VetRec",
+        "batch": "Summer 2023",
+        "website": "https://vetrec.io"
+      },
+      {
+        "yc_slug": "numen",
+        "name": "Numen",
+        "batch": "Summer 2023",
+        "website": "https://www.numen.com"
+      },
+      {
+        "yc_slug": "decoda-health",
+        "name": "Decoda Health",
+        "batch": "Summer 2023",
+        "website": "https://decodahealth.com/"
+      },
+      {
+        "yc_slug": "cardinal-gray",
+        "name": "Cardinal Gray",
+        "batch": "Summer 2023",
+        "website": "https://www.cardinalgray.com/"
+      },
+      {
+        "yc_slug": "margin",
+        "name": "Margin",
+        "batch": "Summer 2023",
+        "website": "https://usemargin.com/"
+      },
+      {
+        "yc_slug": "fleetworks",
+        "name": "FleetWorks",
+        "batch": "Summer 2023",
+        "website": "https://fleetworks.ai"
+      },
+      {
+        "yc_slug": "health-harbor",
+        "name": "Health Harbor",
+        "batch": "Summer 2023",
+        "website": "https://healthharbor.co/"
+      },
+      {
+        "yc_slug": "outset",
+        "name": "Outset",
+        "batch": "Summer 2023",
+        "website": "https://outset.ai/"
+      },
+      {
+        "yc_slug": "corgea",
+        "name": "Corgea",
+        "batch": "Summer 2023",
+        "website": "https://www.corgea.com/"
+      },
+      {
+        "yc_slug": "terminal",
+        "name": "Terminal",
+        "batch": "Summer 2023",
+        "website": "https://www.withterminal.com/"
+      },
+      {
+        "yc_slug": "venta-ai",
+        "name": "Venta AI",
+        "batch": "Summer 2023",
+        "website": "https://www.getventa.ai"
+      },
+      {
+        "yc_slug": "campfire-2",
+        "name": "Campfire",
+        "batch": "Summer 2023",
+        "website": "https://campfire.ai"
+      },
+      {
+        "yc_slug": "alguna",
+        "name": "Alguna",
+        "batch": "Summer 2023",
+        "website": "https://alguna.com"
+      },
+      {
+        "yc_slug": "sid",
+        "name": "SID",
+        "batch": "Summer 2023",
+        "website": "https://www.sid.ai"
+      },
+      {
+        "yc_slug": "capi-money",
+        "name": "Capi Money",
+        "batch": "Summer 2023",
+        "website": "https://www.capimoney.com"
+      },
+      {
+        "yc_slug": "baud-labs",
+        "name": "Baud Labs",
+        "batch": "Summer 2023",
+        "website": "https://baudlabs.ai"
+      },
+      {
+        "yc_slug": "subsets",
+        "name": "Subsets",
+        "batch": "Summer 2023",
+        "website": "https://www.subsets.com"
+      },
+      {
+        "yc_slug": "revamp",
+        "name": "Revamp",
+        "batch": "Summer 2023",
+        "website": "https://www.getrevamp.ai"
+      },
+      {
+        "yc_slug": "airgoods",
+        "name": "Airgoods",
+        "batch": "Summer 2023",
+        "website": "https://airgoods.com/"
+      },
+      {
+        "yc_slug": "solve-intelligence",
+        "name": "Solve Intelligence",
+        "batch": "Summer 2023",
+        "website": "https://www.solveintelligence.com/"
+      },
+      {
+        "yc_slug": "craftwork",
+        "name": "Craftwork",
+        "batch": "Summer 2023",
+        "website": "https://craftwork.com/"
+      },
+      {
+        "yc_slug": "electric-air-2",
+        "name": "Electric Air",
+        "batch": "Summer 2023",
+        "website": "https://www.electricair.io/"
+      },
+      {
+        "yc_slug": "prosper",
+        "name": "Prosper",
+        "batch": "Summer 2023",
+        "website": "https://www.getprosper.ai?utm_source=yc&utm_medium=directory&utm_campaign=yc_directory"
+      },
+      {
+        "yc_slug": "every",
+        "name": "Every",
+        "batch": "Summer 2023",
+        "website": "https://every.io/"
+      },
+      {
+        "yc_slug": "casca",
+        "name": "Casca",
+        "batch": "Summer 2023",
+        "website": "https://www.cascading.ai/"
+      },
+      {
+        "yc_slug": "readily",
+        "name": "Readily",
+        "batch": "Summer 2023",
+        "website": "https://readily.co"
+      },
+      {
+        "yc_slug": "proprise",
+        "name": "PropRise",
+        "batch": "Summer 2023",
+        "website": "https://www.proprise.ai/"
+      },
+      {
+        "yc_slug": "pointhound",
+        "name": "Pointhound",
+        "batch": "Summer 2023",
+        "website": "http://www.pointhound.com"
+      },
+      {
+        "yc_slug": "diligent",
+        "name": "Diligent",
+        "batch": "Summer 2023",
+        "website": "https://godiligent.ai"
+      },
+      {
+        "yc_slug": "bland-ai",
+        "name": "Bland AI",
+        "batch": "Summer 2023",
+        "website": "https://bland.com"
+      },
+      {
+        "yc_slug": "sohar-health",
+        "name": "Sohar Health",
+        "batch": "Summer 2023",
+        "website": "https://www.soharhealth.com"
+      },
+      {
+        "yc_slug": "sweetspot",
+        "name": "Sweetspot",
+        "batch": "Summer 2023",
+        "website": "https://www.sweetspot.so/"
+      },
+      {
+        "yc_slug": "aivideo-com",
+        "name": "AIVideo.com",
+        "batch": "Summer 2023",
+        "website": "https://aivideo.com"
+      },
+      {
+        "yc_slug": "dioxus-labs",
+        "name": "Dioxus Labs",
+        "batch": "Summer 2023",
+        "website": "https://dioxuslabs.com"
+      },
+      {
+        "yc_slug": "hyperbound",
+        "name": "Hyperbound",
+        "batch": "Summer 2023",
+        "website": "https://hyperbound.ai"
+      },
+      {
+        "yc_slug": "accend",
+        "name": "Accend",
+        "batch": "Summer 2023",
+        "website": "https://www.withaccend.com/"
+      },
+      {
+        "yc_slug": "elyos-ai",
+        "name": "Elyos AI",
+        "batch": "Summer 2023",
+        "website": "https://www.elyos.ai/"
+      },
+      {
+        "yc_slug": "clearest-health",
+        "name": "Clearest Health",
+        "batch": "Summer 2023",
+        "website": "https://clearesthealth.com/"
+      },
+      {
+        "yc_slug": "twenty",
+        "name": "Twenty",
+        "batch": "Summer 2023",
+        "website": "https://twenty.com"
+      },
+      {
+        "yc_slug": "kino-ai",
+        "name": "Kino AI",
+        "batch": "Summer 2023",
+        "website": "https://kino.ai"
+      },
+      {
+        "yc_slug": "kapa-ai",
+        "name": "kapa.ai",
+        "batch": "Summer 2023",
+        "website": "https://www.kapa.ai"
+      },
+      {
+        "yc_slug": "artie",
+        "name": "Artie",
+        "batch": "Summer 2023",
+        "website": "https://www.artie.com/"
+      },
+      {
+        "yc_slug": "hylight",
+        "name": "HyLight",
+        "batch": "Summer 2023",
+        "website": "https://www.hylight.aero/"
+      },
+      {
+        "yc_slug": "hockeystack",
+        "name": "HockeyStack",
+        "batch": "Summer 2023",
+        "website": "https://hockeystack.com"
+      },
+      {
+        "yc_slug": "yn",
+        "name": "Y/n",
+        "batch": "Summer 2023",
+        "website": "https://yn.app/"
+      },
+      {
+        "yc_slug": "yuma-ai",
+        "name": "Yuma AI",
+        "batch": "Winter 2023",
+        "website": "https://yuma.ai"
+      },
+      {
+        "yc_slug": "automat",
+        "name": "Automat",
+        "batch": "Winter 2023",
+        "website": "https://www.runautomat.com/"
+      },
+      {
+        "yc_slug": "speedy-labs",
+        "name": "Speedy Labs",
+        "batch": "Winter 2023",
+        "website": "https://speedylabs.ai/"
+      },
+      {
+        "yc_slug": "finta",
+        "name": "Finta",
+        "batch": "Winter 2023",
+        "website": "https://www.finta.com/"
+      },
+      {
+        "yc_slug": "litellm",
+        "name": "LiteLLM",
+        "batch": "Winter 2023",
+        "website": "https://www.litellm.ai/"
+      },
+      {
+        "yc_slug": "vendora",
+        "name": "Vendora",
+        "batch": "Winter 2023",
+        "website": "https://www.vendora.io/"
+      },
+      {
+        "yc_slug": "type",
+        "name": "Type",
+        "batch": "Winter 2023",
+        "website": "https://type.ai"
+      },
+      {
+        "yc_slug": "social-radar",
+        "name": "Social Radar",
+        "batch": "Winter 2023",
+        "website": "https://socialradar.app"
+      },
+      {
+        "yc_slug": "persana-ai",
+        "name": "Persana AI",
+        "batch": "Winter 2023",
+        "website": "https://www.persana.ai/"
+      },
+      {
+        "yc_slug": "kyber",
+        "name": "Kyber",
+        "batch": "Winter 2023",
+        "website": "https://askkyber.com"
+      },
+      {
+        "yc_slug": "escape",
+        "name": "Escape",
+        "batch": "Winter 2023",
+        "website": "https://escape.tech"
+      },
+      {
+        "yc_slug": "vector",
+        "name": "Vector",
+        "batch": "Winter 2023",
+        "website": "https://vector.co"
+      },
+      {
+        "yc_slug": "pier",
+        "name": "Pier",
+        "batch": "Winter 2023",
+        "website": "http://www.pier-finance.com"
+      },
+      {
+        "yc_slug": "finni-health",
+        "name": "Finni Health",
+        "batch": "Winter 2023",
+        "website": "https://www.finnihealth.com/"
+      },
+      {
+        "yc_slug": "untether-labs",
+        "name": "Untether Labs",
+        "batch": "Winter 2023",
+        "website": "https://untetherlabs.com"
+      },
+      {
+        "yc_slug": "berry",
+        "name": "Berry",
+        "batch": "Winter 2023",
+        "website": "https://berryai.com/"
+      },
+      {
+        "yc_slug": "conduit",
+        "name": "Conduit",
+        "batch": "Winter 2023",
+        "website": "http://helloconduit.com"
+      },
+      {
+        "yc_slug": "constant",
+        "name": "Constant",
+        "batch": "Winter 2023",
+        "website": "https://useconstant.com"
+      },
+      {
+        "yc_slug": "hindsight",
+        "name": "Hindsight",
+        "batch": "Winter 2023",
+        "website": "https://www.usehindsight.com/"
+      },
+      {
+        "yc_slug": "invopop",
+        "name": "Invopop",
+        "batch": "Winter 2023",
+        "website": "https://www.invopop.com/"
+      },
+      {
+        "yc_slug": "helios",
+        "name": "Helios",
+        "batch": "Winter 2023",
+        "website": "https://www.usehelios.ai/"
+      },
+      {
+        "yc_slug": "clad",
+        "name": "Clad",
+        "batch": "Winter 2023",
+        "website": "https://withclad.com/"
+      },
+      {
+        "yc_slug": "pylon-2",
+        "name": "Pylon",
+        "batch": "Winter 2023",
+        "website": "https://usepylon.com/?utm_source=bookface&utm_medium=referral&utm_campaign=pylon-profile"
+      },
+      {
+        "yc_slug": "diffuse-bio",
+        "name": "Diffuse Bio",
+        "batch": "Winter 2023",
+        "website": "http://diffuse.bio"
+      },
+      {
+        "yc_slug": "inbuild",
+        "name": "inBuild",
+        "batch": "Winter 2023",
+        "website": "https://www.inbuild.ai/"
+      },
+      {
+        "yc_slug": "loula",
+        "name": "Loula",
+        "batch": "Winter 2023",
+        "website": "https://joinloula.com"
+      },
+      {
+        "yc_slug": "sirdab",
+        "name": "Sirdab",
+        "batch": "Winter 2023",
+        "website": "https://sirdab.co/en"
+      },
+      {
+        "yc_slug": "superkalam",
+        "name": "SuperKalam",
+        "batch": "Winter 2023",
+        "website": "https://superkalam.com"
+      },
+      {
+        "yc_slug": "vendah",
+        "name": "Vendah",
+        "batch": "Winter 2023",
+        "website": "https://vendah.com.br/"
+      },
+      {
+        "yc_slug": "alaan",
+        "name": "Alaan",
+        "batch": "Winter 2023",
+        "website": "https://www.alaan.com/"
+      },
+      {
+        "yc_slug": "vitalize",
+        "name": "Vitalize",
+        "batch": "Winter 2023",
+        "website": "https://vitalize.care"
+      },
+      {
+        "yc_slug": "infinia",
+        "name": "Infinia",
+        "batch": "Winter 2023",
+        "website": "https://www.infiniaweb.com/"
+      },
+      {
+        "yc_slug": "finic",
+        "name": "Finic",
+        "batch": "Winter 2023",
+        "website": "https://www.finic.ai"
+      },
+      {
+        "yc_slug": "onshore",
+        "name": "Onshore",
+        "batch": "Winter 2023",
+        "website": "https://onshore.com"
+      },
+      {
+        "yc_slug": "hadrius",
+        "name": "Hadrius",
+        "batch": "Winter 2023",
+        "website": "https://www.hadrius.com"
+      },
+      {
+        "yc_slug": "boundary",
+        "name": "Boundary",
+        "batch": "Winter 2023",
+        "website": "https://www.boundaryml.com"
+      },
+      {
+        "yc_slug": "clickpe",
+        "name": "ClickPe",
+        "batch": "Winter 2023",
+        "website": "https://clickpe.ai/"
+      },
+      {
+        "yc_slug": "variance",
+        "name": "Variance",
+        "batch": "Winter 2023",
+        "website": "https://www.variance.com/"
+      },
+      {
+        "yc_slug": "222",
+        "name": "222",
+        "batch": "Winter 2023",
+        "website": "https://222.place"
+      },
+      {
+        "yc_slug": "icepanel",
+        "name": "IcePanel",
+        "batch": "Winter 2023",
+        "website": "https://icepanel.io"
+      },
+      {
+        "yc_slug": "storyboarder",
+        "name": "Storyboarder",
+        "batch": "Winter 2023",
+        "website": "https://storyboarder.com"
+      },
+      {
+        "yc_slug": "1stcollab",
+        "name": "1stCollab",
+        "batch": "Winter 2023",
+        "website": "https://1stcollab.com/"
+      },
+      {
+        "yc_slug": "orchid",
+        "name": "Orchid",
+        "batch": "Winter 2023",
+        "website": "https://orchid.health"
+      },
+      {
+        "yc_slug": "truewind",
+        "name": "Truewind",
+        "batch": "Winter 2023",
+        "website": "https://www.trytruewind.com"
+      },
+      {
+        "yc_slug": "shortloop",
+        "name": "ShortLoop",
+        "batch": "Winter 2023",
+        "website": "https://shortloop.dev/"
+      },
+      {
+        "yc_slug": "inkeep",
+        "name": "Inkeep",
+        "batch": "Winter 2023",
+        "website": "https://inkeep.com"
+      },
+      {
+        "yc_slug": "relace",
+        "name": "Relace",
+        "batch": "Winter 2023",
+        "website": "https://relace.ai"
+      },
+      {
+        "yc_slug": "extend",
+        "name": "Extend",
+        "batch": "Winter 2023",
+        "website": "https://www.extend.ai/"
+      },
+      {
+        "yc_slug": "dream3d",
+        "name": "Dream3D",
+        "batch": "Winter 2023",
+        "website": "https://dream3d.com"
+      },
+      {
+        "yc_slug": "haven-2",
+        "name": "Haven",
+        "batch": "Winter 2023",
+        "website": "https://www.usehaven.ai/"
+      },
+      {
+        "yc_slug": "suger",
+        "name": "Suger",
+        "batch": "Winter 2023",
+        "website": "https://www.suger.io/"
+      },
+      {
+        "yc_slug": "polotab",
+        "name": "PoloTab",
+        "batch": "Winter 2023",
+        "website": "https://polotab.com"
+      },
+      {
+        "yc_slug": "gooseworks",
+        "name": "Gooseworks",
+        "batch": "Winter 2023",
+        "website": "https://gooseworks.ai/"
+      },
+      {
+        "yc_slug": "cosine",
+        "name": "Cosine",
+        "batch": "Winter 2023",
+        "website": "http://www.cosine.sh"
+      },
+      {
+        "yc_slug": "pirros",
+        "name": "Pirros",
+        "batch": "Winter 2023",
+        "website": "http://pirros.com"
+      },
+      {
+        "yc_slug": "vooma",
+        "name": "Vooma",
+        "batch": "Winter 2023",
+        "website": "https://www.vooma.ai"
+      },
+      {
+        "yc_slug": "coperniq",
+        "name": "Coperniq",
+        "batch": "Winter 2023",
+        "website": "https://coperniq.io"
+      },
+      {
+        "yc_slug": "goveagle",
+        "name": "GovEagle",
+        "batch": "Winter 2023",
+        "website": "https://www.goveagle.com/"
+      },
+      {
+        "yc_slug": "justpaid",
+        "name": "JustPaid",
+        "batch": "Winter 2023",
+        "website": "https://www.justpaid.ai"
+      },
+      {
+        "yc_slug": "narrative",
+        "name": "Narrative",
+        "batch": "Winter 2023",
+        "website": "https://www.trynarrative.com/"
+      },
+      {
+        "yc_slug": "omnistrate",
+        "name": "Omnistrate",
+        "batch": "Winter 2023",
+        "website": "http://www.omnistrate.com"
+      },
+      {
+        "yc_slug": "tennr",
+        "name": "Tennr",
+        "batch": "Winter 2023",
+        "website": "https://www.tennr.com"
+      },
+      {
+        "yc_slug": "salient",
+        "name": "Salient",
+        "batch": "Winter 2023",
+        "website": "https://www.trysalient.com"
+      },
+      {
+        "yc_slug": "glass-health",
+        "name": "Glass Health",
+        "batch": "Winter 2023",
+        "website": "https://glass.health"
+      },
+      {
+        "yc_slug": "ohm-2",
+        "name": "Ohm",
+        "batch": "Winter 2023",
+        "website": "https://www.ohm.ai"
+      },
+      {
+        "yc_slug": "pair-ai",
+        "name": "Pair AI",
+        "batch": "Winter 2023",
+        "website": "https://www.pairai.com/"
+      },
+      {
+        "yc_slug": "mercoa",
+        "name": "Mercoa",
+        "batch": "Winter 2023",
+        "website": "http://mercoa.com"
+      },
+      {
+        "yc_slug": "numeral",
+        "name": "Numeral",
+        "batch": "Winter 2023",
+        "website": "https://www.numeral.com/"
+      },
+      {
+        "yc_slug": "nango",
+        "name": "Nango",
+        "batch": "Winter 2023",
+        "website": "https://nango.dev"
+      },
+      {
+        "yc_slug": "hammr",
+        "name": "Hammr",
+        "batch": "Winter 2023",
+        "website": "https://www.hammr.com"
+      },
+      {
+        "yc_slug": "flexdesk",
+        "name": "FlexDesk",
+        "batch": "Winter 2023",
+        "website": "https://www.flexdesk.com/"
+      },
+      {
+        "yc_slug": "latent",
+        "name": "Latent",
+        "batch": "Winter 2023",
+        "website": "https://latenthealth.com"
+      },
+      {
+        "yc_slug": "concourse",
+        "name": "Concourse",
+        "batch": "Winter 2023",
+        "website": "https://concourse.co/"
+      },
+      {
+        "yc_slug": "rollstack-2",
+        "name": "Rollstack",
+        "batch": "Winter 2023",
+        "website": "https://www.rollstack.com"
+      },
+      {
+        "yc_slug": "magic-patterns",
+        "name": "Magic Patterns",
+        "batch": "Winter 2023",
+        "website": "https://www.magicpatterns.com/"
+      },
+      {
+        "yc_slug": "credal-ai",
+        "name": "Credal.ai",
+        "batch": "Winter 2023",
+        "website": "https://credal.ai"
+      },
+      {
+        "yc_slug": "trigger-dev",
+        "name": "Trigger.dev",
+        "batch": "Winter 2023",
+        "website": "https://trigger.dev"
+      },
+      {
+        "yc_slug": "reflex",
+        "name": "Reflex",
+        "batch": "Winter 2023",
+        "website": "https://reflex.dev"
+      },
+      {
+        "yc_slug": "finvest",
+        "name": "Finvest",
+        "batch": "Winter 2023",
+        "website": "https://www.getfinvest.com/"
+      },
+      {
+        "yc_slug": "designbase",
+        "name": "Designbase",
+        "batch": "Winter 2023",
+        "website": "https://www.designbase.com/"
+      },
+      {
+        "yc_slug": "stackai",
+        "name": "StackAI",
+        "batch": "Winter 2023",
+        "website": "https://www.stackai.com"
+      },
+      {
+        "yc_slug": "middleware",
+        "name": "Middleware",
+        "batch": "Winter 2023",
+        "website": "https://www.middleware.io"
+      },
+      {
+        "yc_slug": "infisical",
+        "name": "Infisical",
+        "batch": "Winter 2023",
+        "website": "https://infisical.com"
+      },
+      {
+        "yc_slug": "avoca",
+        "name": "Avoca",
+        "batch": "Winter 2023",
+        "website": "https://www.avoca.ai/"
+      },
+      {
+        "yc_slug": "rubbrband",
+        "name": "Rubbrband",
+        "batch": "Winter 2023",
+        "website": "https://rubbrband.com"
+      },
+      {
+        "yc_slug": "zudowork",
+        "name": "zudo.work",
+        "batch": "Winter 2023",
+        "website": "https://zudo.work/"
+      },
+      {
+        "yc_slug": "sameday",
+        "name": "Sameday",
+        "batch": "Winter 2023",
+        "website": "https://www.gosameday.com/"
+      },
+      {
+        "yc_slug": "chima",
+        "name": "Chima",
+        "batch": "Winter 2023",
+        "website": "https://www.withchima.com/"
+      },
+      {
+        "yc_slug": "alphawatch-ai",
+        "name": "Alphawatch AI",
+        "batch": "Winter 2023",
+        "website": "https://alphawatch.ai"
+      },
+      {
+        "yc_slug": "polymath-robotics",
+        "name": "Polymath Robotics",
+        "batch": "Summer 2022",
+        "website": "http://www.polymathrobotics.com"
+      },
+      {
+        "yc_slug": "coverage-cat",
+        "name": "Coverage Cat",
+        "batch": "Summer 2022",
+        "website": "https://www.coveragecat.com/"
+      },
+      {
+        "yc_slug": "accessowl",
+        "name": "AccessOwl",
+        "batch": "Summer 2022",
+        "website": "https://www.accessowl.io/"
+      },
+      {
+        "yc_slug": "landeed",
+        "name": "Landeed",
+        "batch": "Summer 2022",
+        "website": "https://www.landeed.com/"
+      },
+      {
+        "yc_slug": "axle",
+        "name": "Axle",
+        "batch": "Summer 2022",
+        "website": "https://axle.insure"
+      },
+      {
+        "yc_slug": "cambio-2",
+        "name": "Cambio",
+        "batch": "Summer 2022",
+        "website": "https://www.cambio.ai/"
+      },
+      {
+        "yc_slug": "delfino-ai",
+        "name": "Delfino AI",
+        "batch": "Summer 2022",
+        "website": "https://www.delfino.ai/"
+      },
+      {
+        "yc_slug": "rever",
+        "name": "REVER",
+        "batch": "Summer 2022",
+        "website": "https://itsrever.com/"
+      },
+      {
+        "yc_slug": "knowtex",
+        "name": "Knowtex",
+        "batch": "Summer 2022",
+        "website": "http://www.knowtex.ai/"
+      },
+      {
+        "yc_slug": "pump-co",
+        "name": "Pump.co",
+        "batch": "Summer 2022",
+        "website": "https://www.pump.co/"
+      },
+      {
+        "yc_slug": "wondercraft",
+        "name": "Wondercraft",
+        "batch": "Summer 2022",
+        "website": "https://wondercraft.ai/"
+      },
+      {
+        "yc_slug": "oneleet",
+        "name": "Oneleet",
+        "batch": "Summer 2022",
+        "website": "https://www.oneleet.com/?utm_source=yc&utm_medium=bookface"
+      },
+      {
+        "yc_slug": "firecrawl",
+        "name": "Firecrawl",
+        "batch": "Summer 2022",
+        "website": "https://www.firecrawl.dev"
+      },
+      {
+        "yc_slug": "solum-health",
+        "name": "Solum Health",
+        "batch": "Summer 2022",
+        "website": "https://www.getsolum.com/"
+      },
+      {
+        "yc_slug": "primevault",
+        "name": "PrimeVault",
+        "batch": "Summer 2022",
+        "website": "https://www.primevault.com"
+      },
+      {
+        "yc_slug": "homli",
+        "name": "HOMLI",
+        "batch": "Summer 2022",
+        "website": "https://thehomli.com"
+      },
+      {
+        "yc_slug": "findly",
+        "name": "Findly",
+        "batch": "Summer 2022",
+        "website": "https://www.findly.ai/join"
+      },
+      {
+        "yc_slug": "nsave",
+        "name": "nsave",
+        "batch": "Summer 2022",
+        "website": "https://www.nsave.com"
+      },
+      {
+        "yc_slug": "aiprise",
+        "name": "AiPrise",
+        "batch": "Summer 2022",
+        "website": "https://aiprise.com/"
+      },
+      {
+        "yc_slug": "roforco",
+        "name": "Roforco",
+        "batch": "Summer 2022",
+        "website": null
+      },
+      {
+        "yc_slug": "vinci-games",
+        "name": "Vinci Games",
+        "batch": "Summer 2022",
+        "website": "https://ruffnauts.com/"
+      },
+      {
+        "yc_slug": "ekho",
+        "name": "Ekho",
+        "batch": "Summer 2022",
+        "website": "https://www.ekho.com"
+      },
+      {
+        "yc_slug": "quindar",
+        "name": "Quindar",
+        "batch": "Summer 2022",
+        "website": "https://www.quindar.space"
+      },
+      {
+        "yc_slug": "unthread",
+        "name": "Unthread",
+        "batch": "Summer 2022",
+        "website": "https://unthread.io"
+      },
+      {
+        "yc_slug": "kombo",
+        "name": "Kombo",
+        "batch": "Summer 2022",
+        "website": "https://kombo.dev"
+      },
+      {
+        "yc_slug": "feather-2",
+        "name": "Feather",
+        "batch": "Summer 2022",
+        "website": "https://featherhq.com"
+      },
+      {
+        "yc_slug": "metriport",
+        "name": "Metriport",
+        "batch": "Summer 2022",
+        "website": "https://metriport.com/"
+      },
+      {
+        "yc_slug": "aurelian",
+        "name": "Aurelian",
+        "batch": "Summer 2022",
+        "website": "https://www.aurelian.com/"
+      },
+      {
+        "yc_slug": "aviaryai",
+        "name": "AviaryAI",
+        "batch": "Summer 2022",
+        "website": "http://www.helloaviary.ai"
+      },
+      {
+        "yc_slug": "anythingllm",
+        "name": "AnythingLLM",
+        "batch": "Summer 2022",
+        "website": "https://anythingllm.com"
+      },
+      {
+        "yc_slug": "hedgehog-2",
+        "name": "Hedgehog",
+        "batch": "Summer 2022",
+        "website": "http://hedgehogfoods.com"
+      },
+      {
+        "yc_slug": "airhart-aeronautics",
+        "name": "Airhart Aeronautics",
+        "batch": "Summer 2022",
+        "website": "https://www.airhartaero.com/"
+      },
+      {
+        "yc_slug": "peoplebox",
+        "name": "Peoplebox.ai",
+        "batch": "Summer 2022",
+        "website": "https://www.peoplebox.ai"
+      },
+      {
+        "yc_slug": "thera",
+        "name": "Thera",
+        "batch": "Summer 2022",
+        "website": "https://www.getthera.com"
+      },
+      {
+        "yc_slug": "provision",
+        "name": "Provision",
+        "batch": "Summer 2022",
+        "website": "https://provision.com"
+      },
+      {
+        "yc_slug": "100x",
+        "name": "100x",
+        "batch": "Summer 2022",
+        "website": "https://100x.bot?utm_source=inbound&utm_medium=bookface&utm_campaign=yc&utm_id=122"
+      },
+      {
+        "yc_slug": "newscatcher",
+        "name": "NewsCatcher",
+        "batch": "Summer 2022",
+        "website": "https://newscatcherapi.com/"
+      },
+      {
+        "yc_slug": "typewise",
+        "name": "Typewise",
+        "batch": "Summer 2022",
+        "website": "https://typewise.app"
+      },
+      {
+        "yc_slug": "flair-labs",
+        "name": "Flair Labs",
+        "batch": "Summer 2022",
+        "website": "https://www.flairlabs.ai/"
+      },
+      {
+        "yc_slug": "aragorn-ai",
+        "name": "Aragorn AI",
+        "batch": "Summer 2022",
+        "website": "https://www.aragorn.ai"
+      },
+      {
+        "yc_slug": "hype",
+        "name": "Hype",
+        "batch": "Summer 2022",
+        "website": "https://www.hype.meme/"
+      },
+      {
+        "yc_slug": "malama-health",
+        "name": "Malama Health",
+        "batch": "Summer 2022",
+        "website": "https://www.heymalama.co"
+      },
+      {
+        "yc_slug": "maverickx",
+        "name": "MaverickX",
+        "batch": "Summer 2022",
+        "website": "https://www.MaverickX.com"
+      },
+      {
+        "yc_slug": "illuminant-surgical",
+        "name": "Illuminant Surgical",
+        "batch": "Summer 2022",
+        "website": "https://www.illuminant.ai/"
+      },
+      {
+        "yc_slug": "tank-payments",
+        "name": "Tank Payments",
+        "batch": "Summer 2022",
+        "website": "https://www.tankpayments.com/"
+      },
+      {
+        "yc_slug": "juicebox",
+        "name": "Juicebox",
+        "batch": "Summer 2022",
+        "website": "https://juicebox.ai/"
+      },
+      {
+        "yc_slug": "capix",
+        "name": "Capix",
+        "batch": "Summer 2022",
+        "website": "http://capix.ai/"
+      },
+      {
+        "yc_slug": "windmill",
+        "name": "Windmill",
+        "batch": "Summer 2022",
+        "website": "https://windmill.dev"
+      },
+      {
+        "yc_slug": "activepieces",
+        "name": "Activepieces",
+        "batch": "Summer 2022",
+        "website": "https://www.activepieces.com"
+      },
+      {
+        "yc_slug": "raven",
+        "name": "Raven",
+        "batch": "Summer 2022",
+        "website": "https://startraven.com"
+      },
+      {
+        "yc_slug": "cashboard",
+        "name": "Cashboard",
+        "batch": "Summer 2022",
+        "website": "https://www.cashboard.co"
+      },
+      {
+        "yc_slug": "blee",
+        "name": "Blee",
+        "batch": "Summer 2022",
+        "website": "https://www.blee.com"
+      },
+      {
+        "yc_slug": "voltic",
+        "name": "Voltic",
+        "batch": "Summer 2022",
+        "website": "https://volticshipping.com/"
+      },
+      {
+        "yc_slug": "novig",
+        "name": "Novig",
+        "batch": "Summer 2022",
+        "website": "https://www.novig.com"
+      },
+      {
+        "yc_slug": "paragon-ai",
+        "name": "Paragon AI",
+        "batch": "Summer 2022",
+        "website": "https://paragon.ai"
+      },
+      {
+        "yc_slug": "cerrion",
+        "name": "Cerrion",
+        "batch": "Summer 2022",
+        "website": "https://www.cerrion.com/"
+      },
+      {
+        "yc_slug": "pasito",
+        "name": "Pasito",
+        "batch": "Summer 2022",
+        "website": "https://pasito.ai"
+      },
+      {
+        "yc_slug": "tailor",
+        "name": "Tailor",
+        "batch": "Summer 2022",
+        "website": "https://www.tailor.tech/"
+      },
+      {
+        "yc_slug": "chariot-2",
+        "name": "Chariot",
+        "batch": "Summer 2022",
+        "website": "https://givechariot.com/"
+      },
+      {
+        "yc_slug": "stackup",
+        "name": "Stackup",
+        "batch": "Summer 2022",
+        "website": "https://www.stackup.fi"
+      },
+      {
+        "yc_slug": "two-dots",
+        "name": "Two Dots",
+        "batch": "Summer 2022",
+        "website": "https://www.twodots.net/"
+      },
+      {
+        "yc_slug": "ciro",
+        "name": "Ciro",
+        "batch": "Summer 2022",
+        "website": "https://www.ciro.io/"
+      },
+      {
+        "yc_slug": "julius",
+        "name": "Julius",
+        "batch": "Summer 2022",
+        "website": "https://julius.ai"
+      },
+      {
+        "yc_slug": "star",
+        "name": "Star",
+        "batch": "Summer 2022",
+        "website": "https://buildwithstar.com"
+      },
+      {
+        "yc_slug": "paces",
+        "name": "Paces",
+        "batch": "Summer 2022",
+        "website": "https://paces.com"
+      },
+      {
+        "yc_slug": "stream",
+        "name": "Stream",
+        "batch": "Summer 2022",
+        "website": "http://www.stream.claims"
+      },
+      {
+        "yc_slug": "instant",
+        "name": "Instant",
+        "batch": "Summer 2022",
+        "website": "https://instantdb.com"
+      },
+      {
+        "yc_slug": "wolfia",
+        "name": "Wolfia",
+        "batch": "Summer 2022",
+        "website": "https://wolfia.com"
+      },
+      {
+        "yc_slug": "clinikally",
+        "name": "Clinikally",
+        "batch": "Summer 2022",
+        "website": "https://www.clinikally.com/"
+      },
+      {
+        "yc_slug": "layerup",
+        "name": "Layerup",
+        "batch": "Summer 2022",
+        "website": "https://www.uselayerup.com/"
+      },
+      {
+        "yc_slug": "poly",
+        "name": "Poly",
+        "batch": "Summer 2022",
+        "website": "https://poly.app"
+      },
+      {
+        "yc_slug": "medplum",
+        "name": "Medplum",
+        "batch": "Summer 2022",
+        "website": "https://www.medplum.com"
+      },
+      {
+        "yc_slug": "emerge-career",
+        "name": "Emerge Career",
+        "batch": "Summer 2022",
+        "website": "https://www.emergecareer.com/"
+      },
+      {
+        "yc_slug": "tradex",
+        "name": "Mindbase",
+        "batch": "Winter 2022",
+        "website": "https://mymindbase.ai"
+      },
+      {
+        "yc_slug": "reality-defender",
+        "name": "Reality Defender",
+        "batch": "Winter 2022",
+        "website": "http://www.realitydefender.com"
+      },
+      {
+        "yc_slug": "remi",
+        "name": "Remi",
+        "batch": "Winter 2022",
+        "website": "https://www.remihq.com"
+      },
+      {
+        "yc_slug": "seis",
+        "name": "Seis",
+        "batch": "Winter 2022",
+        "website": "https://www.seis.com"
+      },
+      {
+        "yc_slug": "eventual",
+        "name": "Eventual",
+        "batch": "Winter 2022",
+        "website": "https://www.daft.ai/"
+      },
+      {
+        "yc_slug": "cofactr",
+        "name": "Cofactr",
+        "batch": "Winter 2022",
+        "website": "https://www.cofactr.com/"
+      },
+      {
+        "yc_slug": "korrai",
+        "name": "KorrAI",
+        "batch": "Winter 2022",
+        "website": "https://www.korrai.com"
+      },
+      {
+        "yc_slug": "govdash",
+        "name": "GovDash",
+        "batch": "Winter 2022",
+        "website": "https://govdash.com/"
+      },
+      {
+        "yc_slug": "airmyne",
+        "name": "AirMyne",
+        "batch": "Winter 2022",
+        "website": "http://www.airmyne.com"
+      },
+      {
+        "yc_slug": "gosats",
+        "name": "GoSats",
+        "batch": "Winter 2022",
+        "website": "https://gosats.io"
+      },
+      {
+        "yc_slug": "gimo",
+        "name": "GIMO",
+        "batch": "Winter 2022",
+        "website": "https://gimo.vn/en"
+      },
+      {
+        "yc_slug": "olympian-motors",
+        "name": "Olympian Motors",
+        "batch": "Winter 2022",
+        "website": "https://olympianmotors.com/"
+      },
+      {
+        "yc_slug": "darsel",
+        "name": "Darsel",
+        "batch": "Winter 2022",
+        "website": "http://darsel.tech"
+      },
+      {
+        "yc_slug": "reviving-mind",
+        "name": "Reviving Mind",
+        "batch": "Winter 2022",
+        "website": "https://www.revivingmind.com/"
+      },
+      {
+        "yc_slug": "postal",
+        "name": "Postal",
+        "batch": "Winter 2022",
+        "website": "https://usepostal.com"
+      },
+      {
+        "yc_slug": "blink-new",
+        "name": "Blink",
+        "batch": "Winter 2022",
+        "website": "https://blink.new"
+      },
+      {
+        "yc_slug": "rally-uxr",
+        "name": "Rally UXR",
+        "batch": "Winter 2022",
+        "website": "https://www.rallyuxr.com/"
+      },
+      {
+        "yc_slug": "housewarming",
+        "name": "Housewarming",
+        "batch": "Winter 2022",
+        "website": "https://housewarming.me"
+      },
+      {
+        "yc_slug": "arpari",
+        "name": "Arpari",
+        "batch": "Winter 2022",
+        "website": "https://www.arpari.com"
+      },
+      {
+        "yc_slug": "fleek",
+        "name": "Fleek",
+        "batch": "Winter 2022",
+        "website": "https://www.joinfleek.com/"
+      },
+      {
+        "yc_slug": "yhangry",
+        "name": "yhangry",
+        "batch": "Winter 2022",
+        "website": "http://www.yhangry.com"
+      },
+      {
+        "yc_slug": "amiloz",
+        "name": "amiloz",
+        "batch": "Winter 2022",
+        "website": "https://www.beloz.com.mx/"
+      },
+      {
+        "yc_slug": "shaped",
+        "name": "Shaped",
+        "batch": "Winter 2022",
+        "website": "https://shaped.ai"
+      },
+      {
+        "yc_slug": "propelauth",
+        "name": "PropelAuth",
+        "batch": "Winter 2022",
+        "website": "https://www.propelauth.com"
+      },
+      {
+        "yc_slug": "topship",
+        "name": "Topship",
+        "batch": "Winter 2022",
+        "website": "https://topship.africa/"
+      },
+      {
+        "yc_slug": "attain",
+        "name": "Attain",
+        "batch": "Winter 2022",
+        "website": "https://joinattain.com/"
+      },
+      {
+        "yc_slug": "unison",
+        "name": "UNISON",
+        "batch": "Winter 2022",
+        "website": "https://www.in-unison.com/"
+      },
+      {
+        "yc_slug": "trueplace",
+        "name": "Trueplace",
+        "batch": "Winter 2022",
+        "website": "https://www.trueplace.ca/"
+      },
+      {
+        "yc_slug": "joon-health",
+        "name": "Joon Health",
+        "batch": "Winter 2022",
+        "website": "https://joonhealth.co"
+      },
+      {
+        "yc_slug": "andson-biotech",
+        "name": "Andson Biotech",
+        "batch": "Winter 2022",
+        "website": "http://www.andsonbiotech.com"
+      },
+      {
+        "yc_slug": "bemlo",
+        "name": "Bemlo",
+        "batch": "Winter 2022",
+        "website": "https://www.bemlo.com/en"
+      },
+      {
+        "yc_slug": "broccoli-ai",
+        "name": "Broccoli AI",
+        "batch": "Winter 2022",
+        "website": "https://www.broccoli.com/"
+      },
+      {
+        "yc_slug": "material-depot",
+        "name": "Material Depot",
+        "batch": "Winter 2022",
+        "website": "https://materialdepot.in/"
+      },
+      {
+        "yc_slug": "courtyard-io",
+        "name": "Courtyard.io",
+        "batch": "Winter 2022",
+        "website": "https://courtyard.io"
+      },
+      {
+        "yc_slug": "cinder-2",
+        "name": "Cinder",
+        "batch": "Winter 2022",
+        "website": "https://cinder.ai"
+      },
+      {
+        "yc_slug": "goodfin",
+        "name": "goodfin",
+        "batch": "Winter 2022",
+        "website": "http://www.goodfin.com"
+      },
+      {
+        "yc_slug": "sprites",
+        "name": "Sprites",
+        "batch": "Winter 2022",
+        "website": "https://sprites.ai/"
+      },
+      {
+        "yc_slug": "strong-compute",
+        "name": "Strong Compute",
+        "batch": "Winter 2022",
+        "website": "https://strongcompute.com"
+      },
+      {
+        "yc_slug": "prembly",
+        "name": "Prembly (formerly Identitypass)",
+        "batch": "Winter 2022",
+        "website": "https://prembly.com/"
+      },
+      {
+        "yc_slug": "agency",
+        "name": "Agency",
+        "batch": "Winter 2022",
+        "website": "https://GetAgency.com"
+      },
+      {
+        "yc_slug": "livedocs",
+        "name": "Livedocs",
+        "batch": "Winter 2022",
+        "website": "https://livedocs.com"
+      },
+      {
+        "yc_slug": "voize",
+        "name": "voize",
+        "batch": "Winter 2022",
+        "website": "https://voize.de/"
+      },
+      {
+        "yc_slug": "curacel",
+        "name": "Curacel",
+        "batch": "Winter 2022",
+        "website": "https://curacel.co"
+      },
+      {
+        "yc_slug": "lunajoy-health",
+        "name": "LunaJoy Health",
+        "batch": "Winter 2022",
+        "website": "http://HelloLunaJoy.com"
+      },
+      {
+        "yc_slug": "cotera",
+        "name": "Cotera",
+        "batch": "Winter 2022",
+        "website": "https://cotera.co"
+      },
+      {
+        "yc_slug": "posh",
+        "name": "Posh",
+        "batch": "Winter 2022",
+        "website": "https://www.poshenergy.com"
+      },
+      {
+        "yc_slug": "cogram",
+        "name": "Cogram",
+        "batch": "Winter 2022",
+        "website": "https://cogram.com"
+      },
+      {
+        "yc_slug": "velt",
+        "name": "Velt",
+        "batch": "Winter 2022",
+        "website": "https://velt.dev"
+      },
+      {
+        "yc_slug": "digi",
+        "name": "digi",
+        "batch": "Winter 2022",
+        "website": "https://www.digitech.la/"
+      },
+      {
+        "yc_slug": "complete",
+        "name": "Complete",
+        "batch": "Winter 2022",
+        "website": "https://complete.so"
+      },
+      {
+        "yc_slug": "imt-care",
+        "name": "IMT Care",
+        "batch": "Winter 2022",
+        "website": "https://www.imt.care"
+      },
+      {
+        "yc_slug": "permitflow",
+        "name": "PermitFlow",
+        "batch": "Winter 2022",
+        "website": "http://www.permitflow.com"
+      },
+      {
+        "yc_slug": "mintlify",
+        "name": "Mintlify",
+        "batch": "Winter 2022",
+        "website": "https://mintlify.com"
+      },
+      {
+        "yc_slug": "iomete",
+        "name": "IOMETE",
+        "batch": "Winter 2022",
+        "website": "https://www.iomete.com/"
+      },
+      {
+        "yc_slug": "sphere",
+        "name": "Sphere",
+        "batch": "Winter 2022",
+        "website": "https://www.getsphere.com/"
+      },
+      {
+        "yc_slug": "flagright",
+        "name": "Flagright",
+        "batch": "Winter 2022",
+        "website": "https://flagright.com"
+      },
+      {
+        "yc_slug": "hokali",
+        "name": "HOKALI",
+        "batch": "Winter 2022",
+        "website": "https://www.hokali.com/"
+      },
+      {
+        "yc_slug": "reforged-labs",
+        "name": "Reforged Labs",
+        "batch": "Winter 2022",
+        "website": "https://reforgedlabs.com/"
+      },
+      {
+        "yc_slug": "emobi",
+        "name": "Emobi",
+        "batch": "Winter 2022",
+        "website": "https://www.emobi.ai"
+      },
+      {
+        "yc_slug": "dart",
+        "name": "Dart",
+        "batch": "Winter 2022",
+        "website": "https://www.dartai.com"
+      },
+      {
+        "yc_slug": "beam",
+        "name": "Beam",
+        "batch": "Winter 2022",
+        "website": "https://beam.cloud"
+      },
+      {
+        "yc_slug": "versable",
+        "name": "Versable",
+        "batch": "Winter 2022",
+        "website": "https://www.versableai.com/"
+      },
+      {
+        "yc_slug": "happl",
+        "name": "Happl",
+        "batch": "Winter 2022",
+        "website": "https://happl.com/"
+      },
+      {
+        "yc_slug": "ankr-health",
+        "name": "Ankr Health",
+        "batch": "Winter 2022",
+        "website": "https://ankr.us"
+      },
+      {
+        "yc_slug": "shuttle-central",
+        "name": "Shuttle Central",
+        "batch": "Winter 2022",
+        "website": "https://book.shuttlecentral.com/"
+      },
+      {
+        "yc_slug": "kaso",
+        "name": "Kaso",
+        "batch": "Winter 2022",
+        "website": "https://www.kaso.ai"
+      },
+      {
+        "yc_slug": "invert",
+        "name": "Invert",
+        "batch": "Winter 2022",
+        "website": "http://www.invertbio.com/"
+      },
+      {
+        "yc_slug": "dynamo-ai",
+        "name": "Dynamo AI",
+        "batch": "Winter 2022",
+        "website": "https://dynamo.ai"
+      },
+      {
+        "yc_slug": "seabound",
+        "name": "Seabound",
+        "batch": "Winter 2022",
+        "website": "http://seabound.co"
+      },
+      {
+        "yc_slug": "teamout",
+        "name": "TeamOut",
+        "batch": "Winter 2022",
+        "website": "https://www.teamout.com/"
+      },
+      {
+        "yc_slug": "gym-class",
+        "name": "Gym Class",
+        "batch": "Winter 2022",
+        "website": "https://gymclass.com"
+      },
+      {
+        "yc_slug": "axross-pte-ltd",
+        "name": "Axross Pte Ltd",
+        "batch": "Winter 2022",
+        "website": "https://www.axross.co/"
+      },
+      {
+        "yc_slug": "nest-genomics",
+        "name": "Nest Genomics",
+        "batch": "Winter 2022",
+        "website": "https://nestgenomics.com"
+      },
+      {
+        "yc_slug": "sei",
+        "name": "Sei",
+        "batch": "Winter 2022",
+        "website": "https://seiright.com/"
+      },
+      {
+        "yc_slug": "cozmo-ai",
+        "name": "Cozmo AI",
+        "batch": "Winter 2022",
+        "website": "https://www.hellocozmo.ai/"
+      },
+      {
+        "yc_slug": "craniometrix",
+        "name": "Craniometrix",
+        "batch": "Winter 2022",
+        "website": "https://craniometrix.com"
+      },
+      {
+        "yc_slug": "starling",
+        "name": "Starling",
+        "batch": "Winter 2022",
+        "website": "https://starlingmedical.com/"
+      },
+      {
+        "yc_slug": "peakflo",
+        "name": "Peakflo",
+        "batch": "Winter 2022",
+        "website": "https://peakflo.co"
+      },
+      {
+        "yc_slug": "trebol",
+        "name": "Trébol",
+        "batch": "Winter 2022",
+        "website": "https://gotrebol.com/"
+      },
+      {
+        "yc_slug": "sieve",
+        "name": "Sieve",
+        "batch": "Winter 2022",
+        "website": "https://sievedata.com/"
+      },
+      {
+        "yc_slug": "strac",
+        "name": "Strac",
+        "batch": "Winter 2022",
+        "website": "https://www.strac.io/"
+      },
+      {
+        "yc_slug": "agave",
+        "name": "Agave",
+        "batch": "Winter 2022",
+        "website": "https://www.useagave.com"
+      },
+      {
+        "yc_slug": "redbird",
+        "name": "Redbird",
+        "batch": "Winter 2022",
+        "website": "https://www.redbird.io"
+      },
+      {
+        "yc_slug": "astroforge",
+        "name": "AstroForge",
+        "batch": "Winter 2022",
+        "website": "https://www.astroforge.io/"
+      },
+      {
+        "yc_slug": "growthbook",
+        "name": "GrowthBook",
+        "batch": "Winter 2022",
+        "website": "https://www.growthbook.io"
+      },
+      {
+        "yc_slug": "elevate",
+        "name": "Elevate (formerly Bloom)",
+        "batch": "Winter 2022",
+        "website": "https://www.elevatepay.co"
+      },
+      {
+        "yc_slug": "spot-health",
+        "name": "Spot Health",
+        "batch": "Winter 2022",
+        "website": "https://spotdx.com"
+      },
+      {
+        "yc_slug": "apollo-3",
+        "name": "Apollo",
+        "batch": "Winter 2022",
+        "website": "https://www.apollofirst.xyz/"
+      },
+      {
+        "yc_slug": "attack-capital",
+        "name": "Attack Capital",
+        "batch": "Winter 2022",
+        "website": "https://attack.capital/"
+      },
+      {
+        "yc_slug": "wyvern",
+        "name": "Wyvern",
+        "batch": "Winter 2022",
+        "website": "http://www.wyvern.space"
+      },
+      {
+        "yc_slug": "nira-energy",
+        "name": "Nira Energy",
+        "batch": "Winter 2022",
+        "website": "https://www.niraenergy.com/"
+      },
+      {
+        "yc_slug": "jabu",
+        "name": "JABU",
+        "batch": "Summer 2021",
+        "website": "http://www.gojabu.com"
+      },
+      {
+        "yc_slug": "sully-ai",
+        "name": "Sully.ai",
+        "batch": "Summer 2021",
+        "website": "https://www.sully.ai"
+      },
+      {
+        "yc_slug": "exa",
+        "name": "Exa",
+        "batch": "Summer 2021",
+        "website": "https://exa.ai"
+      },
+      {
+        "yc_slug": "lightly",
+        "name": "Lightly",
+        "batch": "Summer 2021",
+        "website": "https://lightly.ai/"
+      },
+      {
+        "yc_slug": "nash",
+        "name": "Nash",
+        "batch": "Summer 2021",
+        "website": "https://www.usenash.com/"
+      },
+      {
+        "yc_slug": "payflow",
+        "name": "Payflow",
+        "batch": "Summer 2021",
+        "website": "https://www.payflow.es/"
+      },
+      {
+        "yc_slug": "charge-robotics",
+        "name": "Charge Robotics",
+        "batch": "Summer 2021",
+        "website": "https://chargerobotics.com/"
+      },
+      {
+        "yc_slug": "turion-space",
+        "name": "Turion Space",
+        "batch": "Summer 2021",
+        "website": "https://turionspace.com/"
+      },
+      {
+        "yc_slug": "stepful",
+        "name": "Stepful",
+        "batch": "Summer 2021",
+        "website": "https://www.stepful.com"
+      },
+      {
+        "yc_slug": "synder",
+        "name": "Synder",
+        "batch": "Summer 2021",
+        "website": "https://synder.com"
+      },
+      {
+        "yc_slug": "aviator",
+        "name": "Aviator",
+        "batch": "Summer 2021",
+        "website": "https://aviator.co"
+      },
+      {
+        "yc_slug": "crew",
+        "name": "Crew",
+        "batch": "Summer 2021",
+        "website": "https://crew.work/"
+      },
+      {
+        "yc_slug": "atlas",
+        "name": "Atlas",
+        "batch": "Summer 2021",
+        "website": "https://atlas.kitchen"
+      },
+      {
+        "yc_slug": "output",
+        "name": "Output Biosciences",
+        "batch": "Summer 2021",
+        "website": "https://www.outputbio.com/"
+      },
+      {
+        "yc_slug": "storylane",
+        "name": "Storylane",
+        "batch": "Summer 2021",
+        "website": "https://www.storylane.io/"
+      },
+      {
+        "yc_slug": "infer",
+        "name": "Infer",
+        "batch": "Summer 2021",
+        "website": "https://www.infer.so/"
+      },
+      {
+        "yc_slug": "resident-boost",
+        "name": "Zuma",
+        "batch": "Summer 2021",
+        "website": "https://www.getzuma.com/"
+      },
+      {
+        "yc_slug": "buoyant-aero",
+        "name": "Buoyant Aero",
+        "batch": "Summer 2021",
+        "website": "https://www.buoyant.aero"
+      },
+      {
+        "yc_slug": "telmai",
+        "name": "Telmai",
+        "batch": "Summer 2021",
+        "website": "https://www.telm.ai/"
+      },
+      {
+        "yc_slug": "dots-2",
+        "name": "Dots 💸",
+        "batch": "Summer 2021",
+        "website": "https://usedots.com"
+      },
+      {
+        "yc_slug": "mach9",
+        "name": "Mach9",
+        "batch": "Summer 2021",
+        "website": "https://www.mach9.ai/"
+      },
+      {
+        "yc_slug": "bolster",
+        "name": "Bolster",
+        "batch": "Summer 2021",
+        "website": "https://bolsterbuilt.com"
+      },
+      {
+        "yc_slug": "hitpay",
+        "name": "HitPay",
+        "batch": "Summer 2021",
+        "website": "https://www.hitpayapp.com"
+      },
+      {
+        "yc_slug": "coast",
+        "name": "Coast",
+        "batch": "Summer 2021",
+        "website": "https://trycoast.com"
+      },
+      {
+        "yc_slug": "transastra-corporation",
+        "name": "TransAstra Corporation",
+        "batch": "Summer 2021",
+        "website": "https://www.transastra.com"
+      },
+      {
+        "yc_slug": "writesonic",
+        "name": "Writesonic",
+        "batch": "Summer 2021",
+        "website": "https://writesonic.com/"
+      },
+      {
+        "yc_slug": "akute-health",
+        "name": "Akute Health",
+        "batch": "Summer 2021",
+        "website": "https://www.akutehealth.com"
+      },
+      {
+        "yc_slug": "meticulous",
+        "name": "Meticulous",
+        "batch": "Summer 2021",
+        "website": "https://www.meticulous.ai"
+      },
+      {
+        "yc_slug": "adaptyv",
+        "name": "Adaptyv",
+        "batch": "Summer 2021",
+        "website": "https://www.adaptyvbio.com/"
+      },
+      {
+        "yc_slug": "asim",
+        "name": "aSim",
+        "batch": "Summer 2021",
+        "website": "https://asim.sh/"
+      },
+      {
+        "yc_slug": "heycharge",
+        "name": "HeyCharge",
+        "batch": "Summer 2021",
+        "website": "https://heycharge.com/"
+      },
+      {
+        "yc_slug": "zensors-inc",
+        "name": "Zensors",
+        "batch": "Summer 2021",
+        "website": "https://www.zensors.com"
+      },
+      {
+        "yc_slug": "mine",
+        "name": "Mine",
+        "batch": "Summer 2021",
+        "website": "https://usemine.com/"
+      },
+      {
+        "yc_slug": "freterium",
+        "name": "Freterium",
+        "batch": "Summer 2021",
+        "website": "https://www.freterium.com"
+      },
+      {
+        "yc_slug": "protex-ai",
+        "name": "Protex AI",
+        "batch": "Summer 2021",
+        "website": "https://www.protex.ai"
+      },
+      {
+        "yc_slug": "aleph",
+        "name": "Aleph",
+        "batch": "Summer 2021",
+        "website": "https://getaleph.com/"
+      },
+      {
+        "yc_slug": "kaipod-learning",
+        "name": "KaiPod Learning",
+        "batch": "Summer 2021",
+        "website": "http://www.kaipodlearning.com"
+      },
+      {
+        "yc_slug": "stardex",
+        "name": "Stardex",
+        "batch": "Summer 2021",
+        "website": "https://www.stardex.com"
+      },
+      {
+        "yc_slug": "shimmer",
+        "name": "Shimmer",
+        "batch": "Summer 2021",
+        "website": "https://shimmer.care"
+      },
+      {
+        "yc_slug": "oneschema",
+        "name": "OneSchema",
+        "batch": "Summer 2021",
+        "website": "https://www.oneschema.co"
+      },
+      {
+        "yc_slug": "coloop",
+        "name": "CoLoop",
+        "batch": "Summer 2021",
+        "website": "https://coloop.ai/"
+      },
+      {
+        "yc_slug": "formance",
+        "name": "Formance",
+        "batch": "Summer 2021",
+        "website": "https://formance.com"
+      },
+      {
+        "yc_slug": "coinrule",
+        "name": "Coinrule",
+        "batch": "Summer 2021",
+        "website": "https://coinrule.com/"
+      },
+      {
+        "yc_slug": "scispot-io",
+        "name": "Scispot",
+        "batch": "Summer 2021",
+        "website": "https://scispot.io"
+      },
+      {
+        "yc_slug": "lootrush",
+        "name": "LootRush",
+        "batch": "Summer 2021",
+        "website": "https://www.lootrush.com"
+      },
+      {
+        "yc_slug": "truss",
+        "name": "Truss",
+        "batch": "Summer 2021",
+        "website": "https://trusspayments.com"
+      },
+      {
+        "yc_slug": "mindfi",
+        "name": "MindFi",
+        "batch": "Summer 2021",
+        "website": "https://www.mindfi.co"
+      },
+      {
+        "yc_slug": "warpbuild",
+        "name": "WarpBuild",
+        "batch": "Summer 2021",
+        "website": "https://www.warpbuild.com"
+      },
+      {
+        "yc_slug": "digibuild",
+        "name": "DigiBuild",
+        "batch": "Summer 2021",
+        "website": "https://digibuild.com"
+      },
+      {
+        "yc_slug": "sigmaos",
+        "name": "SigmaOS",
+        "batch": "Summer 2021",
+        "website": "https://www.sigmaos.com"
+      },
+      {
+        "yc_slug": "enerjazz",
+        "name": "Enerjazz",
+        "batch": "Summer 2021",
+        "website": "https://www.enerjazz.tech/"
+      },
+      {
+        "yc_slug": "govly",
+        "name": "Govly",
+        "batch": "Summer 2021",
+        "website": "https://www.govly.com/"
+      },
+      {
+        "yc_slug": "bree",
+        "name": "Bree",
+        "batch": "Summer 2021",
+        "website": "https://www.trybree.com/"
+      },
+      {
+        "yc_slug": "repool",
+        "name": "Repool",
+        "batch": "Summer 2021",
+        "website": "http://repool.com"
+      },
+      {
+        "yc_slug": "algoviral",
+        "name": "AlgoViral",
+        "batch": "Summer 2021",
+        "website": "https://algoviral.com"
+      },
+      {
+        "yc_slug": "hyperbrowser",
+        "name": "Hyperbrowser",
+        "batch": "Summer 2021",
+        "website": "https://hyperbrowser.ai"
+      },
+      {
+        "yc_slug": "rinse",
+        "name": "Rinse",
+        "batch": "Summer 2021",
+        "website": "http://www.rinse.dental"
+      },
+      {
+        "yc_slug": "salarybox",
+        "name": "SalaryBox",
+        "batch": "Summer 2021",
+        "website": "https://salarybox.in/"
+      },
+      {
+        "yc_slug": "aqua",
+        "name": "Aqua",
+        "batch": "Summer 2021",
+        "website": "https://www.investwithaqua.com"
+      },
+      {
+        "yc_slug": "pirouette-pharma",
+        "name": "Pirouette Pharma",
+        "batch": "Summer 2021",
+        "website": "https://www.pirouettepharma.com/"
+      },
+      {
+        "yc_slug": "kodex",
+        "name": "Kodex",
+        "batch": "Summer 2021",
+        "website": "https://www.kodexglobal.com"
+      },
+      {
+        "yc_slug": "safebeat",
+        "name": "SafeBeat",
+        "batch": "Summer 2021",
+        "website": "https://safebeat.com"
+      },
+      {
+        "yc_slug": "tavus",
+        "name": "Tavus",
+        "batch": "Summer 2021",
+        "website": "https://www.tavus.io"
+      },
+      {
+        "yc_slug": "posturehealth-inc",
+        "name": "Zen",
+        "batch": "Summer 2021",
+        "website": "https://lnkd.in/dgH2xxBJ"
+      },
+      {
+        "yc_slug": "forage-2",
+        "name": "Forage",
+        "batch": "Summer 2021",
+        "website": "http://www.joinforage.com"
+      },
+      {
+        "yc_slug": "lago",
+        "name": "Lago",
+        "batch": "Summer 2021",
+        "website": "https://www.getlago.com/"
+      },
+      {
+        "yc_slug": "anakin",
+        "name": "Anakin",
+        "batch": "Summer 2021",
+        "website": "https://anakin.io"
+      },
+      {
+        "yc_slug": "epinoma",
+        "name": "Epinoma",
+        "batch": "Summer 2021",
+        "website": "https://www.epinoma.com/"
+      },
+      {
+        "yc_slug": "doublehq",
+        "name": "Double",
+        "batch": "Summer 2021",
+        "website": "https://www.doublehq.com"
+      },
+      {
+        "yc_slug": "strive-math",
+        "name": "Strive Math",
+        "batch": "Summer 2021",
+        "website": "https://www.strivemath.com/"
+      },
+      {
+        "yc_slug": "neodocs",
+        "name": "Neodocs",
+        "batch": "Summer 2021",
+        "website": "https://www.neodocs.in"
+      },
+      {
+        "yc_slug": "algouniversity",
+        "name": "AlgoUniversity",
+        "batch": "Summer 2021",
+        "website": "http://algouniversity.com/"
+      },
+      {
+        "yc_slug": "swipe-2",
+        "name": "Swipe",
+        "batch": "Summer 2021",
+        "website": "https://getswipe.in"
+      },
+      {
+        "yc_slug": "rivia-ai",
+        "name": "Rivia.AI",
+        "batch": "Summer 2021",
+        "website": "https://rivia.ai"
+      },
+      {
+        "yc_slug": "parallel-bio",
+        "name": "Parallel Bio",
+        "batch": "Summer 2021",
+        "website": "http://parallel.bio"
+      },
+      {
+        "yc_slug": "boldvoice",
+        "name": "BoldVoice",
+        "batch": "Summer 2021",
+        "website": "https://boldvoice.com"
+      },
+      {
+        "yc_slug": "confido",
+        "name": "Confido",
+        "batch": "Summer 2021",
+        "website": "https://www.confidotech.com"
+      },
+      {
+        "yc_slug": "coulomb-ai",
+        "name": "Coulomb AI",
+        "batch": "Summer 2021",
+        "website": "https://coulomb.ai/"
+      },
+      {
+        "yc_slug": "koshex",
+        "name": "Koshex",
+        "batch": "Summer 2021",
+        "website": "https://www.koshex.com"
+      },
+      {
+        "yc_slug": "kalam-labs",
+        "name": "Kalam Labs",
+        "batch": "Summer 2021",
+        "website": "http://www.kalamlabs.in"
+      },
+      {
+        "yc_slug": "karbon-card",
+        "name": "Karbon Card",
+        "batch": "Summer 2021",
+        "website": "https://www.karboncard.com/"
+      },
+      {
+        "yc_slug": "arq",
+        "name": "ARQ",
+        "batch": "Summer 2021",
+        "website": "https://www.arqfinance.com/"
+      },
+      {
+        "yc_slug": "replo",
+        "name": "Replo",
+        "batch": "Summer 2021",
+        "website": "https://replo.app/"
+      },
+      {
+        "yc_slug": "rootly",
+        "name": "Rootly",
+        "batch": "Summer 2021",
+        "website": "https://rootly.com"
+      },
+      {
+        "yc_slug": "baraka",
+        "name": "Baraka",
+        "batch": "Summer 2021",
+        "website": "https://www.getbaraka.com/"
+      },
+      {
+        "yc_slug": "archbee",
+        "name": "Archbee",
+        "batch": "Summer 2021",
+        "website": "https://www.archbee.com"
+      },
+      {
+        "yc_slug": "varos",
+        "name": "Varos",
+        "batch": "Summer 2021",
+        "website": "http://varos.com"
+      },
+      {
+        "yc_slug": "carbonfact",
+        "name": "Carbonfact",
+        "batch": "Summer 2021",
+        "website": "http://www.carbonfact.com"
+      },
+      {
+        "yc_slug": "odys-aviation",
+        "name": "Odys Aviation",
+        "batch": "Summer 2021",
+        "website": "https://www.odysaviation.com/"
+      },
+      {
+        "yc_slug": "legion-health",
+        "name": "Legion Health",
+        "batch": "Summer 2021",
+        "website": "https://legionhealth.com"
+      },
+      {
+        "yc_slug": "hotglue",
+        "name": "hotglue",
+        "batch": "Summer 2021",
+        "website": "https://hotglue.com"
+      },
+      {
+        "yc_slug": "agape",
+        "name": "Agapé",
+        "batch": "Summer 2021",
+        "website": "https://www.getdailyagape.com"
+      },
+      {
+        "yc_slug": "reframe",
+        "name": "Reframe (Glucobit)",
+        "batch": "Summer 2021",
+        "website": "https://www.joinreframeapp.com/"
+      },
+      {
+        "yc_slug": "palettehq",
+        "name": "PaletteHQ",
+        "batch": "Summer 2021",
+        "website": "https://palettehq.com/en"
+      },
+      {
+        "yc_slug": "palla",
+        "name": "Palla",
+        "batch": "Summer 2021",
+        "website": "https://www.palla.com"
+      },
+      {
+        "yc_slug": "slash",
+        "name": "Slash",
+        "batch": "Summer 2021",
+        "website": "https://www.slash.com/"
+      },
+      {
+        "yc_slug": "terra-api",
+        "name": "Terra API",
+        "batch": "Winter 2021",
+        "website": "http://tryterra.co"
+      },
+      {
+        "yc_slug": "shepherd",
+        "name": "Shepherd",
+        "batch": "Winter 2021",
+        "website": "https://shepherdinsurance.com"
+      },
+      {
+        "yc_slug": "swiftsku",
+        "name": "SwiftSku",
+        "batch": "Winter 2021",
+        "website": "https://swiftsku.com"
+      },
+      {
+        "yc_slug": "triomics",
+        "name": "Triomics",
+        "batch": "Winter 2021",
+        "website": "https://triomics.com/"
+      },
+      {
+        "yc_slug": "authologic",
+        "name": "Authologic",
+        "batch": "Winter 2021",
+        "website": "https://authologic.com"
+      },
+      {
+        "yc_slug": "waydev-ai",
+        "name": "Waydev AI",
+        "batch": "Winter 2021",
+        "website": "https://waydev.co/"
+      },
+      {
+        "yc_slug": "moonvalley",
+        "name": "Moonvalley",
+        "batch": "Winter 2021",
+        "website": "https://www.moonvalley.com"
+      },
+      {
+        "yc_slug": "turing-college",
+        "name": "Turing College",
+        "batch": "Winter 2021",
+        "website": "https://www.turingcollege.com/"
+      },
+      {
+        "yc_slug": "jiga",
+        "name": "Jiga",
+        "batch": "Winter 2021",
+        "website": "https://jiga.io"
+      },
+      {
+        "yc_slug": "upchieve",
+        "name": "UPchieve",
+        "batch": "Winter 2021",
+        "website": "https://www.upchieve.org"
+      },
+      {
+        "yc_slug": "prospa",
+        "name": "Prospa",
+        "batch": "Winter 2021",
+        "website": "https://getprospa.com"
+      },
+      {
+        "yc_slug": "gigs",
+        "name": "Gigs",
+        "batch": "Winter 2021",
+        "website": "https://gigs.com"
+      },
+      {
+        "yc_slug": "businessonbot",
+        "name": "BusinessOnBot",
+        "batch": "Winter 2021",
+        "website": "https://www.businessonbot.com/"
+      },
+      {
+        "yc_slug": "svix",
+        "name": "Svix",
+        "batch": "Winter 2021",
+        "website": "https://www.svix.com"
+      },
+      {
+        "yc_slug": "flutterflow",
+        "name": "FlutterFlow",
+        "batch": "Winter 2021",
+        "website": "https://flutterflow.io"
+      },
+      {
+        "yc_slug": "infracost",
+        "name": "Infracost",
+        "batch": "Winter 2021",
+        "website": "https://infracost.io"
+      },
+      {
+        "yc_slug": "ziina",
+        "name": "Ziina",
+        "batch": "Winter 2021",
+        "website": "https://www.ziina.com"
+      },
+      {
+        "yc_slug": "haystack",
+        "name": "Haystack",
+        "batch": "Winter 2021",
+        "website": "https://usehaystack.io/"
+      },
+      {
+        "yc_slug": "soraban",
+        "name": "Soraban",
+        "batch": "Winter 2021",
+        "website": "https://www.soraban.com"
+      },
+      {
+        "yc_slug": "lamar-health",
+        "name": "Lamar Health",
+        "batch": "Winter 2021",
+        "website": "http://www.lamarhealth.com"
+      },
+      {
+        "yc_slug": "compose-ai",
+        "name": "Compose.ai",
+        "batch": "Winter 2021",
+        "website": "https://compose.ai"
+      },
+      {
+        "yc_slug": "venu-ai",
+        "name": "Venu AI",
+        "batch": "Winter 2021",
+        "website": "https://www.venu3d.com"
+      },
+      {
+        "yc_slug": "biodock",
+        "name": "Biodock",
+        "batch": "Winter 2021",
+        "website": "https://www.biodock.ai"
+      },
+      {
+        "yc_slug": "betterhalf",
+        "name": "Betterhalf",
+        "batch": "Winter 2021",
+        "website": "https://betterhalf.ai"
+      },
+      {
+        "yc_slug": "phoenix",
+        "name": "Phoenix",
+        "batch": "Winter 2021",
+        "website": "https://phoenix.ca"
+      },
+      {
+        "yc_slug": "rulebricks",
+        "name": "Rulebricks",
+        "batch": "Winter 2021",
+        "website": "https://rulebricks.com/"
+      },
+      {
+        "yc_slug": "botbuilt",
+        "name": "BotBuilt",
+        "batch": "Winter 2021",
+        "website": "https://www.botbuilt.com"
+      },
+      {
+        "yc_slug": "tint",
+        "name": "Tint",
+        "batch": "Winter 2021",
+        "website": "http://www.tint.ai"
+      },
+      {
+        "yc_slug": "inpharmd",
+        "name": "InpharmD",
+        "batch": "Winter 2021",
+        "website": "https://www.inpharmd.com"
+      },
+      {
+        "yc_slug": "stoke-space",
+        "name": "Stoke Space",
+        "batch": "Winter 2021",
+        "website": "https://www.stokespace.com/"
+      },
+      {
+        "yc_slug": "solo",
+        "name": "Solo",
+        "batch": "Winter 2021",
+        "website": "https://www.solosuit.com/"
+      },
+      {
+        "yc_slug": "tractian",
+        "name": "Tractian",
+        "batch": "Winter 2021",
+        "website": "https://tractian.com"
+      },
+      {
+        "yc_slug": "codingal",
+        "name": "Codingal",
+        "batch": "Winter 2021",
+        "website": "https://www.codingal.com"
+      },
+      {
+        "yc_slug": "resquared",
+        "name": "Resquared",
+        "batch": "Winter 2021",
+        "website": "http://re2.ai"
+      },
+      {
+        "yc_slug": "quicknode",
+        "name": "Quicknode",
+        "batch": "Winter 2021",
+        "website": "https://www.quicknode.com"
+      },
+      {
+        "yc_slug": "topline-pro",
+        "name": "Topline Pro",
+        "batch": "Winter 2021",
+        "website": "https://www.toplinepro.com"
+      },
+      {
+        "yc_slug": "homebase",
+        "name": "Homebase",
+        "batch": "Winter 2021",
+        "website": "http://www.gethomebase.com/"
+      },
+      {
+        "yc_slug": "text-blaze",
+        "name": "Text Blaze",
+        "batch": "Winter 2021",
+        "website": "https://blaze.today"
+      },
+      {
+        "yc_slug": "enode",
+        "name": "Enode",
+        "batch": "Winter 2021",
+        "website": "http://www.enode.com"
+      },
+      {
+        "yc_slug": "datrics",
+        "name": "Datrics",
+        "batch": "Winter 2021",
+        "website": "https://datrics.ai"
+      },
+      {
+        "yc_slug": "great-question",
+        "name": "Great Question",
+        "batch": "Winter 2021",
+        "website": "https://greatquestion.co"
+      },
+      {
+        "yc_slug": "auricle",
+        "name": "Auricle",
+        "batch": "Winter 2021",
+        "website": "https://auricle.com"
+      },
+      {
+        "yc_slug": "liveflow",
+        "name": "LiveFlow",
+        "batch": "Winter 2021",
+        "website": "https://www.liveflow.com"
+      },
+      {
+        "yc_slug": "measured",
+        "name": "Measured",
+        "batch": "Winter 2021",
+        "website": "https://trymeasured.com/"
+      },
+      {
+        "yc_slug": "true3d-labs",
+        "name": "True3D Labs",
+        "batch": "Winter 2021",
+        "website": "https://true3d.com/"
+      },
+      {
+        "yc_slug": "fathom",
+        "name": "Fathom",
+        "batch": "Winter 2021",
+        "website": "https://www.fathom.ai"
+      },
+      {
+        "yc_slug": "popl",
+        "name": "Popl",
+        "batch": "Winter 2021",
+        "website": "https://popl.co/"
+      },
+      {
+        "yc_slug": "anima",
+        "name": "Anima",
+        "batch": "Winter 2021",
+        "website": "http://www.animahealth.com"
+      },
+      {
+        "yc_slug": "pangea-app",
+        "name": "Pangea.app",
+        "batch": "Winter 2021",
+        "website": "https://www.pangea.app"
+      },
+      {
+        "yc_slug": "topkey",
+        "name": "Topkey",
+        "batch": "Winter 2021",
+        "website": "https://www.topkey.io/"
+      },
+      {
+        "yc_slug": "quadrant-health",
+        "name": "Quadrant Health",
+        "batch": "Winter 2021",
+        "website": "https://quadrant.health"
+      },
+      {
+        "yc_slug": "kodo",
+        "name": "Kodo",
+        "batch": "Winter 2021",
+        "website": "https://www.kodo.com"
+      },
+      {
+        "yc_slug": "vapi",
+        "name": "Vapi",
+        "batch": "Winter 2021",
+        "website": "https://vapi.ai"
+      },
+      {
+        "yc_slug": "alinea",
+        "name": "Alinea",
+        "batch": "Winter 2021",
+        "website": "https://alinea-invest.com/"
+      },
+      {
+        "yc_slug": "camber-2",
+        "name": "Camber",
+        "batch": "Winter 2021",
+        "website": "https://www.camber.health/"
+      },
+      {
+        "yc_slug": "per-diem",
+        "name": "Per Diem",
+        "batch": "Winter 2021",
+        "website": "https://tryperdiem.com"
+      },
+      {
+        "yc_slug": "firstbase-io",
+        "name": "Firstbase.io",
+        "batch": "Winter 2021",
+        "website": "https://firstbase.io/"
+      },
+      {
+        "yc_slug": "gridware",
+        "name": "Gridware",
+        "batch": "Winter 2021",
+        "website": "https://www.gridware.io"
+      },
+      {
+        "yc_slug": "cyble",
+        "name": "Cyble",
+        "batch": "Winter 2021",
+        "website": "https://cyble.com/"
+      },
+      {
+        "yc_slug": "axle-health",
+        "name": "Axle Health",
+        "batch": "Winter 2021",
+        "website": "https://www.axlehealth.com"
+      },
+      {
+        "yc_slug": "prequel",
+        "name": "Prequel",
+        "batch": "Winter 2021",
+        "website": "https://prequel.co"
+      },
+      {
+        "yc_slug": "fractional",
+        "name": "Fractional",
+        "batch": "Winter 2021",
+        "website": "https://fractional.app"
+      },
+      {
+        "yc_slug": "encord",
+        "name": "Encord",
+        "batch": "Winter 2021",
+        "website": "https://encord.com"
+      },
+      {
+        "yc_slug": "pesto",
+        "name": "Pesto",
+        "batch": "Winter 2021",
+        "website": "https://www.getpesto.com/"
+      },
+      {
+        "yc_slug": "smartcuts",
+        "name": "Smartcuts",
+        "batch": "Winter 2021",
+        "website": "https://trysmartcuts.com/"
+      },
+      {
+        "yc_slug": "weekday",
+        "name": "Weekday",
+        "batch": "Winter 2021",
+        "website": "https://weekday.works"
+      },
+      {
+        "yc_slug": "spruceid",
+        "name": "SpruceID",
+        "batch": "Winter 2021",
+        "website": "https://www.spruceid.com"
+      },
+      {
+        "yc_slug": "bluelight",
+        "name": "Bluelight",
+        "batch": "Winter 2021",
+        "website": "https://usebluelight.com/"
+      },
+      {
+        "yc_slug": "nourish",
+        "name": "Nourish",
+        "batch": "Winter 2021",
+        "website": "https://nourish.com"
+      },
+      {
+        "yc_slug": "gromo",
+        "name": "GroMo",
+        "batch": "Winter 2021",
+        "website": "https://www.gromo.in"
+      },
+      {
+        "yc_slug": "modernloop",
+        "name": "ModernLoop",
+        "batch": "Winter 2021",
+        "website": "http://modernloop.io"
+      },
+      {
+        "yc_slug": "arnata",
+        "name": "arnata",
+        "batch": "Winter 2021",
+        "website": "https://arnata.com"
+      },
+      {
+        "yc_slug": "signoz",
+        "name": "SigNoz",
+        "batch": "Winter 2021",
+        "website": "https://signoz.io"
+      },
+      {
+        "yc_slug": "hapi",
+        "name": "Hapi",
+        "batch": "Winter 2021",
+        "website": "https://hapi.trade/"
+      },
+      {
+        "yc_slug": "medme-health",
+        "name": "MedMe Health",
+        "batch": "Winter 2021",
+        "website": "https://www.medmehealth.com"
+      },
+      {
+        "yc_slug": "rocketsdr",
+        "name": "RocketSDR",
+        "batch": "Winter 2021",
+        "website": "https://rocketsdr.ai"
+      },
+      {
+        "yc_slug": "albedo",
+        "name": "Albedo",
+        "batch": "Winter 2021",
+        "website": "https://albedo.com"
+      },
+      {
+        "yc_slug": "humaans",
+        "name": "Humaans",
+        "batch": "Winter 2021",
+        "website": "https://humaans.io"
+      },
+      {
+        "yc_slug": "authzed",
+        "name": "authzed",
+        "batch": "Winter 2021",
+        "website": "https://authzed.com"
+      },
+      {
+        "yc_slug": "atomic-industries",
+        "name": "Atomic Industries",
+        "batch": "Winter 2021",
+        "website": "http://atomic.industries"
+      },
+      {
+        "yc_slug": "runway",
+        "name": "Runway",
+        "batch": "Winter 2021",
+        "website": "https://runway.team"
+      },
+      {
+        "yc_slug": "abacum",
+        "name": "Abacum",
+        "batch": "Winter 2021",
+        "website": "https://www.abacum.ai/"
+      },
+      {
+        "yc_slug": "doordash",
+        "name": "DoorDash",
+        "batch": "Summer 2013",
+        "website": "http://doordash.com"
+      },
+      {
+        "yc_slug": "groww",
+        "name": "Groww",
+        "batch": "Winter 2018",
+        "website": "https://groww.in"
+      },
+      {
+        "yc_slug": "instacart",
+        "name": "Instacart",
+        "batch": "Summer 2012",
+        "website": "https://www.instacart.com"
+      },
+      {
+        "yc_slug": "meesho",
+        "name": "Meesho",
+        "batch": "Summer 2016",
+        "website": "http://www.meesho.com"
+      },
+      {
+        "yc_slug": "equipmentshare",
+        "name": "EquipmentShare",
+        "batch": "Winter 2015",
+        "website": "https://www.equipmentshare.com"
+      },
+      {
+        "yc_slug": "billiontoone",
+        "name": "BillionToOne",
+        "batch": "Summer 2017",
+        "website": "https://www.billiontoone.com"
+      },
+      {
+        "yc_slug": "amplitude",
+        "name": "Amplitude",
+        "batch": "Winter 2012",
+        "website": "https://amplitude.com"
+      },
+      {
+        "yc_slug": "ginkgo-bioworks",
+        "name": "Ginkgo Bioworks",
+        "batch": "Summer 2014",
+        "website": "http://ginkgobioworks.com"
+      },
+      {
+        "yc_slug": "algolia",
+        "name": "Algolia",
+        "batch": "Winter 2014",
+        "website": "http://www.algolia.com"
+      },
+      {
+        "yc_slug": "checkr",
+        "name": "Checkr",
+        "batch": "Summer 2014",
+        "website": "http://www.checkr.com"
+      },
+      {
+        "yc_slug": "clipboard",
+        "name": "Clipboard",
+        "batch": "Winter 2017",
+        "website": "https://www.clipboardworks.com/careers"
+      },
+      {
+        "yc_slug": "deel",
+        "name": "Deel",
+        "batch": "Winter 2019",
+        "website": "https://www.deel.com/"
+      },
+      {
+        "yc_slug": "faire",
+        "name": "Faire",
+        "batch": "Winter 2017",
+        "website": "https://www.faire.com/"
+      },
+      {
+        "yc_slug": "flexport",
+        "name": "Flexport",
+        "batch": "Winter 2014",
+        "website": "https://www.flexport.com/careers/jobs/"
+      },
+      {
+        "yc_slug": "flock-safety",
+        "name": "Flock Safety",
+        "batch": "Summer 2017",
+        "website": "http://www.flocksafety.com"
+      },
+      {
+        "yc_slug": "go1",
+        "name": "Go1",
+        "batch": "Summer 2015",
+        "website": "https://go1.com"
+      },
+      {
+        "yc_slug": "goat-group",
+        "name": "GOAT Group",
+        "batch": "Winter 2011",
+        "website": "https://www.goatgroup.com/"
+      },
+      {
+        "yc_slug": "gusto",
+        "name": "Gusto",
+        "batch": "Winter 2012",
+        "website": "https://gusto.com"
+      },
+      {
+        "yc_slug": "odeko",
+        "name": "Odeko",
+        "batch": "Summer 2019",
+        "website": "http://www.odeko.com"
+      },
+      {
+        "yc_slug": "podium",
+        "name": "Podium",
+        "batch": "Winter 2016",
+        "website": "https://podium.com"
+      },
+      {
+        "yc_slug": "rappi",
+        "name": "Rappi",
+        "batch": "Winter 2016",
+        "website": "http://www.rappi.com"
+      },
+      {
+        "yc_slug": "razorpay",
+        "name": "Razorpay",
+        "batch": "Winter 2015",
+        "website": "https://razorpay.com"
+      },
+      {
+        "yc_slug": "rippling",
+        "name": "Rippling",
+        "batch": "Winter 2017",
+        "website": "http://rippling.com/"
+      },
+      {
+        "yc_slug": "scale-ai",
+        "name": "Scale AI",
+        "batch": "Summer 2016",
+        "website": "http://scale.com"
+      },
+      {
+        "yc_slug": "shipbob",
+        "name": "ShipBob",
+        "batch": "Summer 2014",
+        "website": "http://shipbob.com"
+      },
+      {
+        "yc_slug": "smartasset",
+        "name": "SmartAsset",
+        "batch": "Summer 2012",
+        "website": "http://smartasset.com"
+      },
+      {
+        "yc_slug": "stripe",
+        "name": "Stripe",
+        "batch": "Summer 2009",
+        "website": "http://stripe.com"
+      },
+      {
+        "yc_slug": "webflow",
+        "name": "Webflow",
+        "batch": "Summer 2013",
+        "website": "https://webflow.com"
+      },
+      {
+        "yc_slug": "whatnot",
+        "name": "Whatnot",
+        "batch": "Winter 2020",
+        "website": "https://www.whatnot.com"
+      },
+      {
+        "yc_slug": "zapier",
+        "name": "Zapier",
+        "batch": "Summer 2012",
+        "website": "http://zapier.com"
+      },
+      {
+        "yc_slug": "mason",
+        "name": "Mason",
+        "batch": "Winter 2016",
+        "website": "http://www.bymason.com"
+      },
+      {
+        "yc_slug": "tovala",
+        "name": "Tovala",
+        "batch": "Winter 2016",
+        "website": "http://www.tovala.com"
+      },
+      {
+        "yc_slug": "isono-health",
+        "name": "iSono Health",
+        "batch": "Winter 2016",
+        "website": "http://www.isonohealth.com"
+      },
+      {
+        "yc_slug": "deepgram",
+        "name": "Deepgram",
+        "batch": "Winter 2016",
+        "website": "https://www.deepgram.com"
+      },
+      {
+        "yc_slug": "soundboks",
+        "name": "SOUNDBOKS",
+        "batch": "Winter 2016",
+        "website": "http://soundboks.com"
+      },
+      {
+        "yc_slug": "lattice",
+        "name": "Lattice",
+        "batch": "Winter 2016",
+        "website": "https://lattice.com"
+      },
+      {
+        "yc_slug": "mux",
+        "name": "Mux",
+        "batch": "Winter 2016",
+        "website": "http://mux.com"
+      },
+      {
+        "yc_slug": "human-interest",
+        "name": "Human Interest",
+        "batch": "Summer 2015",
+        "website": "http://humaninterest.com"
+      },
+      {
+        "yc_slug": "eight-sleep",
+        "name": "Eight Sleep",
+        "batch": "Summer 2015",
+        "website": "http://eightsleep.com"
+      },
+      {
+        "yc_slug": "instawork",
+        "name": "Instawork",
+        "batch": "Summer 2015",
+        "website": "http://instawork.com"
+      },
+      {
+        "yc_slug": "bitmovin",
+        "name": "Bitmovin",
+        "batch": "Summer 2015",
+        "website": "http://bitmovin.com"
+      },
+      {
+        "yc_slug": "xendit",
+        "name": "Xendit",
+        "batch": "Summer 2015",
+        "website": "https://www.xendit.co/"
+      },
+      {
+        "yc_slug": "shape-shapescale",
+        "name": "Shape (ShapeScale)",
+        "batch": "Summer 2015",
+        "website": "https://shapescale.com"
+      },
+      {
+        "yc_slug": "circle-medical",
+        "name": "Circle Medical",
+        "batch": "Summer 2015",
+        "website": "https://circlemedical.com"
+      },
+      {
+        "yc_slug": "givecampus",
+        "name": "GiveCampus",
+        "batch": "Summer 2015",
+        "website": "http://go.givecampus.com"
+      },
+      {
+        "yc_slug": "drip-capital",
+        "name": "Drip Capital",
+        "batch": "Summer 2015",
+        "website": "http://dripcapital.com"
+      },
+      {
+        "yc_slug": "verge-genomics",
+        "name": "Verge Genomics",
+        "batch": "Summer 2015",
+        "website": "http://vergegenomics.com"
+      },
+      {
+        "yc_slug": "agilemd",
+        "name": "AgileMD",
+        "batch": "Summer 2011",
+        "website": "https://agilemd.com"
+      },
+      {
+        "yc_slug": "reach",
+        "name": "Reach",
+        "batch": "Summer 2015",
+        "website": "https://reachpower.com"
+      },
+      {
+        "yc_slug": "branch8",
+        "name": "Branch8",
+        "batch": "Summer 2015",
+        "website": "https://www.branch8.com"
+      },
+      {
+        "yc_slug": "heroic-labs",
+        "name": "Heroic Labs",
+        "batch": "Summer 2015",
+        "website": "http://heroiclabs.com"
+      },
+      {
+        "yc_slug": "snapmagic",
+        "name": "SnapMagic",
+        "batch": "Summer 2015",
+        "website": "https://www.snapmagic.com"
+      },
+      {
+        "yc_slug": "scope-ar",
+        "name": "Scope AR",
+        "batch": "Summer 2015",
+        "website": "http://scopear.com"
+      },
+      {
+        "yc_slug": "gemnote",
+        "name": "Gemnote",
+        "batch": "Summer 2015",
+        "website": "http://gemnote.com"
+      },
+      {
+        "yc_slug": "new-story",
+        "name": "New Story",
+        "batch": "Summer 2015",
+        "website": "http://newstoryhomes.org"
+      },
+      {
+        "yc_slug": "ironclad",
+        "name": "Ironclad",
+        "batch": "Summer 2015",
+        "website": "http://ironcladapp.com"
+      },
+      {
+        "yc_slug": "lugg",
+        "name": "Lugg",
+        "batch": "Summer 2015",
+        "website": "http://lugg.com"
+      },
+      {
+        "yc_slug": "mashgin",
+        "name": "Mashgin",
+        "batch": "Winter 2015",
+        "website": "http://mashgin.com"
+      },
+      {
+        "yc_slug": "tara-ai",
+        "name": "Tara AI",
+        "batch": "Winter 2015",
+        "website": "http://www.tara.ai"
+      },
+      {
+        "yc_slug": "tab",
+        "name": "Tab",
+        "batch": "Winter 2015",
+        "website": "https://www.tab.travel"
+      },
+      {
+        "yc_slug": "streak",
+        "name": "Streak",
+        "batch": "Summer 2011",
+        "website": "http://streak.com"
+      },
+      {
+        "yc_slug": "giveffect",
+        "name": "Giveffect",
+        "batch": "Winter 2015",
+        "website": "http://giveffect.com"
+      },
+      {
+        "yc_slug": "tempo",
+        "name": "Tempo",
+        "batch": "Winter 2015",
+        "website": "https://tempo.fit/"
+      },
+      {
+        "yc_slug": "bankjoy",
+        "name": "Bankjoy",
+        "batch": "Winter 2015",
+        "website": "http://bankjoy.com"
+      },
+      {
+        "yc_slug": "onesignal",
+        "name": "OneSignal",
+        "batch": "Summer 2011",
+        "website": "https://onesignal.com"
+      },
+      {
+        "yc_slug": "magic",
+        "name": "Magic",
+        "batch": "Winter 2015",
+        "website": "https://getmagic.com/"
+      },
+      {
+        "yc_slug": "qventus",
+        "name": "Qventus",
+        "batch": "Winter 2015",
+        "website": "http://qventus.com"
+      },
+      {
+        "yc_slug": "hackerrank",
+        "name": "HackerRank",
+        "batch": "Summer 2011",
+        "website": "http://hackerrank.com"
+      },
+      {
+        "yc_slug": "apollo",
+        "name": "Apollo",
+        "batch": "Summer 2011",
+        "website": "http://apollographql.com/"
+      },
+      {
+        "yc_slug": "hive",
+        "name": "Hive",
+        "batch": "Summer 2014",
+        "website": "http://www.hive.co"
+      },
+      {
+        "yc_slug": "picnicai",
+        "name": "PicnicAI",
+        "batch": "Summer 2014",
+        "website": "https://picnic.ai"
+      },
+      {
+        "yc_slug": "y-combinator",
+        "name": "Y Combinator",
+        "batch": "Unspecified",
+        "website": "https://www.ycombinator.com"
+      },
+      {
+        "yc_slug": "piinpoint",
+        "name": "PiinPoint",
+        "batch": "Winter 2014",
+        "website": "https://piinpoint.com"
+      },
+      {
+        "yc_slug": "noora-health",
+        "name": "Noora Health",
+        "batch": "Winter 2014",
+        "website": "http://noorahealth.org"
+      },
+      {
+        "yc_slug": "cambly",
+        "name": "Cambly",
+        "batch": "Winter 2014",
+        "website": "http://www.cambly.com"
+      },
+      {
+        "yc_slug": "aptdeco",
+        "name": "AptDeco",
+        "batch": "Winter 2014",
+        "website": "https://www.aptdeco.com/"
+      },
+      {
+        "yc_slug": "lob",
+        "name": "Lob",
+        "batch": "Summer 2013",
+        "website": "http://lob.com"
+      },
+      {
+        "yc_slug": "goldbelly",
+        "name": "Goldbelly",
+        "batch": "Winter 2013",
+        "website": "https://www.goldbelly.com/"
+      },
+      {
+        "yc_slug": "wefunder",
+        "name": "Wefunder",
+        "batch": "Winter 2013",
+        "website": "http://wefunder.com"
+      },
+      {
+        "yc_slug": "simplyinsured",
+        "name": "SimplyInsured",
+        "batch": "Winter 2013",
+        "website": "http://simplyinsured.com"
+      },
+      {
+        "yc_slug": "circuithub",
+        "name": "CircuitHub",
+        "batch": "Winter 2012",
+        "website": "https://circuithub.com"
+      },
+      {
+        "yc_slug": "radar",
+        "name": "RADAR",
+        "batch": "Winter 2013",
+        "website": "https://goradar.com"
+      },
+      {
+        "yc_slug": "influxdata",
+        "name": "InfluxData",
+        "batch": "Winter 2013",
+        "website": "https://influxdata.com"
+      },
+      {
+        "yc_slug": "etleap",
+        "name": "Etleap",
+        "batch": "Winter 2013",
+        "website": "https://etleap.com"
+      },
+      {
+        "yc_slug": "padlet",
+        "name": "Padlet",
+        "batch": "Winter 2013",
+        "website": "https://padlet.com"
+      },
+      {
+        "yc_slug": "buildzoom",
+        "name": "BuildZoom",
+        "batch": "Winter 2013",
+        "website": "https://www.buildzoom.com"
+      },
+      {
+        "yc_slug": "zentail",
+        "name": "Zentail",
+        "batch": "Summer 2012",
+        "website": "https://zentail.com"
+      },
+      {
+        "yc_slug": "tsenta",
+        "name": "Tsenta",
+        "batch": "Summer 2026",
+        "website": "https://tsenta.com"
+      },
+      {
+        "yc_slug": "item",
+        "name": "item",
+        "batch": "Fall 2025",
+        "website": "https://item.app"
+      },
+      {
+        "yc_slug": "moss",
+        "name": "Moss",
+        "batch": "Fall 2025",
+        "website": "https://moss.dev"
+      },
+      {
+        "yc_slug": "clicks",
+        "name": "Clicks",
+        "batch": "Fall 2025",
+        "website": "https://goclicks.ai/"
+      },
+      {
+        "yc_slug": "antigen",
+        "name": "Antigen",
+        "batch": "Fall 2025",
+        "website": "https://antigen.sh/"
+      },
+      {
+        "yc_slug": "velvet",
+        "name": "Velvet",
+        "batch": "Fall 2025",
+        "website": "https://velvet-videos.com"
+      },
+      {
+        "yc_slug": "diligencesquared-inc",
+        "name": "DiligenceSquared",
+        "batch": "Fall 2025",
+        "website": "https://diligencesquared.com/"
+      },
+      {
+        "yc_slug": "lightberry",
+        "name": "Lightberry",
+        "batch": "Fall 2025",
+        "website": "https://lightberry.com"
+      },
+      {
+        "yc_slug": "the-hog",
+        "name": "The Hog",
+        "batch": "Fall 2025",
+        "website": "https://thehog.ai/"
+      },
+      {
+        "yc_slug": "telemetron-ai",
+        "name": "Telemetron",
+        "batch": "Fall 2025",
+        "website": "https://www.telemetron.ai/"
+      },
+      {
+        "yc_slug": "rovi-health",
+        "name": "Rovi Health",
+        "batch": "Fall 2025",
+        "website": "https://www.rovi.health"
+      },
+      {
+        "yc_slug": "exonic",
+        "name": "Exonic",
+        "batch": "Fall 2025",
+        "website": "https://exonic.ai"
+      },
+      {
+        "yc_slug": "karumi",
+        "name": "Karumi",
+        "batch": "Fall 2025",
+        "website": "https://www.karumi.ai/"
+      },
+      {
+        "yc_slug": "icarus",
+        "name": "Icarus",
+        "batch": "Fall 2025",
+        "website": "https://www.icarus.one/"
+      },
+      {
+        "yc_slug": "savahq",
+        "name": "Sava",
+        "batch": "Fall 2025",
+        "website": "https://www.savahq.com"
+      },
+      {
+        "yc_slug": "metorial",
+        "name": "Metorial",
+        "batch": "Fall 2025",
+        "website": "https://metorial.com"
+      },
+      {
+        "yc_slug": "kalpa-labs",
+        "name": "Kalpa Labs",
+        "batch": "Fall 2025",
+        "website": "https://kalpalabs.ai/"
+      },
+      {
+        "yc_slug": "zalos",
+        "name": "Zalos",
+        "batch": "Fall 2025",
+        "website": "https://www.zalos.ai/"
+      },
+      {
+        "yc_slug": "scott-ai",
+        "name": "Scott AI",
+        "batch": "Fall 2025",
+        "website": "https://tryscott.ai"
+      },
+      {
+        "yc_slug": "imagine-ai",
+        "name": "Imagine AI",
+        "batch": "Fall 2025",
+        "website": "https://imagineai.me"
+      },
+      {
+        "yc_slug": "leadbay",
+        "name": "Leadbay",
+        "batch": "Fall 2025",
+        "website": "https://leadbay.ai/"
+      },
+      {
+        "yc_slug": "bravi",
+        "name": "Bravi",
+        "batch": "Fall 2025",
+        "website": "https://www.bravi.app/"
+      },
+      {
+        "yc_slug": "multifactor",
+        "name": "Multifactor",
+        "batch": "Fall 2025",
+        "website": "https://multifactor.com"
+      },
+      {
+        "yc_slug": "allus-ai",
+        "name": "Allus AI",
+        "batch": "Fall 2025",
+        "website": "https://allus.ai"
+      },
+      {
+        "yc_slug": "unsiloed-ai",
+        "name": "Unsiloed AI",
+        "batch": "Fall 2025",
+        "website": "https://www.unsiloed.ai/"
+      },
+      {
+        "yc_slug": "sf-tensor",
+        "name": "SF Tensor",
+        "batch": "Fall 2025",
+        "website": "https://sf-tensor.com"
+      },
+      {
+        "yc_slug": "answerthis",
+        "name": "AnswerThis",
+        "batch": "Fall 2025",
+        "website": "https://answerthis.io/"
+      },
+      {
+        "yc_slug": "semble-ai",
+        "name": "Semble AI",
+        "batch": "Fall 2025",
+        "website": "https://www.sembleai.com"
+      },
+      {
+        "yc_slug": "flick",
+        "name": "Flick",
+        "batch": "Fall 2025",
+        "website": "https://flick.art"
+      },
+      {
+        "yc_slug": "hillclimb",
+        "name": "hillclimb",
+        "batch": "Fall 2025",
+        "website": "https://hillclimb.com"
+      },
+      {
+        "yc_slug": "atlasgrid",
+        "name": "AtlasGrid",
+        "batch": "Fall 2025",
+        "website": "https://atlasgrid.ai"
+      },
+      {
+        "yc_slug": "wardstone",
+        "name": "Wardstone",
+        "batch": "Fall 2025",
+        "website": "https://www.wardstone.space"
+      },
+      {
+        "yc_slug": "nessie",
+        "name": "Nessie",
+        "batch": "Fall 2025",
+        "website": "https://nessielabs.com/"
+      },
+      {
+        "yc_slug": "trelium",
+        "name": "Trelium",
+        "batch": "Fall 2025",
+        "website": "https://www.trelium.com"
+      },
+      {
+        "yc_slug": "sorce",
+        "name": "Sorce",
+        "batch": "Fall 2025",
+        "website": "https://sorce.jobs"
+      },
+      {
+        "yc_slug": "deeptrace",
+        "name": "Deeptrace",
+        "batch": "Fall 2025",
+        "website": "https://deeptrace.com/"
+      },
+      {
+        "yc_slug": "hyperspell",
+        "name": "Hyperspell",
+        "batch": "Fall 2025",
+        "website": "https://hyperspell.com"
+      },
+      {
+        "yc_slug": "bolna-ai",
+        "name": "Bolna AI",
+        "batch": "Fall 2025",
+        "website": "https://bolna.ai"
+      },
+      {
+        "yc_slug": "parrot",
+        "name": "Parrot",
+        "batch": "Fall 2025",
+        "website": "https://parrotapp.com/"
+      },
+      {
+        "yc_slug": "brickwise",
+        "name": "Brickwise",
+        "batch": "Fall 2025",
+        "website": "https://www.brickwiseai.com"
+      },
+      {
+        "yc_slug": "structured-ai",
+        "name": "Structured AI",
+        "batch": "Fall 2025",
+        "website": "https://www.getstructured.ai/"
+      },
+      {
+        "yc_slug": "uplane",
+        "name": "Uplane",
+        "batch": "Fall 2025",
+        "website": "https://uplane.com"
+      },
+      {
+        "yc_slug": "aircaps",
+        "name": "AirCaps",
+        "batch": "Fall 2025",
+        "website": "https://aircaps.com"
+      },
+      {
+        "yc_slug": "brickanta",
+        "name": "Brickanta",
+        "batch": "Fall 2025",
+        "website": "https://www.brickanta.com"
+      },
+      {
+        "yc_slug": "digipals",
+        "name": "Digipals",
+        "batch": "Fall 2025",
+        "website": "https://www.digipals.app/"
+      },
+      {
+        "yc_slug": "fernstone",
+        "name": "Fernstone",
+        "batch": "Fall 2025",
+        "website": "https://www.fernstone.com"
+      },
+      {
+        "yc_slug": "prox",
+        "name": "Prox",
+        "batch": "Fall 2025",
+        "website": "https://useprox.com"
+      },
+      {
+        "yc_slug": "autonomous-technologies-group",
+        "name": "Autonomous Technologies Group",
+        "batch": "Fall 2025",
+        "website": "https://becomeautonomous.com/"
+      },
+      {
+        "yc_slug": "fifth-door",
+        "name": "Fifth Door",
+        "batch": "Fall 2025",
+        "website": "https://fifthdoor.com"
+      },
+      {
+        "yc_slug": "asha-health",
+        "name": "Asha Health",
+        "batch": "Fall 2024",
+        "website": "https://asha.health"
+      },
+      {
+        "yc_slug": "apolink",
+        "name": "Apolink",
+        "batch": "Fall 2024",
+        "website": "https://apolink.space"
+      },
+      {
+        "yc_slug": "humanlayer",
+        "name": "HumanLayer",
+        "batch": "Fall 2024",
+        "website": "https://humanlayer.dev"
+      },
+      {
+        "yc_slug": "careforce",
+        "name": "Careforce",
+        "batch": "Fall 2024",
+        "website": "https://careforce.ai/"
+      },
+      {
+        "yc_slug": "canvas",
+        "name": "Canvas",
+        "batch": "Fall 2024",
+        "website": "https://www.canvas.inc/"
+      },
+      {
+        "yc_slug": "ember",
+        "name": "Ember",
+        "batch": "Fall 2024",
+        "website": "https://www.embercopilot.ai"
+      },
+      {
+        "yc_slug": "ryvn",
+        "name": "Ryvn",
+        "batch": "Fall 2024",
+        "website": "https://ryvn.ai"
+      },
+      {
+        "yc_slug": "alex",
+        "name": "Alex",
+        "batch": "Fall 2024",
+        "website": "https://alexcodes.app"
+      },
+      {
+        "yc_slug": "capy",
+        "name": "Capy",
+        "batch": "Fall 2024",
+        "website": "https://capy.ai"
+      },
+      {
+        "yc_slug": "collectwise",
+        "name": "CollectWise",
+        "batch": "Fall 2024",
+        "website": "https://collectwise.com/"
+      },
+      {
+        "yc_slug": "origami-2",
+        "name": "Origami",
+        "batch": "Fall 2024",
+        "website": "https://origami.chat/"
+      },
+      {
+        "yc_slug": "fresco",
+        "name": "Fresco",
+        "batch": "Fall 2024",
+        "website": "https://fresco-ai.com/"
+      },
+      {
+        "yc_slug": "permitportal",
+        "name": "PermitPortal",
+        "batch": "Fall 2024",
+        "website": "https://permitportalapp.com/"
+      },
+      {
+        "yc_slug": "curo",
+        "name": "Curo",
+        "batch": "Fall 2024",
+        "website": "https://www.curocharging.com/"
+      },
+      {
+        "yc_slug": "dexter",
+        "name": "Dexter",
+        "batch": "Fall 2024",
+        "website": "https://www.getdexter.co/"
+      },
+      {
+        "yc_slug": "abundant",
+        "name": "Abundant",
+        "batch": "Fall 2024",
+        "website": "https://www.abundant.ai/"
+      },
+      {
+        "yc_slug": "crustdata",
+        "name": "Crustdata",
+        "batch": "Fall 2024",
+        "website": "https://crustdata.com"
+      },
+      {
+        "yc_slug": "vly-ai-2",
+        "name": "vly.ai",
+        "batch": "Fall 2024",
+        "website": "https://vly.ai"
+      },
+      {
+        "yc_slug": "beglaubigtde",
+        "name": "Beglaubigt.de",
+        "batch": "Fall 2024",
+        "website": "https://beglaubigt.de/en-us"
+      },
+      {
+        "yc_slug": "unusual",
+        "name": "Unusual",
+        "batch": "Fall 2024",
+        "website": "https://unusual.ai"
+      },
+      {
+        "yc_slug": "luthor",
+        "name": "Luthor",
+        "batch": "Fall 2024",
+        "website": "https://luthor.ai"
+      },
+      {
+        "yc_slug": "keye",
+        "name": "Keye",
+        "batch": "Fall 2024",
+        "website": "https://www.keye.co"
+      },
+      {
+        "yc_slug": "ctgt",
+        "name": "CTGT",
+        "batch": "Fall 2024",
+        "website": "https://www.ctgt.ai/"
+      },
+      {
+        "yc_slug": "smooth",
+        "name": "Smooth",
+        "batch": "Fall 2024",
+        "website": "https://smooth.sh"
+      },
+      {
+        "yc_slug": "cekura-ai",
+        "name": "Cekura",
+        "batch": "Fall 2024",
+        "website": "https://www.cekura.ai/"
+      },
+      {
+        "yc_slug": "revyl",
+        "name": "Revyl",
+        "batch": "Fall 2024",
+        "website": "https://www.revyl.com"
+      },
+      {
+        "yc_slug": "raycaster",
+        "name": "Raycaster",
+        "batch": "Fall 2024",
+        "website": "https://raycaster.ai"
+      },
+      {
+        "yc_slug": "afternoon-co",
+        "name": "Afternoon.co",
+        "batch": "Fall 2024",
+        "website": "https://afternoon.co"
+      },
+      {
+        "yc_slug": "rulebase",
+        "name": "Rulebase",
+        "batch": "Fall 2024",
+        "website": "https://rulebase.co"
+      },
+      {
+        "yc_slug": "candle",
+        "name": "Candle",
+        "batch": "Fall 2024",
+        "website": "https://www.trycandle.app/"
+      },
+      {
+        "yc_slug": "moonset-health",
+        "name": "Moonset Health",
+        "batch": "Fall 2024",
+        "website": "https://www.moonsethealth.com/"
+      },
+      {
+        "yc_slug": "crouton",
+        "name": "Crouton",
+        "batch": "Fall 2024",
+        "website": "https://usecrouton.com"
+      },
+      {
+        "yc_slug": "streamable",
+        "name": "Streamable",
+        "batch": "Fall 2024",
+        "website": "https://streamable.run"
+      },
+      {
+        "yc_slug": "telli",
+        "name": "telli",
+        "batch": "Fall 2024",
+        "website": "https://telli.com"
+      },
+      {
+        "yc_slug": "avora",
+        "name": "Avora",
+        "batch": "Fall 2024",
+        "website": "https://www.getavora.ai"
+      },
+      {
+        "yc_slug": "variant",
+        "name": "Variant",
+        "batch": "Fall 2024",
+        "website": "https://variant.com"
+      },
+      {
+        "yc_slug": "volantio",
+        "name": "Volantio",
+        "batch": "Winter 2009",
+        "website": "http://www.volantio.com"
+      },
+      {
+        "yc_slug": "openbuilder",
+        "name": "OpenBuilder",
+        "batch": "Fall 2025",
+        "website": "https://theopenbuilder.com/"
+      },
+      {
+        "yc_slug": "renthop",
+        "name": "RentHop",
+        "batch": "Summer 2009",
+        "website": "http://renthop.com"
+      }
+    ]
+  }
+}

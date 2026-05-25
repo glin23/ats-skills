@@ -33,7 +33,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
-2. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-init` 生成）+ `~/.mrweirdo-jobs/config.json.resume_path` 指向本地 PDF。
+2. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-onboard` 生成）+ `~/.mrweirdo-jobs/config.json.resume_path` 指向本地 PDF。
 3. **可选：JobVite 账户登录**。少数 tenant 强制注册（特别是金融行业），多数允许 guest apply。如检测到 sign-in wall → 提示 用户 登录。
 4. **Node 24+**。
 

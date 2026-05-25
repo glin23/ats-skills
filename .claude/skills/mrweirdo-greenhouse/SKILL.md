@@ -24,7 +24,7 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少包含 `first_name / last_name / email / phone / phone_country / linkedin_url / resume_path / country_label`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`profile.resume_path` 或 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-init` 设置）。
+3. **简历 PDF 可读**：`profile.resume_path` 或 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。

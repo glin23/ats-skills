@@ -41,6 +41,9 @@ function db() {
 }
 
 function initSchema(d) {
+  // Step 1: CREATE TABLE (idempotent — won't add columns to existing table).
+  // The v2 columns inside this CREATE only take effect on fresh DBs; for
+  // pre-v2 DBs we ALTER TABLE below.
   d.exec(`
     CREATE TABLE IF NOT EXISTS jobs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,15 +78,53 @@ function initSchema(d) {
       confirmation_url TEXT,
       bot_note TEXT,
 
+      -- v2 fields (PRD §"Data Flow")
+      scored INTEGER NOT NULL DEFAULT 0,
+      auto_apply_eligible INTEGER,
+      search_source TEXT,
+      discovery_run_id TEXT,
+      auto_submitted_at TEXT,
+
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+      ts TEXT NOT NULL DEFAULT (datetime('now')),
+      outcome TEXT,
+      reason TEXT,
+      detail TEXT
+    );
+  `);
+
+  // Step 2: v2 migration — add columns idempotently for any pre-v2 db.
+  // SQLite throws on duplicate column; catch and continue.
+  const v2Columns = [
+    "scored INTEGER NOT NULL DEFAULT 0",
+    "auto_apply_eligible INTEGER",
+    "search_source TEXT",
+    "discovery_run_id TEXT",
+    "auto_submitted_at TEXT",
+  ];
+  for (const colDef of v2Columns) {
+    try {
+      d.exec(`ALTER TABLE jobs ADD COLUMN ${colDef}`);
+    } catch (e) {
+      if (!String(e.message || e).match(/duplicate column/i)) throw e;
+    }
+  }
+
+  // Step 3: indexes + views (run AFTER columns exist).
+  d.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_submitted_at ON jobs(submitted_at);
+    CREATE INDEX IF NOT EXISTS idx_jobs_discovery_run_id ON jobs(discovery_run_id);
+    CREATE INDEX IF NOT EXISTS idx_jobs_scored ON jobs(scored);
 
-    -- Datasette-friendly views
+    -- Datasette-friendly views (v1)
     CREATE VIEW IF NOT EXISTS v_ai_sourced AS
       SELECT * FROM jobs WHERE status = '🤖 AI sourced' ORDER BY fit_score DESC, updated_at DESC;
     CREATE VIEW IF NOT EXISTS v_approved AS
@@ -99,15 +140,16 @@ function initSchema(d) {
          AND status = '🤖 AI sourced'
        ORDER BY fit_score DESC;
 
-    -- per-apply feedback log (mirror of feedback.jsonl, queryable in Datasette)
-    CREATE TABLE IF NOT EXISTS feedback (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
-      ts TEXT NOT NULL DEFAULT (datetime('now')),
-      outcome TEXT,
-      reason TEXT,
-      detail TEXT
-    );
+    -- v2 views
+    CREATE VIEW IF NOT EXISTS v_unscored AS
+      SELECT * FROM jobs WHERE scored = 0 ORDER BY updated_at DESC;
+    CREATE VIEW IF NOT EXISTS v_auto_apply_eligible AS
+      SELECT * FROM jobs
+       WHERE auto_apply_eligible = 1
+         AND status = '🤖 AI sourced'
+       ORDER BY fit_score DESC;
+    CREATE VIEW IF NOT EXISTS v_auto_submitted AS
+      SELECT * FROM jobs WHERE auto_submitted_at IS NOT NULL ORDER BY auto_submitted_at DESC;
 
     CREATE INDEX IF NOT EXISTS idx_feedback_job_id ON feedback(job_id);
     CREATE INDEX IF NOT EXISTS idx_feedback_ts ON feedback(ts);
@@ -140,6 +182,8 @@ const UPSERT_COLUMNS = [
   'dim_scores', 'salary_min', 'salary_max', 'salary_currency',
   'salary_interval', 'hourly_rate', 'ats_platform',
   'apply_quota_limit', 'apply_quota_period', 'apply_quota_note',
+  // v2
+  'scored', 'auto_apply_eligible', 'search_source', 'discovery_run_id',
 ];
 
 function buildUpsertParams(job) {

@@ -19,7 +19,7 @@ Workday tenant variant 太多 — 同样一份 "Application Questions" step，Le
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— personal.first_name / last_name / email / address.* / phone / linkedin
-3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-init` 设置）
+3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）
 4. **公司 config 存在** — `shared/workday/companies/<slug>.json`，schema 见 `_template.json`
 5. **Node 24+**
 
@@ -54,7 +54,7 @@ PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_R
 RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 CONFIG="$MRWEIRDO_REPO_ROOT/shared/workday/companies/${SLUG}.json"
 test -f "$CONFIG" || { echo "ERROR: No config for $SLUG. Copy $MRWEIRDO_REPO_ROOT/shared/workday/companies/_template.json to $CONFIG and fill in step_definitions. See SKILL.md 'How to add a new company'."; exit 1; }
-test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /mrweirdo-init"; exit 1; }
+test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /mrweirdo-onboard"; exit 1; }
 test -f "$RESUME" || { echo "ERROR: resume PDF missing: $RESUME"; exit 1; }
 curl -s http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 jq -e '._meta.last_verified != null' "$CONFIG" > /dev/null || echo "WARN: config $SLUG never dogfooded (last_verified=null). Proceeding but expect failures."

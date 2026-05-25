@@ -3,13 +3,13 @@ name: mrweirdo-confirm
 description: Close the loop after batch apply. Reads Gmail threads labeled "applied-jobs" (user-curated via a Gmail filter), uses Claude to extract company + role + ATS source from each confirmation email, and updates the matching row in the local SQLite jobs.db from "✅ 已投" → "✅ 已确认" with confirmed_at + confirmation_email_id. Idempotent — re-running is safe.
 ---
 
-# mrweirdo-confirm — 投递 confirmation 闭环
+# mrweirdo-confirm — 投递 confirmation 闭环 (v2 SQLite)
 
 **何时跑**：批量投递 1-2 天后，确认邮件到了。或者 cron 每日跑一次。
 
 **前置 (用户一次性 setup)**:
 1. Gmail 里建一个 filter — `from:noreply@greenhouse.io OR from:noreply@ashbyhq.com OR from:jobs@lever.co OR (subject:"thanks for applying" OR subject:"application received")` — 设 action = `Apply label "applied-jobs"`
-2. 用户已经跑过 `/mrweirdo-init`，`~/.mrweirdo-jobs/config.json` 已有 notion_db_id
+2. 用户已经跑过 `/mrweirdo-onboard`，`~/.mrweirdo-jobs/jobs.db` 已存在 + 有 `✅ 已投` 行
 3. Claude Code 已连 Gmail MCP（`mcp__claude_ai_Gmail__*`）
 
 **为什么用 Gmail filter 而不是写 scope**：所有邮件流量留在用户自己 Gmail 端，skill 只查带 label 的子集（隐私让步最少；用户掌控数据流）。
@@ -23,10 +23,8 @@ export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 [ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 
-# Verify config
-[ -f "$MRWEIRDO_HOME/config.json" ] || { echo "Missing ~/.mrweirdo-jobs/config.json — run /mrweirdo-init first"; exit 1; }
-NOTION_DB_ID=$(jq -r .notion_db_id "$MRWEIRDO_HOME/config.json")
-[ -n "$NOTION_DB_ID" ] && [ "$NOTION_DB_ID" != "null" ] || { echo "config.json missing notion_db_id"; exit 1; }
+# Verify jobs.db exists (created by /mrweirdo-onboard on first run)
+[ -f "$MRWEIRDO_HOME/jobs.db" ] || { echo "Missing ~/.mrweirdo-jobs/jobs.db — run /mrweirdo-onboard first"; exit 1; }
 ```
 
 ---
@@ -39,7 +37,7 @@ NOTION_DB_ID=$(jq -r .notion_db_id "$MRWEIRDO_HOME/config.json")
 { "query": "label:applied-jobs newer_than:7d", "max_results": 50 }
 ```
 
-如果 MCP 工具不可用（用户没装 Gmail MCP）→ 打印「未检测到 Gmail MCP。请装 Anthropic 官方 Gmail MCP 或者在 Notion 里手动 mark confirmed」并退出。
+如果 MCP 工具不可用（用户没装 Gmail MCP）→ 打印「未检测到 Gmail MCP。请装 Anthropic 官方 Gmail MCP，或者在 Datasette 里手动 mark confirmed」并退出。
 
 返回的 thread 列表里每个 thread 拉 detail（用 `mcp__claude_ai_Gmail__get_thread` thread_id），取最新一条 message 的：
 - `subject`
@@ -81,18 +79,18 @@ Confidence 启发式：
 
 ---
 
-## Step 3: 拉最近 14 天 ✅ 已投 的 Notion 行，匹配
+## Step 3: 拉最近 14 天 ✅ 已投 的 SQLite 行，匹配
 
 ```bash
 node -e "
-import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(\`\${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
   const rows = await m.queryRecentlyApplied(14);
   console.log(JSON.stringify(rows, null, 2));
 }).catch(e => { console.error(e); process.exit(1); });
 " > /tmp/applied_rows.json
 ```
 
-返回 list of `{page_id, company, title, apply_url, submitted_at}`.
+返回 list of `{id, company, title, apply_url, submitted_at}` (v2 uses jobs.db `id` instead of v0.9 Notion `page_id`).
 
 ---
 
@@ -105,17 +103,17 @@ import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => 
 2. **company 精确 + role_title 模糊 (substring)** → mark
 3. **company 精确 + 只有 1 个 ✅ 已投 row** → mark (大多数情况)
 4. **多 row 候选** → 报告给用户让 ta 选 / skip
-5. **0 候选** → 报告给用户「Gmail 收到 confirmation 但 Notion 没找到对应 ✅ 已投 row。可能是手投，或 row 还没 sync」
+5. **0 候选** → 报告给用户「Gmail 收到 confirmation 但 jobs.db 没找到对应 ✅ 已投 row。可能是手投，或 row 还没 sync」
 
 对 `is_rejection=true`：同样匹配规则，但 mark 成「❌ Rejected」而不是「✅ 已确认」（可以加一个 markRejected helper，或先 manual 用 markSkipped with reason='Rejected'）。
 
-写入 Notion:
+写入 jobs.db:
 
 ```bash
 node -e "
-import(`${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
+import(\`\${process.env.MRWEIRDO_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
   const result = await m.markConfirmed(
-    '<page_id>',
+    <id>,
     { confirmed_at: '<email date ISO>', email_id: '<thread_id>' }
   );
   console.log(JSON.stringify(result));
@@ -131,10 +129,10 @@ print:
 
 ```
 Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
-  ├─ M 个 confirmation matched + Notion mark ✅ 已确认
-  ├─ K 个 rejection matched + Notion mark ❌ Rejected (可选)
-  ├─ P 个 confirmation 但 Notion 没找到对应 ✅ 已投 row：
-  │     [public_id_1] subject / company / role  →  user TODO mark
+  ├─ M 个 confirmation matched + DB mark ✅ 已确认
+  ├─ K 个 rejection matched + DB mark ❌ Rejected (可选)
+  ├─ P 个 confirmation 但 DB 没找到对应 ✅ 已投 row：
+  │     [thread_id_1] subject / company / role  →  user TODO mark in Datasette
   └─ Q 个 skipped (not confirmation, e.g., recruiter outreach)
 ```
 
@@ -143,9 +141,9 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 ## 幂等性 / 重复跑
 
 - skill 跑 N 次效果相同：已经 mark 「✅ 已确认」的 row 不会再被 mark
-- Notion query 已经 filter `状态 == ✅ 已投`，confirmed row 自然 drop 出查询集
+- `queryRecentlyApplied` 已经 filter `status == '✅ 已投'`，confirmed row 自然 drop 出查询集
 
-如果想强制重新跑某 row：先在 Notion 把状态改回 ✅ 已投，再跑 /mrweirdo-confirm。
+如果想强制重新跑某 row：在 Datasette 把 status 改回 `'✅ 已投'`，再跑 /mrweirdo-confirm。
 
 ---
 
@@ -155,22 +153,22 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 |---|---|
 | Gmail MCP 不可用 | 打印安装指引，退出（不要 fallback 到 IMAP） |
 | 0 thread with label | 打印「Gmail 还没 confirmation 邮件 / filter 未生效」+ 给 filter 教程链接，退出 |
-| Notion 0 ✅ 已投 row | 打印「最近 14 天没有 ✅ 已投 row。先跑 /mrweirdo-jobs 再跑 /mrweirdo-confirm」 |
+| DB 0 ✅ 已投 row | 打印「最近 14 天没有 ✅ 已投 row。先跑 /mrweirdo-onboard 再跑 /mrweirdo-confirm」 |
 | AI parse 输出非 JSON | 跳过该 thread + log + 继续 |
-| Notion API 4xx/5xx | retry once，仍失败则报错继续下一封 |
+| SQLite error / row not found | retry once，仍失败则报错继续下一封 |
 
 ---
 
 ## 不要做的事
 
 - ❌ 不要不读 user label 就扫整个 inbox — 隐私 + scope
-- ❌ 不要 mark Notion row 「✅ 已确认」如果没 100% 确定匹配
-- ❌ 不要写入 confirmation email body 进 Notion（PII）— 只存 thread_id
+- ❌ 不要 mark DB row 「✅ 已确认」如果没 100% 确定匹配
+- ❌ 不要写入 confirmation email body 进 jobs.db（PII）— 只存 thread_id
 
 ---
 
 ## 参考
 
-- `shared/local_db.mjs.markConfirmed()` / `queryRecentlyApplied()` — v1.1 (SQLite)
+- `shared/local_db.mjs.markConfirmed()` / `queryRecentlyApplied()` — SQLite primary store (v1.1+)
 - `mcp__claude_ai_Gmail__search_threads` / `mcp__claude_ai_Gmail__get_thread` — official Anthropic Gmail MCP
-- `shared/onboarding/resume_parser.mjs` — pattern for Anthropic API direct call (reuse for Step 2 AI parse if you want pure Node, but MCP 是更简单的路径在 Claude Code 里)
+- Step 2 (AI extraction) is done inline by the main Claude session — no separate Anthropic API key needed (v2 LLM strategy)

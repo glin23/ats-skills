@@ -1,10 +1,26 @@
 # mrweirdo-jobs — Engineer Handoff Brief
 
-> Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · 当前版本: **v1.3.0**（2026-05-25）
+> 🚨 **v1 ERA DOCUMENT** 🚨 **This brief was written for v1.3 (manual-submit, author-curated company list, single-user 用户 dogfood).** v2 is a fundamentally different product — resume-driven autonomous discovery + auto-submit + multi-user OSS for all majors. v2 retracts the "Submit 永远人工" red line that this document treats as foundational.
 >
-> 这是一份交付给工程师的需求 brief。读完应能：(1) 理解产品定位与红线 (2) 知道当前已建什么 (3) 拿到一份按优先级排好的 next-action 列表 (4) 知道在哪验收。
+> **For v2 implementation, the authoritative source is**: `/Users/lee/.claude/plans/smooth-orbiting-bentley.md` (the v2 PRD, locked 2026-05-25). Read that PRD first; this document is preserved as v1 historical context only.
 >
-> **⚠️ 文档新鲜度**：核心架构 / 红线 / 平台覆盖 / 待办 仍然成立。但 §9 (Notion DB schema) 已在 v1.1 被 SQLite + Datasette 替换，仅作历史保留。新工程师以 README + CHANGELOG 为现状真实来源，本文档为 _why_ 和 roadmap 的参考。
+> What in here is still useful for v2:
+> - §3 (architectural principles) — CDP-primary / zero-deps / hybrid Computer Use fallback — still valid
+> - §4 (red lines for LinkedIn / Indeed / Workday-generic) — **partially preserved** (see PRD §"Red lines: retracted vs preserved" for the explicit diff)
+> - §5 (platform coverage) — still accurate
+> - §6 (large-company quota guard) — preserved in v2, surfaces via `/mrweirdo-cherry-pick`
+> - §7 (AI scoring contract) — superseded by `shared/scoring/score_prompt.md` in v2
+> - §9 (Notion DB schema) — **deprecated** in v1.1; v2 uses SQLite via `shared/local_db.mjs`
+>
+> The §11 待办 list is v1 P0–P3 from before v2 PRD existed. v2 has a different priority list (see PRD §"Roadmap").
+
+---
+
+# Original v1 Brief (preserved for historical context)
+
+Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · v1 version: **v1.3.0** (2026-05-25, last v1 release before v2 PRD)
+
+这是一份 v1 era 交付给工程师的需求 brief。在 v2 PRD 锁定之前是真实 source-of-truth；现在保留作为 v1 历史档案。读完应能：(1) 理解 v1 产品定位与红线 (2) 知道 v1 当时已建什么 (3) 拿到 v1 按优先级排好的 next-action 列表 (4) 知道在哪验收 v1 行为。
 
 ---
 

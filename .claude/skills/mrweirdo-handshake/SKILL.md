@@ -28,7 +28,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **Handshake 账号已登录** — Handshake 所有 job pages 都需要 student SSO。隔离 profile 第一次跑时会要 用户 手动登录一次。
-3. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
+3. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-onboard` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
 4. **简历已在 Handshake Documents 上传** — Handshake 的"上传简历"是 document picker（选已传的 PDF），不是 file input。用户 必须事先在 Handshake 个人 documents store 传过简历。
 5. **Node 24+**。
 

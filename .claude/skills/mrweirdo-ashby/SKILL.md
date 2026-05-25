@@ -13,7 +13,7 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
    ```bash
    ./shared/chrome-cdp-launcher.sh    # open -na 强制独立 instance
    ```
-2. **`~/.mrweirdo-jobs/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/mrweirdo-init` 生成）
+2. **`~/.mrweirdo-jobs/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/mrweirdo-onboard` 生成）
 3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
@@ -34,7 +34,7 @@ curl -s http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_R
 [ -f "$RESUME" ] || { echo "Resume not found: $RESUME"; exit 1; }
 [ -f "$PROFILE" ] && jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```
-如缺：报错退出，提示用户跑 `/mrweirdo-init`。
+如缺：报错退出，提示用户跑 `/mrweirdo-onboard`。
 
 ### 2. 导航
 ```bash

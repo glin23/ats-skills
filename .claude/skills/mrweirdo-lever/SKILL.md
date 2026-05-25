@@ -26,7 +26,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
+3. **简历 PDF 可读**：`~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。
