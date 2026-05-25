@@ -534,7 +534,36 @@ import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
 
 `markApplied` 内部把状态置 `✅ 已投`、投递日期 = 今天、链接质量 = `submitted`、来源 = `ATS 直投`，并把 `confirmation_url`（如有）附到 `Bot 备注`。
 
-Notion update 失败 → log warning 但**不**算 fail（已经投出去了，人工补 mark 也行）。
+DB update 失败 → log warning 但**不**算 fail（已经投出去了，人工补 mark 也行）。
+
+#### Quota tracking (v1.1.x)
+
+如果这家公司在 `company_list.json` 里标 `apply_quota` (大公司 limit)，记一笔到 quota.jsonl 用于下次 sourcing 自动屏蔽：
+
+```bash
+node -e "
+import(\`\${process.env.ATS_REPO_ROOT}/shared/quota.mjs\`).then(async m => {
+  // Only call if the company has a quota cap
+  const company = '$COMPANY';
+  const quota_limit = $APPLY_QUOTA_LIMIT || 0;   // from company_list.json
+  const quota_period = '$APPLY_QUOTA_PERIOD';     // 'semester' / 'year' / 'lifetime'
+  if (quota_limit > 0) {
+    const r = await m.recordApply({
+      company,
+      apply_quota_limit: quota_limit,
+      apply_quota_period: quota_period,
+      apply_url: '$URL',
+      role_title: '$ROLE'
+    });
+    console.log('quota recorded:', JSON.stringify(r));
+    const remaining = await m.getRemaining({company, apply_quota_limit: quota_limit, apply_quota_period: quota_period});
+    console.log('remaining:', remaining.remaining, '/', remaining.limit, 'for period', remaining.period);
+  }
+});
+"
+```
+
+下次 sourcing (`/ats-source`) 跑 `isCapReached(companyEntry)` 自动 skip 配额耗尽的公司，导向 「🏢 大公司限投」 view 让用户 cherry-pick 剩余配额给真 dream role。
 
 ### Fail path (v0.5 新增 feedback write)
 
