@@ -1,0 +1,43 @@
+{
+  "user_summary": {
+    "name": "Sarah Mitchell (test fixture — Liberal arts/Pre-law bucket)",
+    "school": "Williams College",
+    "field_of_study": "Political Science (Pre-Law)",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior",
+    "work_authorization": "US citizen",
+    "needs_sponsorship": false,
+    "english_native": true,
+    "headline": "Pre-law poli sci junior with congressional internship, debate team captain, two op-eds published"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Policy Research Intern", "priority": 1, "rationale": "Core target."},
+      {"title_pattern": "Legal Intern", "priority": 1, "rationale": "Pre-law."},
+      {"title_pattern": "Paralegal Intern", "priority": 1, "rationale": "Direct fit."},
+      {"title_pattern": "Government Affairs Intern", "priority": 1, "rationale": "Has congressional experience."},
+      {"title_pattern": "Public Policy Intern", "priority": 1, "rationale": "Direct major fit."},
+      {"title_pattern": "Trust & Safety Intern", "priority": 2, "rationale": "Policy-adjacent at tech cos."},
+      {"title_pattern": "Compliance Intern", "priority": 2, "rationale": "Pre-law adjacent."},
+      {"title_pattern": "Research Intern", "priority": 2, "rationale": "Broader."},
+      {"title_pattern": "Communications Intern", "priority": 3, "rationale": "Writing background."},
+      {"title_pattern": "Editorial Intern", "priority": 3, "rationale": "Op-ed publication background."}
+    ],
+    "industry_targets": ["Government / NGO", "Law firms", "Tech-policy think tanks", "Media / journalism", "Tech trust & safety teams", "Nonprofits", "Education policy"],
+    "function_area": "Policy / Legal / Research",
+    "exclude_role_keywords": ["software engineer", "swe", "data engineer", "ml engineer", "backend engineer", "frontend engineer", "sales", "sdr", "tax", "audit", "nursing", "warehouse", "executive assistant", "recruiter", "hr generalist"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["Washington DC", "DC", "New York", "Manhattan", "Boston", "Cambridge", "San Francisco", "SF"],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["Williams brand", "Congressional summer internship alumna", "Debate team captain"],
+      "growth_areas": ["No paid law-firm internship yet"]
+    }
+  }
+}

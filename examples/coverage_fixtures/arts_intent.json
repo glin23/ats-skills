@@ -1,0 +1,43 @@
+{
+  "user_summary": {
+    "name": "Marcus Reed (test fixture — Arts/Design/Media bucket)",
+    "school": "RISD",
+    "field_of_study": "Graphic Design",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior",
+    "work_authorization": "US citizen",
+    "needs_sponsorship": false,
+    "english_native": true,
+    "headline": "Design junior with two brand-identity internships, active Behance portfolio, and Figma + Adobe CC fluency"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Visual Design Intern", "priority": 1, "rationale": "Core target."},
+      {"title_pattern": "Graphic Design Intern", "priority": 1, "rationale": "Direct major fit."},
+      {"title_pattern": "Brand Design Intern", "priority": 1, "rationale": "Two prior brand-identity internships."},
+      {"title_pattern": "Product Design Intern", "priority": 1, "rationale": "Strong portfolio + Figma fluency."},
+      {"title_pattern": "UX Design Intern", "priority": 1, "rationale": "Cross-applicable."},
+      {"title_pattern": "UI Design Intern", "priority": 1, "rationale": "Same."},
+      {"title_pattern": "Motion Design Intern", "priority": 2, "rationale": "Has After Effects work."},
+      {"title_pattern": "Illustration Intern", "priority": 2, "rationale": "Portfolio includes hand-drawn work."},
+      {"title_pattern": "Marketing Design Intern", "priority": 2, "rationale": "Adjacent."},
+      {"title_pattern": "Editorial Design Intern", "priority": 3, "rationale": "Open."}
+    ],
+    "industry_targets": ["Consumer brands", "DTC / e-commerce", "Media / publishing", "Design agencies", "AI / consumer software", "Fashion", "Lifestyle"],
+    "function_area": "Design",
+    "exclude_role_keywords": ["software engineer", "swe", "data engineer", "ml engineer", "backend engineer", "sales", "sdr", "tax", "audit", "nursing", "warehouse", "executive assistant", "recruiter"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["New York", "NYC", "Manhattan", "Brooklyn", "Providence", "Boston", "San Francisco", "SF", "Los Angeles", "LA"],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["RISD brand recognition in design", "Two prior brand-identity internships at boutique agencies", "Active Behance + 5k Instagram following"],
+      "growth_areas": ["Less product/UX work versus pure graphic design"]
+    }
+  }
+}

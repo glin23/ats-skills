@@ -1,0 +1,43 @@
+{
+  "user_summary": {
+    "name": "Jordan Kim (test fixture — Mechanical/Civil/Hardware bucket)",
+    "school": "Georgia Tech",
+    "field_of_study": "Mechanical Engineering",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior",
+    "work_authorization": "US citizen",
+    "needs_sponsorship": false,
+    "english_native": true,
+    "headline": "ME junior with SolidWorks fluency, two manufacturing internships, FSAE chassis lead"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Mechanical Engineering Intern", "priority": 1, "rationale": "Core target."},
+      {"title_pattern": "ME Intern", "priority": 1, "rationale": "Variant."},
+      {"title_pattern": "Manufacturing Engineering Intern", "priority": 1, "rationale": "Two prior internships in this exact area."},
+      {"title_pattern": "Mechanical Design Intern", "priority": 1, "rationale": "SolidWorks fluency."},
+      {"title_pattern": "Hardware Engineering Intern", "priority": 1, "rationale": "Cross-applicable."},
+      {"title_pattern": "Robotics Engineering Intern", "priority": 2, "rationale": "Has Arduino + ROS coursework."},
+      {"title_pattern": "Test Engineering Intern", "priority": 2, "rationale": "Adjacent."},
+      {"title_pattern": "Civil Engineering Intern", "priority": 3, "rationale": "Open."},
+      {"title_pattern": "Aerospace Engineering Intern", "priority": 2, "rationale": "Adjacent to ME at hard-tech startups."},
+      {"title_pattern": "Product Engineering Intern (Hardware)", "priority": 2, "rationale": "Hardware-focused PE roles."}
+    ],
+    "industry_targets": ["Automotive / EV", "Aerospace / defense", "Robotics", "Hard-tech startups", "Manufacturing", "Consumer hardware", "Industrial automation"],
+    "function_area": "Mechanical / Hardware",
+    "exclude_role_keywords": ["software engineer", "swe", "data engineer", "ml engineer", "frontend engineer", "backend engineer", "sales", "sdr", "tax", "audit", "nursing", "warehouse", "executive assistant", "recruiter"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["Atlanta", "Detroit", "Austin", "San Francisco", "SF", "South San Francisco", "Mountain View", "Palo Alto", "Sunnyvale", "Los Angeles", "El Segundo", "Hawthorne", "Boston", "Cambridge", "Seattle"],
+      "remote_acceptable": false,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["GT brand for ME", "FSAE chassis subsystem lead", "Two prior summer internships at Tier-2 OEMs"],
+      "growth_areas": ["No FAANG-tier hard-tech (Tesla/SpaceX/Anduril) yet — applying to top-tier still"]
+    }
+  }
+}

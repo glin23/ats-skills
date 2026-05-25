@@ -1,0 +1,43 @@
+{
+  "user_summary": {
+    "name": "Priya Patel (test fixture — Healthcare bucket)",
+    "school": "University of Pittsburgh",
+    "field_of_study": "Public Health (B.S.) with Pre-Med track",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior",
+    "work_authorization": "US citizen",
+    "needs_sponsorship": false,
+    "english_native": true,
+    "headline": "Pre-med public-health junior with hospital volunteer hours, NIH-funded summer research, and biostatistics coursework"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Healthcare Intern", "priority": 1, "rationale": "Open-ended healthcare work."},
+      {"title_pattern": "Clinical Research Intern", "priority": 1, "rationale": "Has lab + research experience."},
+      {"title_pattern": "Public Health Intern", "priority": 1, "rationale": "Direct major fit."},
+      {"title_pattern": "Health Policy Intern", "priority": 2, "rationale": "Adjacent to public-health major."},
+      {"title_pattern": "Hospital Operations Intern", "priority": 2, "rationale": "Has hospital volunteer hours."},
+      {"title_pattern": "Healthcare Analytics Intern", "priority": 2, "rationale": "Has biostats + SQL coursework."},
+      {"title_pattern": "Health Tech Intern", "priority": 2, "rationale": "Open to digital health startups."},
+      {"title_pattern": "Patient Care Intern", "priority": 3, "rationale": "Hands-on care."},
+      {"title_pattern": "Epidemiology Intern", "priority": 2, "rationale": "Coursework + research alignment."},
+      {"title_pattern": "Biomedical Research Intern", "priority": 2, "rationale": "Adjacent."}
+    ],
+    "industry_targets": ["Hospital systems", "Health-tech startups", "Pharma / biotech", "Public health nonprofits", "Digital therapeutics", "Health insurance / payer"],
+    "function_area": "Healthcare / Public Health",
+    "exclude_role_keywords": ["software engineer", "swe", "data engineer", "ml engineer", "backend engineer", "frontend engineer", "sales", "sdr", "warehouse", "delivery driver", "executive assistant", "recruiter", "tax", "audit"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["Pittsburgh", "Philadelphia", "Boston", "Cambridge", "New York", "Manhattan", "Baltimore", "Washington DC", "Chicago"],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["NIH summer research alumna", "200+ hospital volunteer hours", "MCAT prep with strong practice scores"],
+      "growth_areas": ["First industry-paid internship search — has been mostly volunteer + research"]
+    }
+  }
+}

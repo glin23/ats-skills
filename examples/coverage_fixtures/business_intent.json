@@ -1,0 +1,81 @@
+{
+  "user_summary": {
+    "name": "Riley Martinez (test fixture — Business / PM / Ops / Strategy / Finance bucket)",
+    "school": "State University of New York at Buffalo",
+    "field_of_study": "Business Administration",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior (summer 2026 internship search)",
+    "work_authorization": "F-1 student",
+    "needs_sponsorship": true,
+    "english_native": true,
+    "headline": "Founder-leaning business student with growth / ops / GTM / VC / product internship stack across US/international early-stage startups"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Product Manager Intern", "priority": 1, "rationale": "Two solo-builder consumer products show product instinct + shipping."},
+      {"title_pattern": "APM Intern", "priority": 1, "rationale": "Same category, often more accessible to first-time PM applicants."},
+      {"title_pattern": "Associate Product Manager Intern", "priority": 1, "rationale": "Variant naming."},
+      {"title_pattern": "Growth Intern", "priority": 2, "rationale": "Prior Growth/Ops intern; shipped self-led GTM."},
+      {"title_pattern": "Growth Marketing Intern", "priority": 2, "rationale": "Same — funnel + A/B testing background."},
+      {"title_pattern": "Operations Intern", "priority": 2, "rationale": "Strategy + Operations background."},
+      {"title_pattern": "BizOps Intern", "priority": 2, "rationale": "Same."},
+      {"title_pattern": "Strategy Intern", "priority": 2, "rationale": "VC analyst training + founder DNA."},
+      {"title_pattern": "Founder's Office Intern", "priority": 1, "rationale": "Generalist role — fits multi-hat resume."},
+      {"title_pattern": "Chief of Staff Intern", "priority": 1, "rationale": "Founder-adjacent generalist."},
+      {"title_pattern": "Investment Analyst Intern", "priority": 3, "rationale": "Has VC summer analyst credential."},
+      {"title_pattern": "Venture Capital Intern", "priority": 3, "rationale": "Same."},
+      {"title_pattern": "GTM Intern", "priority": 2, "rationale": "Shipped GTM end-to-end."},
+      {"title_pattern": "Marketing Intern", "priority": 3, "rationale": "Adjacent — only when description leans growth/product-marketing."}
+    ],
+    "industry_targets": [
+      "AI / Generative AI",
+      "Consumer software",
+      "SaaS",
+      "Developer tools",
+      "Vertical AI",
+      "Productivity",
+      "Education / EdTech",
+      "Marketplace / Two-sided",
+      "Fintech (consumer)",
+      "Early-stage startups (YC, seed, Series A-B)"
+    ],
+    "function_area": "Product / Growth / Operations (generalist business)",
+    "exclude_role_keywords": [
+      "software engineer", "swe", "data engineer", "ml engineer", "machine learning engineer",
+      "backend engineer", "frontend engineer", "full stack engineer", "fullstack engineer",
+      "ios engineer", "android engineer", "devops engineer", "site reliability", "sre",
+      "security engineer", "infrastructure engineer", "applied scientist", "research scientist",
+      "phd", "tax", "audit", "accounting", "nursing", "physician", "clinical", "rn ",
+      "warehouse", "delivery driver", "customer support", "tier 1", "call center",
+      "sdr", "bdr", "sales development representative",
+      "university recruiter", "campus recruiter", "talent acquisition", "recruiter",
+      "hr generalist", "executive assistant"
+    ],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": [
+        "San Francisco Bay Area", "SF", "South San Francisco", "Mountain View",
+        "Palo Alto", "New York", "NYC", "Manhattan", "Brooklyn",
+        "Boston", "Cambridge", "Waltham"
+      ],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": [
+        "Two solo-shipped consumer products with measurable user adoption",
+        "Co-founder of a peer mentorship platform with audience growth",
+        "VC summer analyst at a small fund — produced 20+ memos + one industry deep-dive",
+        "Bootcamp organizer + demo presenter",
+        "Strong product+growth toolkit: A/B testing, funnel, retention, event tracking"
+      ],
+      "growth_areas": [
+        "First formal PM internship search (prior intern role was Growth/Ops)",
+        "Non-CS major — does not compete for SWE despite quantitative coursework"
+      ]
+    }
+  }
+}

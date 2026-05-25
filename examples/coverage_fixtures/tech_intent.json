@@ -1,0 +1,42 @@
+{
+  "user_summary": {
+    "name": "Alex Chen (test fixture — Tech/CS/Eng bucket)",
+    "school": "UIUC",
+    "field_of_study": "Computer Science",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-05",
+    "year_or_status": "rising junior",
+    "work_authorization": "F-1 student",
+    "needs_sponsorship": true,
+    "english_native": false,
+    "headline": "CS junior with two production internships building backend systems + ML coursework + active open-source contributions"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Software Engineer Intern", "priority": 1, "rationale": "Core target — CS background, two prior backend internships."},
+      {"title_pattern": "SWE Intern", "priority": 1, "rationale": "Same as Software Engineer Intern."},
+      {"title_pattern": "Backend Engineer Intern", "priority": 1, "rationale": "Specific to candidate's prior work."},
+      {"title_pattern": "Full Stack Engineer Intern", "priority": 1, "rationale": "Variant naming."},
+      {"title_pattern": "ML Engineer Intern", "priority": 2, "rationale": "Has ML coursework + one Kaggle competition."},
+      {"title_pattern": "Data Engineer Intern", "priority": 2, "rationale": "SQL + Python + ETL coursework."},
+      {"title_pattern": "Infrastructure Engineer Intern", "priority": 3, "rationale": "Open to it."},
+      {"title_pattern": "iOS Engineer Intern", "priority": 3, "rationale": "Has one Swift side project."},
+      {"title_pattern": "Frontend Engineer Intern", "priority": 2, "rationale": "Has React experience from second internship."}
+    ],
+    "industry_targets": ["AI / Generative AI", "Developer tools", "SaaS", "Infrastructure", "FAANG-tier consumer", "Fintech"],
+    "function_area": "Engineering",
+    "exclude_role_keywords": ["sales", "sdr", "bdr", "tax", "audit", "nursing", "recruiter", "campus recruiter", "talent acquisition", "executive assistant", "hr generalist", "warehouse", "delivery driver", "marketing manager", "brand manager"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["San Francisco Bay Area", "SF", "Mountain View", "Palo Alto", "Sunnyvale", "Cupertino", "Seattle", "Bellevue", "New York", "NYC", "Manhattan", "Boston", "Cambridge"],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["Two prior CS internships (one at unicorn, one at mid-size SaaS)", "Active open-source maintainer on a 2k-star repo", "Top 5% in OS class"],
+      "growth_areas": ["No prior FAANG internship — still applying to top-tier"]
+    }
+  }
+}

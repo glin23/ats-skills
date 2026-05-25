@@ -1,0 +1,43 @@
+{
+  "user_summary": {
+    "name": "Diego Ramirez (test fixture — Sciences bucket)",
+    "school": "UCLA",
+    "field_of_study": "Biology (B.S.)",
+    "education_level": "Bachelor",
+    "graduation_date": "2027-06",
+    "year_or_status": "rising junior",
+    "work_authorization": "US citizen",
+    "needs_sponsorship": false,
+    "english_native": true,
+    "headline": "Bio junior with two undergrad-lab research positions, a wet-lab + computational hybrid skillset, and chem minor"
+  },
+  "search_intent": {
+    "role_categories": [
+      {"title_pattern": "Research Intern", "priority": 1, "rationale": "Core target — wet lab experience."},
+      {"title_pattern": "Biology Research Intern", "priority": 1, "rationale": "Direct major fit."},
+      {"title_pattern": "Bioinformatics Intern", "priority": 1, "rationale": "Has Python + R + computational bio skills."},
+      {"title_pattern": "Biotech Intern", "priority": 1, "rationale": "Broader bio."},
+      {"title_pattern": "Lab Technician Intern", "priority": 2, "rationale": "Two prior lab positions."},
+      {"title_pattern": "R&D Intern", "priority": 2, "rationale": "Cross-applicable."},
+      {"title_pattern": "Chemistry Intern", "priority": 2, "rationale": "Chem minor."},
+      {"title_pattern": "Drug Discovery Intern", "priority": 2, "rationale": "Adjacent."},
+      {"title_pattern": "Computational Biology Intern", "priority": 2, "rationale": "Skill alignment."},
+      {"title_pattern": "Scientific Affairs Intern", "priority": 3, "rationale": "Open."}
+    ],
+    "industry_targets": ["Pharma / biotech", "Health-tech (computational bio)", "Research institutes", "Diagnostics", "Genomics", "Drug discovery startups"],
+    "function_area": "Sciences / R&D",
+    "exclude_role_keywords": ["software engineer", "swe", "data engineer", "ml engineer", "backend engineer", "frontend engineer", "sales", "sdr", "tax", "audit", "nursing", "warehouse", "executive assistant", "recruiter", "hr generalist"],
+    "geographic_preference": {
+      "primary_country": "US",
+      "preferred_metros": ["Los Angeles", "LA", "San Diego", "San Francisco", "SF", "South San Francisco", "Boston", "Cambridge", "Seattle"],
+      "remote_acceptable": true,
+      "us_only": true
+    },
+    "seniority": "intern",
+    "internship_term": "Summer 2026",
+    "caliber_signals": {
+      "competitive_strengths": ["UCLA brand in bio", "Two prior undergrad lab positions", "Computational bio hybrid skillset"],
+      "growth_areas": ["No industry-paid internship yet — has been all academic lab"]
+    }
+  }
+}
