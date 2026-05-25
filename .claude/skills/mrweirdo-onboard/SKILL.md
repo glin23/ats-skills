@@ -274,7 +274,7 @@ After refinement, your `profile.json` and `search_intent.json` are FINAL. Procee
 
 ---
 
-## Step 3 — Write JSON + 5-second informed display
+## Step 3 — Write JSON + informed confirmation
 
 Save both JSONs:
 
@@ -291,7 +291,9 @@ EOF
 chmod 600 "$MRWEIRDO_HOME"/{profile.json,search_intent.json}
 ```
 
-Then **display a 5-second informed-summary** to the user. This is the user's only chance to spot a parse error before agent starts spending applications:
+Then **show the user a parse summary and confirm via AskUserQuestion** — this is the only chance to spot a parse error before the agent starts spending applications. (The previous `sleep 5` opt-out window was unreachable from Bash since `sleep` cannot receive user input mid-execution.)
+
+Display the summary in your assistant message:
 
 ```
 我读完你的简历, parse 出:
@@ -305,11 +307,16 @@ Then **display a 5-second informed-summary** to the user. This is the user's onl
    行业:     <search_intent.search_intent.industry_targets[0..3]>
    地理:     <search_intent.geographic_preference.preferred_metros>
    排除:     <search_intent.exclude_role_keywords[0..5]>
-
-5 秒后开始 discovery + 自动投递。如果上面有错，立刻回复 "stop"。
 ```
 
-Then wait 5 seconds (`sleep 5` in Bash). If during those 5s the user replies "stop" / "等下" / "wait" / 任何 disagreement → halt, do NOT proceed to Step 4. Tell them to edit `~/.mrweirdo-jobs/{profile,search_intent}.json` and re-trigger.
+Then ask once via AskUserQuestion (single-select, 2 options, "继续" is the default-recommended first option):
+
+- **Question**: `上面的解析对吗？确认后立刻开始 discovery + AI scoring + 自动投递。`
+- **Header**: `Resume parse`
+- **Option A (default, first)**: label = `继续 — 解析正确`, description = `确认 profile/search_intent，进入 Step 4 init DB → discovery → 自动投递。`
+- **Option B**: label = `停 — 解析有错`, description = `Skill 立即终止。用户 自己编辑 ~/.mrweirdo-jobs/{profile,search_intent}.json 后再次运行 /mrweirdo-onboard。`
+
+If user picks B (or supplies "Other" custom text indicating disagreement): print which files to edit, then halt — do NOT proceed to Step 4. If user picks A: proceed to Step 4.
 
 ---
 

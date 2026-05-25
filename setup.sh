@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mrweirdo-jobs (v1.2) bootstrap
+# mrweirdo-jobs (v2.0) bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
@@ -8,7 +8,7 @@
 #   2. Clone (or update) the repo to ~/.mrweirdo-jobs/repo
 #   3. Symlink .claude/skills/* into ~/.claude/skills/ so Claude Code picks them up
 #   4. Create ~/.mrweirdo-jobs/ layout (log/, empty .env with chmod 600)
-#   5. Print next-step: "open Claude Code, run /mrweirdo-init"
+#   5. Print next-step: "open Claude Code, run /mrweirdo-onboard"
 #
 # Re-runnable. Idempotent.
 
@@ -26,7 +26,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "mrweirdo-jobs (v1.2) bootstrap"
+blue "mrweirdo-jobs (v2.0) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -106,18 +106,20 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 echo ""
 blue "Setup complete. Next steps:"
 echo "  1. Open Claude Code (any directory)"
-echo "  2. Run: /mrweirdo-init"
-echo "       → Collects your Anthropic API key, parses your resume,"
-echo "         asks 4 questions to set up target_filters, and initializes"
-echo "         the local SQLite DB at ~/.mrweirdo-jobs/jobs.db."
+echo "  2. Run: /mrweirdo-onboard"
+echo "       → Drops your resume, picks search intent via 7 quick questions,"
+echo "         multi-source discovery → AI scoring → zero-touch auto-apply"
+echo "         to top fit_score ≥ 7 jobs (daily cap 50). One end-to-end flow."
 echo ""
-echo "  After /mrweirdo-init you can use:"
-echo "      /mrweirdo-source            — AI-scored job sourcing → local DB"
-echo "      /mrweirdo-jobs              — batch apply ✅ Approved queue"
-echo "      /mrweirdo-greenhouse <url>  — single Greenhouse URL"
-echo "      /mrweirdo-ashby      <url>  — single Ashby URL"
-echo "      /mrweirdo-lever      <url>  — single Lever URL"
-echo "      /mrweirdo-confirm           — Gmail confirmation → mark DB"
+echo "  Other v2 skills:"
+echo "      /mrweirdo-cherry-pick       — surface scored jobs, hand-pick, gated apply"
+echo "      /mrweirdo-greenhouse-auto <url>  — zero-touch single GH URL"
+echo "      /mrweirdo-ashby-auto      <url>  — zero-touch single Ashby URL"
+echo "      /mrweirdo-lever-auto      <url>  — zero-touch single Lever URL"
+echo "      /mrweirdo-greenhouse      <url>  — gated (user clicks Submit) single GH"
+echo "      /mrweirdo-ashby           <url>  — gated single Ashby"
+echo "      /mrweirdo-lever           <url>  — gated single Lever"
+echo "      /mrweirdo-confirm           — Gmail confirmation → mark DB ✅ 已投"
 echo ""
 echo "  Update later with:  git -C $MRWEIRDO_REPO_ROOT pull"
 echo ""
