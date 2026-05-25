@@ -1,230 +1,221 @@
 # ats-skills
 
-> v0.8 (sourcing + dashboard + batch + feedback loop + Handshake beta + Workday config-driven + Lever stable + SmartRecruiters/iCIMS/JobVite alpha + ~200-company seed list + batch-pace controls). First dogfood: NiCE SDR + Cresta DS + Crusoe Motion Design (2026-05-23). v0.5 batch + feedback dogfooded. v0.6/v0.7 alpha — needs real-platform verification. v0.8 expands sourcing surface area + pacing controls.
+> **v1.0 — open OSS, self-host.** A Claude Code skill collection that turns job hunting into a single pipeline:
+> AI sourcing → Notion dashboard → batch auto-apply (with hard pre-Submit human gate) → Gmail confirmation loop.
+>
+> Zero npm deps. Driven by your own Chrome. Submits never happen without your explicit per-batch authorization.
+> Multi-tenant: any user can install + bring their own resume, Notion workspace, API keys.
 
-Claude Code skills for automating Greenhouse and Ashby application form filling on your own browser.
+---
 
-This is a personal learning tool. It is not a SaaS, not a recruiting product, and not a mass-application bot. It drives a real Chrome instance you control, fills in your standard answers from a local JSON file, and stops before submit so you can review every application yourself.
+## Install (one command)
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/glin23/ats-skills/main/setup.sh)
+```
+
+This will:
+1. Verify Node 24+, Chrome, git
+2. Clone the repo to `~/.ats-skills/repo`
+3. Symlink `.claude/skills/*` into `~/.claude/skills/` so Claude Code picks them up
+4. Create `~/.ats-skills/{log,.env}` layout
+
+Then open Claude Code (any directory) and run:
+
+```
+/ats-init
+```
+
+`/ats-init` walks you through:
+- Anthropic API key (paste; written to `~/.ats-skills/.env`, chmod 600)
+- Notion integration token
+- Resume PDF → Claude Sonnet parses out personal/education/work_auth
+- 4 questions → `target_filters` (role types, locations, exclude keywords, min fit score)
+- Notion 「📋 岗位追踪」 database auto-created with full schema (20+ properties + 4 views)
+- Smoke test 1 Greenhouse fetch
+
+After `/ats-init` everything is ready.
+
+---
 
 ## What it does
 
-- Two skills, one per ATS: `ats-greenhouse` and `ats-ashby`.
-- Drives your real Chrome via the DevTools Protocol on port 9222, using a separate Chrome profile so your daily browser is not affected.
-- Reads your personal info (name, email, phone, LinkedIn, work authorization, standard short answers) from `shared/profile.json`.
-- Uploads your resume PDF, picks the obvious select-options, fills text fields, ticks the obvious yes/no widgets.
-- Takes a pre-submit screenshot and hands control back to you. The skill never clicks the submit button on its own.
+| Command | Purpose |
+|---|---|
+| `/ats-init` | First-run setup. Run once. |
+| `/ats-source` | Pull jobs from ~250 companies' Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite boards → AI score (Sonnet, ~$0.003/job) → write your Notion DB. |
+| `/ats-skills` | Read `✅ Approved` rows from Notion → batch CDP fill each application form → human Submit per app → mark `✅ 已投`. |
+| `/ats-greenhouse <url>` | Single Greenhouse application. |
+| `/ats-ashby <url>` | Single Ashby application. |
+| `/ats-lever <url>` | Single Lever application. |
+| `/ats-smartrecruiters <url>` | Single SmartRecruiters (beta). |
+| `/ats-icims <url>` | Single iCIMS (alpha). |
+| `/ats-jobvite <url>` | Single JobVite (alpha). |
+| `/ats-handshake <url>` | Single Handshake (beta). |
+| `/ats-workday <url>` | Single Workday (per-company JSON config). |
+| `/ats-confirm` | Read Gmail threads labeled `applied-jobs` → match to `✅ 已投` Notion rows → mark `✅ 已确认`. |
 
-## What it does not do
+---
 
-- It does not submit. Submitting an application is always a manual action you take, after reviewing the form.
-- It does not support Workday, Lever, Handshake, or LinkedIn Easy Apply. Form variance and platform policies make a single small implementation unreliable. Maybe later, maybe not.
-- It does not batch apply. One URL, one filled form, one human review.
-- It does not bypass any ATS anti-bot system. It uses a real browser with a real user profile. If a site blocks you, that is the site telling you to stop, and you should stop.
-- It does not generate or rewrite resumes. You bring your own PDF.
+## What it does NOT do
+
+- **Does not submit on its own.** Every form is filled, screenshotted, and handed back to you. You click Submit.
+- **Does not touch LinkedIn / Indeed / Glassdoor.** Auto-apply on those platforms violates ToS + their anti-bot is on the network layer. They stay manual.
+- **Does not run a hosted SaaS.** All keys + resume + Notion stay on your machine. There is no cloud service to sign up for.
+- **Does not bypass anti-bot.** It drives a real Chrome you own. If a site flags you, stop.
+- **Does not rewrite your resume per JD.** Bring your own PDF.
+
+---
+
+## How sourcing works
+
+Per-company public API. ~250 companies seeded in `shared/sourcing/company_list.json` across AI, B2B SaaS, fintech, consumer, health, dev tools. Each entry maps to multiple ATS slugs:
+
+| ATS | Sourcing | Apply |
+|---|---|---|
+| Greenhouse | ✅ public API `boards-api.greenhouse.io` | ✅ stable |
+| Ashby | ✅ public API `api.ashbyhq.com/posting-api` | ✅ stable |
+| Lever | ✅ public API | ✅ stable |
+| SmartRecruiters | ✅ public API | ⚠️ beta |
+| iCIMS | ✅ HTML scrape | ⚠️ alpha |
+| JobVite | ✅ HTML scrape | ⚠️ alpha |
+| Handshake | ⚠️ stub | ⚠️ beta |
+| Workday | ❌ (per-company config) | ⚠️ config-driven |
+| Recruitee / Personio / BambooHR / Rippling | ✅ | manual |
+| Wellfound / YC WAAS | ⚠️ stub | manual |
+
+You add your own companies to `~/.ats-skills/company_list.user.json` — they merge on top of the baseline (no need to fork the repo).
+
+Sourcing uses 6 AI dimensions (role_fit / skills_match / location_fit / visa_compatible / seniority_match / exclude_check) and feeds the last 20 skip reasons back into the prompt so the recommender learns from your taste.
+
+---
+
+## Large-company submission quota guard
+
+Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, etc. typically cap how many roles you can apply to per cycle. Auto-apply burning that quota on a non-dream role = wasted shot.
+
+`shared/sourcing/company_list.json` flags 25 companies with `apply_quota`. `/ats-skills` batch detects these and **always skips** them — it sources them to a separate Notion view 「🏢 大公司限投」 so you can hand-pick which 2-3 roles to apply to manually.
+
+---
+
+## Notion dashboard
+
+`/ats-init` creates a Notion database with:
+
+- 16 main properties: 公司 / 职位 / Apply URL / 地点 / 来源 / 状态 / fit_score / key_gaps / role_type_match / skip_reason / user_note / dim_scores / salary_min-max-currency-interval / hourly_rate / ats 平台 / apply_quota_* / submitted_at / confirmed_at / confirmation_email_id
+- 4 views: 🤖 AI Sourced (pending review) / ✅ Approved (ready to apply) / ❌ Skipped + Reason / 🏢 大公司限投
+
+You triage in Notion (✅ approve, ❌ skip with reason). The skill reads `状态` to drive batch apply.
+
+---
+
+## Gmail confirmation loop (optional)
+
+Once you batch-apply, ATS confirmation emails arrive. To close the loop:
+
+1. **In Gmail, build a filter** (one-time, ~30s):
+   - Settings → Filters and Blocked Addresses → Create new filter
+   - Subject contains: `thanks for applying OR application received OR application confirmed`
+   - From contains: `noreply@greenhouse.io OR noreply@ashbyhq.com OR jobs@lever.co OR noreply@workday.com OR mailer@jobvite.com`
+   - Action: Apply label `applied-jobs`
+2. **In Claude Code**: run `/ats-confirm`
+
+The skill uses the Anthropic-bundled Gmail MCP (`mcp__claude_ai_Gmail__`) to read only threads matching `label:applied-jobs newer_than:7d` — your full inbox is never scanned. Each thread is parsed by Sonnet (~$0.0003/email) to extract `{company, role, ats, is_confirmation}` then matched to a `✅ 已投` Notion row and flipped to `✅ 已确认`.
+
+Idempotent — safe to re-run.
+
+---
 
 ## Requirements
 
-- macOS. Linux and Windows are untested; the launcher script is macOS-specific (uses `open -na`).
-- Node.js 24 or later. The CDP driver uses Node's built-in `WebSocket` global, available in 24+.
-- Google Chrome installed at the default path (`/Applications/Google Chrome.app`).
-- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed and working.
-- A resume PDF somewhere on disk.
+- macOS (launcher uses `open -na`; Linux symlinks work fine but Chrome launcher needs editing)
+- Node 24+ (built-in `WebSocket` + `fetch` + PDF base64)
+- Google Chrome (default location, or edit `shared/chrome-cdp-launcher.sh`)
+- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed
+- Notion account + integration token (free)
+- Anthropic API key (~$0.50–$2/month at typical usage)
+- A resume PDF
 
-## Install
+---
+
+## File layout
+
+```
+~/.ats-skills/                  # All user state (gitignored, never committed)
+├── .env                        # ANTHROPIC_API_KEY, NOTION_API_KEY (chmod 600)
+├── profile.json                # Your parsed resume + target_filters
+├── config.json                 # Notion ids + view ids + resume path
+├── company_list.user.json      # Your custom companies (optional)
+├── resume.pdf                  # Copy of your resume
+├── feedback.jsonl              # Per-apply outcome log → next sourcing prompt
+├── quota.jsonl                 # Large-company submit counter
+├── log/                        # Per-skill jsonl logs
+└── repo/                       # git clone of ats-skills
+
+~/.claude/skills/               # Symlinks → ~/.ats-skills/repo/.claude/skills/*
+├── ats-init/SKILL.md
+├── ats-source/SKILL.md
+├── ats-skills/SKILL.md
+├── ats-greenhouse/SKILL.md
+├── ats-ashby/SKILL.md
+├── ats-lever/SKILL.md
+├── ats-smartrecruiters/SKILL.md
+├── ats-icims/SKILL.md
+├── ats-jobvite/SKILL.md
+├── ats-handshake/SKILL.md
+├── ats-workday/SKILL.md
+└── ats-confirm/SKILL.md
+```
+
+---
+
+## Updating
 
 ```bash
-git clone https://github.com/glin23/ats-skills ~/.claude/skills/ats-skills
-cd ~/.claude/skills/ats-skills
-./setup.sh
+git -C ~/.ats-skills/repo pull
 ```
 
-`setup.sh` will:
+Or re-run the install command — `setup.sh` is idempotent and will fast-forward your checkout.
 
-1. Check your Node version (must be 24+).
-2. Check Chrome is installed.
-3. Copy `shared/profile.template.json` to `shared/profile.json` if it does not exist.
-4. Tell you to edit `shared/profile.json` and point `resume_path` at your actual resume PDF.
+---
 
-After editing `profile.json`, launch the dedicated Chrome instance once to verify the CDP connection:
+## Privacy
 
-```bash
-./shared/chrome-cdp-launcher.sh
-```
+- All API keys live in `~/.ats-skills/.env` (chmod 600). Never leaves your machine.
+- Notion writes go directly from your Node process to `api.notion.com`. No proxy.
+- Anthropic API calls (resume parse, AI scoring, confirmation email parse) go directly to `api.anthropic.com`. No proxy.
+- Gmail reading uses Anthropic's bundled Gmail MCP under the same OAuth you already granted Claude. The skill only reads threads with the `applied-jobs` label.
 
-This opens a separate Chrome window with debugging on port 9222 and a profile stored at `~/.ats-skills/chrome-profile`. Log into LinkedIn (and anything else you want autofilled by Chrome) inside this window. Your normal Chrome is untouched.
+If you want to read what we actually send to each API, the source is in `shared/` — zero deps, 100% Node 24 stdlib.
 
-## Quick start
-
-```bash
-# First-time setup (once)
-./setup.sh
-# edit shared/profile.json with your info (including target_filters)
-bash shared/chrome-cdp-launcher.sh
-# log into your CV uploads / linkedin etc on the new Chrome window if needed
-
-# Batch apply (each time)
-# In Claude Code: "用 ats-skills 投待投队列" or "/ats-skills"
-# Skill loads your Notion 「🔵 未投」queue → confirms once → applies all → marks Notion
-```
-
-```bash
-# Sourcing (v0.3+)
-export ANTHROPIC_API_KEY=sk-ant-...
-export NOTION_API_KEY=secret_...
-# 在 Claude Code: "用 ats-source 找新岗位" → Notion 出 50 个 AI scored jobs
-# 在 Notion DB 拖卡 approve / skip + reason
-# 再说 "/ats-skills" → batch 投 Approved 全部
-```
-
-## Supported flows
-
-| Flow | Trigger | Best for |
-| --- | --- | --- |
-| AI Sourcing (v0.3) | `/ats-source` or "找新岗位" | 一句话拉 50+ AI scored jobs 进 Notion |
-| Batch Apply (v0.5) | `/ats-skills` or "投我的 Approved" | 跑完整 Approved 队列 + 自动 mark Notion + feedback loop |
-| Single Greenhouse (v0.1) | `/ats-greenhouse <url>` | 1-off Greenhouse |
-| Single Ashby (v0.1) | `/ats-ashby <url>` | 1-off Ashby |
-| Single Handshake (v0.6 beta) | `/ats-handshake <url>` | 1-off Handshake (beta) |
-| Single Workday (v0.7 stretch) | `/ats-workday <url>` | 1-off Workday with per-company config |
-| Single Lever (v0.8) | `/ats-lever <url>` | 1-off Lever |
-| Single SmartRecruiters (v0.8 beta) | `/ats-smartrecruiters <url>` | beta |
-| Single iCIMS (v0.8 alpha) | `/ats-icims <url>` | alpha |
-| Single JobVite (v0.8 alpha) | `/ats-jobvite <url>` | alpha |
-
-## Configurable Filters (profile.json `target_filters`)
-
-v0.3+ profile.json has a `target_filters` block that the AI scorer and batch orchestrator both read:
-
-- `role_types` — e.g. `["intern", "new_grad_FT"]`. Anything else gets scored down or filtered out.
-- `locations` — e.g. `["US", "Remote-US"]`. JD locations outside this list are penalized.
-- `exclude_keywords` — e.g. `["SWE", "Software Engineer", "Sales Engineer"]`. Title or description hits get filtered.
-- `min_fit_score` — integer 0-10. Below this, the row is skipped before AI sync to Notion.
-- `visa_must_sponsor` — boolean. If true, JD without sponsorship language gets down-ranked.
-- `batch_pace` (v0.8) — `fast | normal | slow | stealth`. Controls per-job jitter + daily cap. Default `slow`.
-- `daily_apply_cap` (v0.8) — hard ceiling on applications per 24h. Overrides `batch_pace` cap if lower.
-
-## Daily Throughput (v0.8)
-
-Default batch_pace: slow — 2-5 min jitter per job, 50/day cap.
-- 50 jobs × 3 min = ~2.5 hours
-- Run unattended overnight; orchestrator writes `~/.ats-skills/batch_progress.json` for resume
-- Increase to `normal` (100/day) once dogfood confirms no rate-limit issues
-- Decrease to `stealth` (30/day) if a platform starts flagging
-
-## Supported Companies (v0.8)
-
-`shared/sourcing/company_list.json` ships with ~200 company seed entries across AI, B2B SaaS, fintech, consumer, health, dev tools.
-Each entry can map to multiple ATS slugs (greenhouse / ashby / lever / smartrecruiters / icims / jobvite / bamboohr / rippling / recruitee / personio).
-Best-guess slugs included — PR corrections welcomed.
-
-## Notion Setup
-
-```
-v0.3+ requires writing to your Notion 「📋 岗位追踪」 DB.
-First-time setup:
-1. Create Notion integration → get NOTION_API_KEY
-2. Share your job tracking DB with the integration
-3. Add these properties (matching ats-skills schema):
-   - fit_score (NUMBER)
-   - key_gaps (TEXT)
-   - role_type_match (SELECT: intern / new_grad_FT / other)
-   - skip_reason (SELECT: Wrong Role / Wrong Location / No Sponsor / Salary / Other)
-   - user_note (TEXT)
-   - dim_scores (TEXT, JSON-encoded)
-4. Add to 「状态」 SELECT: "🤖 AI sourced" and "✅ Approved" options
-```
-
-## Queue source
-
-In v0.2 batch mode, the queue is auto-loaded from your Notion 「🔵 未投」 view, filtered to `alive_exact` rows whose ATS is Greenhouse or Ashby. You can also hand the skill an explicit list of URLs instead — it will skip the Notion load and just iterate over what you gave it.
-
-## Use
-
-In Claude Code, paste the apply URL:
-
-> Use ats-greenhouse to fill in this application: https://boards.greenhouse.io/example/jobs/12345
-
-The skill will:
-
-1. Check Chrome is running with CDP 9222 open (and launch it if not).
-2. Navigate to the URL.
-3. Fill the form from `profile.json`.
-4. Upload the resume PDF.
-5. Take a pre-submit screenshot.
-6. Stop and show you the screenshot.
-
-You then either submit manually in the browser, or ask Claude Code to submit. The skill will not submit unless you give explicit per-application authorization.
-
-### Submit behavior
-
-- Single-URL skills (`/ats-greenhouse`, `/ats-ashby`): explicit per-application authorization. The skill stops at the pre-submit screenshot and waits for you to say go on that specific application.
-- Batch skill (`/ats-skills`, v0.2): **upfront authorization**. The skill prints the queue and waits for your "go" once. That single explicit confirmation is what Claude Code's safety classifier checks against — every URL in the batch counts as per-application authorized. If a submit is blocked, the skill aborts and you can fall back to `/ats-greenhouse` / `/ats-ashby` for one URL at a time.
-
-## Supported ATS
-
-| ATS | Status | Notes |
-| --- | --- | --- |
-| Greenhouse | Working | react-select v5 pickers require `mousedown` event dispatch, handled in `shared/greenhouse_helpers.js`. |
-| Ashby | Working | react-hook-form text fields require real keyboard input via CDP `Input.insertText`. Yes/No buttons use a single `click()`. Handled in `shared/ashby_helpers.js`. |
-| Lever (v0.8) | Stable | CDP file-upload path resolved; standard text + select fields covered. |
-| Workday (v0.7) | Stretch | Per-company JSON adapter; form variance still high. |
-| Handshake (v0.6) | Beta | Works on student portals; needs login session. |
-| SmartRecruiters (v0.8) | Beta | Sourcing-supported board fetch + alpha form-fill. |
-| iCIMS (v0.8) | Alpha | Single-URL form-fill prototype. Tenant-based slugs. |
-| JobVite (v0.8) | Alpha | Single-URL form-fill prototype. |
-| Recruitee / Personio / BambooHR / Rippling / Wellfound / YC | Sourcing-only | Board fetch in `shared/sourcing/`; no form-fill skill yet. |
-| LinkedIn Easy Apply | Will not be supported | Out of scope. |
-
-## Layout
-
-```
-ats-skills/
-  README.md
-  LICENSE
-  DISCLAIMER.md
-  setup.sh
-  shared/
-    cdp.mjs                  # Node 24 WebSocket CDP driver
-    chrome-cdp-launcher.sh   # Launches isolated Chrome with CDP 9222
-    greenhouse_helpers.js    # In-page helpers for Greenhouse forms
-    ashby_helpers.js         # In-page helpers for Ashby forms
-    profile.template.json    # Schema for your profile data
-    profile.json             # Created by setup.sh, gitignored
-  .claude/skills/
-    ats-greenhouse/SKILL.md
-    ats-ashby/SKILL.md
-  examples/
-    walkthrough.md
-```
+---
 
 ## Disclaimer
 
 See [DISCLAIMER.md](DISCLAIMER.md). Short version: this is a tool for your own job search. You are responsible for following the ATS platforms' terms of service. If a platform asks you to stop, stop.
 
+---
+
 ## Contributing
 
-Issues and PRs welcome, especially:
+Issues + PRs welcome, especially:
 
-- Fixes when an ATS frontend changes and a helper breaks.
-- New profile fields that appear on real applications and are missing from the schema.
-- Documentation improvements.
+- Helper fixes when an ATS frontend changes
+- Company seed list additions (PR to `shared/sourcing/company_list.json`)
+- Workday per-company configs in `shared/workday/companies/`
+- New ATS support
+- Translations / docs
 
-Not accepted:
+NOT accepted:
 
-- Feature requests that turn this into a batch-application tool.
-- Anything that auto-submits without per-application user authorization.
-- Paid hosting, "as a service" wrappers, or anything that takes money for using this.
+- Anything that auto-submits without per-batch human authorization
+- LinkedIn / Indeed / Glassdoor scrapers
+- "As a service" wrappers
+- Paid hosting
 
-If you fork this and run a service on top of it, please give it a different name.
+If you fork and run a service, please rename it.
 
-## Roadmap
-
-- v0.3 ✓ Sourcing + AI matching
-- v0.5 ✓ Batch + feedback loop
-- v0.6 (alpha) Handshake support
-- v0.7 (stretch) Workday config-driven, per-company JSON adapter
-- v0.8 Lever stable + SmartRecruiters/iCIMS/JobVite alpha + ~200-company seed list + batch_pace + daily_apply_cap
-- v1.0 GitHub public release; CDP + Computer Use hybrid stable
+---
 
 ## License
 
