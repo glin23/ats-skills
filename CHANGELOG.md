@@ -1,5 +1,68 @@
 # Changelog
 
+## [1.0.0] - 2026-05-24 — Open OSS, self-host
+
+The project moves from "用户's private daily-driver" to "anyone can install + run."
+
+### Added
+- **`/ats-init`** skill — 9-step onboarding orchestrator. Collects API keys
+  (writes `~/.ats-skills/.env` chmod 600), parses resume PDF via Anthropic
+  native PDF support, asks 4 questions to build target_filters, provisions a
+  Notion 「📋 岗位追踪」 database with 20+ properties + 4 views, smoke-tests
+  one Greenhouse fetch.
+- **`/ats-confirm`** skill — Gmail confirmation loop. Reads threads labeled
+  `applied-jobs` (user-built filter), Sonnet-parses each into
+  {company, role, ats, is_confirmation}, matches to ✅ 已投 Notion rows,
+  marks them ✅ 已确认. Uses the Anthropic-bundled
+  `mcp__claude_ai_Gmail__*` MCP — never scans the full inbox.
+- `shared/paths.mjs` — central path / config resolver. ATS_HOME / ATS_REPO_ROOT
+  env, profilePath() / configPath() / loadProfile() / loadConfig() /
+  loadCompanyList() / loadEnv() / notionDbId() / notionViewId(). All other
+  modules + skills import from here.
+- `shared/onboarding/resume_parser.mjs` — Anthropic native PDF → structured
+  JSON (personal / education / work_authorization / demographics /
+  experience_summary / skills / languages).
+- `shared/onboarding/notion_setup.mjs` — Notion DB + full schema creator
+  via REST API.
+- `shared/config.template.json` — schema for `~/.ats-skills/config.json`.
+- `shared/notion_sync.mjs`: `markConfirmed(pageId, {confirmed_at, email_id})`
+  + `queryRecentlyApplied(days=14)` helpers.
+
+### Changed
+- **`setup.sh`** is now a curl-pipe bootstrap:
+  `bash <(curl -fsSL https://raw.githubusercontent.com/glin23/ats-skills/main/setup.sh)`.
+  Clones to `~/.ats-skills/repo`, symlinks `.claude/skills/*` into
+  `~/.claude/skills/` so Claude Code globally picks them up, creates
+  `~/.ats-skills/{log,.env}`. Idempotent + re-runnable for updates.
+- All `.claude/skills/*/SKILL.md` files: removed hardcoded
+  `/Users/lee/Projects/ats-skills/` paths and `/Users/lee/Desktop/用户_Lin_Resume.pdf`
+  resume path. New pattern:
+  ```bash
+  export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+  export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+  PROFILE="$ATS_HOME/profile.json"
+  RESUME=$(jq -r .resume_path "$ATS_HOME/config.json")
+  ```
+  Legacy `shared/profile.json` fallback retained so 用户's v0.9.1 setup keeps
+  working unchanged.
+- `shared/notion_sync.mjs:45` — DATABASE_ID now resolves through
+  `paths.mjs.notionDbId()` (env → config.json → legacy default).
+- `README.md` — rewritten for v1.0 audience. One-line install command.
+  Per-skill descriptions. Privacy note. Gmail filter tutorial.
+
+### Migration for existing users (用户)
+用户's `v0.9.1` setup keeps working:
+- If `~/.ats-skills/profile.json` missing, code falls back to
+  `<repo>/shared/profile.json`
+- If `~/.ats-skills/config.json` missing, hardcoded Notion DB id 94b728d7
+  (用户's actual DB) is used as fallback
+- All view IDs default to 用户's existing 36a1e8ce-prefixed ids
+
+To migrate to the v1.0 path layout: run `/ats-init` (it preserves nothing —
+generates fresh config + profile). Or copy `~/Projects/ats-skills/shared/profile.json`
+to `~/.ats-skills/profile.json` and write a minimal `~/.ats-skills/config.json`
+with `notion_db_id` + `resume_path`.
+
 ## [0.7.0] - 2026-05-23 (stretch, untested)
 
 ### Added
