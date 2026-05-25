@@ -34,7 +34,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **iCIMS 账号已注册** — 每个 tenant subdomain 都是独立账户体系（thermofisher 和 cintas 不互通）。第一次投某 tenant 时 用户 必须手动注册一次（邮箱 + 密码 + 简历）。建议用密码管理器记。
-3. **`shared/profile.json` 存在**（schema 见 `shared/profile.template.json`）+ `resume_path` 指向本地 PDF。
+3. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
 4. **Node 24+**。
 
 任意一项缺失 → 不要继续，报告给用户。
@@ -57,7 +57,10 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 ### 2. 健康检查
 ```bash
 curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
-RESUME=$(jq -r .resume_path shared/profile.json)
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
+RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 [ -f "$RESUME" ] || { echo "resume missing: $RESUME"; exit 1; }
 ```
 缺 → 报错退出。
@@ -96,7 +99,7 @@ node shared/cdp.mjs eval "$TAB" "JSON.stringify(ICIMS.detectStep())"
 每个步骤循环执行（最多 6 步，匹配 iCIMS 标准段：Personal / Resume / Education / Work / Questions / EEO / Review）：
 
 ```bash
-PROFILE=$(cat shared/profile.json)
+PROFILE_JSON=$(cat "$PROFILE")
 for step in 1 2 3 4 5 6; do
   STEP_INFO=$(node shared/cdp.mjs eval "$TAB" "JSON.stringify(ICIMS.detectStep())")
   echo "== Step $step :: $STEP_INFO =="

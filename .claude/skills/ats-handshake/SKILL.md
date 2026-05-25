@@ -28,7 +28,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **Handshake 账号已登录** — Handshake 所有 job pages 都需要 student SSO。隔离 profile 第一次跑时会要 用户 手动登录一次。
-3. **`shared/profile.json` 存在**（schema 见 `shared/profile.template.json`）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
+3. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
 4. **简历已在 Handshake Documents 上传** — Handshake 的"上传简历"是 document picker（选已传的 PDF），不是 file input。用户 必须事先在 Handshake 个人 documents store 传过简历。
 5. **Node 24+**。
 
@@ -51,7 +51,10 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 ### 2. 健康检查
 ```bash
 curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
-ls "$(jq -r .resume_path shared/profile.json)" > /dev/null
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
+ls "$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")" > /dev/null
 ```
 缺 → 报错退出。
 
@@ -99,7 +102,7 @@ sleep 2
 
 ### 6. 调用 `Handshake.fillForm(profile)` 拿 plan + 执行
 ```bash
-PROFILE=$(cat shared/profile.json)
+PROFILE_JSON=$(cat "$PROFILE")
 node shared/cdp.mjs eval "$TAB" "(async () => { return await Handshake.fillForm($PROFILE); })()"
 ```
 返回 `{ ok, plan: [...] }`。每 plan item action ∈ `typetext | select | pick_document | yesno`：

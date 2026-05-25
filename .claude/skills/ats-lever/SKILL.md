@@ -60,8 +60,12 @@ node shared/cdp.mjs eval "$TAB" "$(cat shared/lever_helpers.js)"
 把简历 `cp` 到 `/tmp/` 沙盒，然后 upload 到 hidden file input（**不要**对 drag-drop zone — GOTCHA #5）：
 
 ```bash
-cp "$(jq -r .resume_path shared/profile.json)" /tmp/
-RESUME=/tmp/$(basename "$(jq -r .resume_path shared/profile.json)")
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
+SRC_RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
+cp "$SRC_RESUME" /tmp/
+RESUME=/tmp/$(basename "$SRC_RESUME")
 node shared/cdp.mjs upload "$TAB" "input[name=resume][type=file]" "$RESUME"
 ```
 
@@ -75,8 +79,8 @@ node shared/cdp.mjs eval "$TAB" "(async () => await Lever.waitForResumeStorageId
 
 ### 6. 调用 `Lever.fillForm(profile)` 填表
 ```bash
-PROFILE=$(cat shared/profile.json)
-node shared/cdp.mjs eval "$TAB" "(async () => await Lever.fillForm($PROFILE))()"
+PROFILE_JSON=$(cat "$PROFILE")
+node shared/cdp.mjs eval "$TAB" "(async () => await Lever.fillForm($PROFILE_JSON))()"
 ```
 读返回的 `{filled, errors, plan}`。`fillForm` 内部会用 `setSelectedLocation()` 把 location 写成 JSON 格式（GOTCHA #1）。errors 非空时把缺的字段列出来 — 后续用户授权前由 skill 或用户手动补。
 
