@@ -56,7 +56,7 @@
  * error so callers fail fast rather than silently treat Wellfound as empty.
  */
 
-const USER_AGENT = 'ats-skills/0.8 (+https://github.com/glin23/ats-skills)';
+const USER_AGENT = 'ats-skills/0.8 (+https://github.com/glin23/mrweirdo-jobs)';
 const NOT_IMPLEMENTED_MSG =
   'wellfound_search.mjs is a v0.8 stub — real implementation requires CDP-driven scraping of authenticated Wellfound UI. See file header TODO for implementation steps.';
 

@@ -60,7 +60,7 @@
  * error so callers fail fast.
  */
 
-const USER_AGENT = 'ats-skills/0.8 (+https://github.com/glin23/ats-skills)';
+const USER_AGENT = 'ats-skills/0.8 (+https://github.com/glin23/mrweirdo-jobs)';
 const NOT_IMPLEMENTED_MSG =
   'yc_workatastartup.mjs is a v0.8 stub — real implementation requires either a public ycombinator.com/companies endpoint check or CDP scraping of authenticated workatastartup.com. See file header TODO.';
 

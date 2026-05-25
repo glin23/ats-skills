@@ -1,5 +1,5 @@
 ---
-name: ats-skills
+name: mrweirdo-jobs
 description: Batch-mode auto-applier for Greenhouse + Ashby ATSes. v0.5 reads "✅ Approved" jobs from your Notion 「📋 岗位追踪」 dashboard, routes each URL to the right ATS helper, applies with one upfront batch authorization, auto-marks Notion on success, and records skip reasons to feedback.jsonl for the AI sourcing loop. Per-job sub-flows reuse ats-greenhouse / ats-ashby helpers — this skill orchestrates the loop.
 ---
 
@@ -19,9 +19,9 @@ This is Lee's actual daily-use form: one command, walk away, come back to a repo
 
 ## 何时触发
 
-- 用户说 "用 ats-skills 投我的待投队列" / "投我的待投" / "/ats-skills" / "/ats-skills run"
+- 用户说 "用 ats-skills 投我的待投队列" / "投我的待投" / "/mrweirdo-jobs" / "/mrweirdo-jobs run"
 - 用户说 "batch apply" / "跑一遍 Notion 队列" / "把未投投了"
-- 单 URL 投递 → 用 `/ats-greenhouse` 或 `/ats-ashby`，**不**用这个 skill
+- 单 URL 投递 → 用 `/mrweirdo-greenhouse` 或 `/mrweirdo-ashby`，**不**用这个 skill
 
 ---
 
@@ -52,7 +52,7 @@ curl -sf http://localhost:9222/json/version > /dev/null \
 # 2. profile.json 存在且必填字段非空
 PROFILE="$ATS_HOME/profile.json"
 [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy fallback
-[ -f "$PROFILE" ] || { echo "Missing profile.json — run /ats-init first"; exit 1; }
+[ -f "$PROFILE" ] || { echo "Missing profile.json — run /mrweirdo-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
 const need = [['personal','first_name'],['personal','last_name'],['personal','email'],
@@ -66,7 +66,7 @@ RESUME=$(node -e "console.log(require('$PROFILE').resume_path)")
 [ -f "$RESUME" ] || { echo "Resume not found: $RESUME"; exit 1; }
 
 # 4. log dir
-mkdir -p /tmp/ats-skills/log/$(date +%F)
+mkdir -p /tmp/mrweirdo-jobs/log/$(date +%F)
 
 # 5. local_db jobs.db exists + has Approved rows
 node --no-warnings -e "
@@ -79,7 +79,7 @@ import(\`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs\`).then(async m => {
       process.exit(1);
     }
   } catch (e) {
-    console.error('local_db query failed: ' + e.message + '. Run /ats-init to initialize jobs.db.');
+    console.error('local_db query failed: ' + e.message + '. Run /mrweirdo-init to initialize jobs.db.');
     process.exit(1);
   }
 });
@@ -126,7 +126,7 @@ Step 3 loop 内每个 job 完成后:
 - `await sleep(jitter_range[pace])` —— jitter 是 uniform random in `[min, max]` seconds
 - 检查今日已投递数 (`success_count + fail_count`) >= `daily_cap` → break batch 并提示"今日 cap N 已达，明日再 trigger / 或临时切 fast pace"
 - 写 progress 到 `~/.ats-skills/batch_progress.json` (含 `pace`, `started_at`, `last_job_at`, `success_count`, `fail_count`, `remaining_urls[]`)
-- 容许中断恢复：下次 `/ats-skills resume` 读 progress.json 接着跑（v0.8 stretch）
+- 容许中断恢复：下次 `/mrweirdo-jobs resume` 读 progress.json 接着跑（v0.8 stretch）
 - 过夜跑 (stealth + 30 cap): 显示预计完成时间 = `now + remaining * avg_jitter`
 
 ### Daily cap 计算口径
@@ -149,7 +149,7 @@ import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const rows = await m.queryApprovedView();
   console.log(JSON.stringify(rows, null, 2));
 });
-" > /tmp/ats-skills/queue.json
+" > /tmp/mrweirdo-jobs/queue.json
 ```
 
 `queryApprovedView()` 在 `~/.ats-skills/jobs.db` 上跑 `SELECT * FROM jobs WHERE status = '✅ Approved' ORDER BY fit_score DESC`. DB path 可通过 `ATS_DB_PATH` env 覆盖。返回每行：
@@ -243,7 +243,7 @@ for i, c in enumerate(list, 1):
             log_jsonl({**c.dict(), "success": False, "error": result.error, "ts": now()})
             print(f"  ❌ {result.error} — skipping, continuing batch.")
     except ClassifierBlocked:
-        print(f"  ⛔ submit was not authorized at the classifier level. Aborting batch — try the single-URL skill (/ats-greenhouse <url> or /ats-ashby <url>) for per-application authorization on the remaining rows.")
+        print(f"  ⛔ submit was not authorized at the classifier level. Aborting batch — try the single-URL skill (/mrweirdo-greenhouse <url> or /mrweirdo-ashby <url>) for per-application authorization on the remaining rows.")
         break  # ONLY case we exit batch early
     except Exception as e:
         log_jsonl({**c.dict(), "success": False, "error": str(e), "ts": now()})
@@ -365,7 +365,7 @@ for i, c in enumerate(list, 1):
 
 7. **Pre-submit screenshot**:
    ```bash
-   SS_DIR=/tmp/ats-skills/log/$(date +%F)
+   SS_DIR=/tmp/mrweirdo-jobs/log/$(date +%F)
    node shared/cdp.mjs screenshot "$TAB" "$SS_DIR/${COMPANY// /_}_pre_submit.png"
    ```
 
@@ -481,7 +481,7 @@ for i, c in enumerate(list, 1):
 1. 调 `shared/computer_use_locator.mjs` 里的 `shouldEscalateToVision(unidentifiedFields, attemptCount)`
    - 返 `{ok: false, reason: "..."}` → 不升级，按现有 3-round 逻辑继续 / skip
    - 返 `{ok: true, fieldsToLocate: [...]}` → 进 vision 路径
-2. 调 `captureFrame(tabId)` 把当前 DOM frame 截到 `/tmp/ats-skills/locator-frame.png`
+2. 调 `captureFrame(tabId)` 把当前 DOM frame 截到 `/tmp/mrweirdo-jobs/locator-frame.png`
 3. 对每个要找的 field：
    - 调 `buildVisionPrompt(field, { url, atsPlatform, formTitle })` 拿到 prompt
    - 用 `mcp__computer-use__screenshot` 取当前屏幕（或读 saved frame），按 prompt 分析定位
@@ -563,7 +563,7 @@ import(\`\${process.env.ATS_REPO_ROOT}/shared/quota.mjs\`).then(async m => {
 "
 ```
 
-下次 sourcing (`/ats-source`) 跑 `isCapReached(companyEntry)` 自动 skip 配额耗尽的公司，导向 「🏢 大公司限投」 view 让用户 cherry-pick 剩余配额给真 dream role。
+下次 sourcing (`/mrweirdo-source`) 跑 `isCapReached(companyEntry)` 自动 skip 配额耗尽的公司，导向 「🏢 大公司限投」 view 让用户 cherry-pick 剩余配额给真 dream role。
 
 ### Fail path (v0.5 新增 feedback write)
 
@@ -618,10 +618,10 @@ ETA for next 38 @ 3.5min avg = ~2h13m  (finishes ~22:47 local)
 ❌ 失败 (2):
   - [9]  Crusoe — Motion Designer  (greenhouse)
          fillForm 卡死: "no .select__option visible after 1500ms" on country picker
-         截图: /tmp/ats-skills/log/2026-05-23/Crusoe_pre_submit.png
+         截图: /tmp/mrweirdo-jobs/log/2026-05-23/Crusoe_pre_submit.png
   - [10] Polymarket — Graphic Design  (ashby)
          submit click 后 4+4s 仍没 "successfully submitted" 文字，可能 captcha
-         截图: /tmp/ats-skills/log/2026-05-23/Polymarket_post_submit.png
+         截图: /tmp/mrweirdo-jobs/log/2026-05-23/Polymarket_post_submit.png
 
 🏢 v0.9 Quota guard skipped (2):
   - [11] Google — Product Mgmt Intern  (greenhouse)
@@ -631,14 +631,14 @@ ETA for next 38 @ 3.5min avg = ~2h13m  (finishes ~22:47 local)
 
   → 这些 row 已被 mark 「⚠️ 跳过未投」 + user_note="Quota protect — manual single-URL only"
   → 去 Notion 「🏢 大公司限投 (待手动选)」 view 看完整 capped 队列
-  → 心里挑出 dream 那 1-3 家 → 用 `/ats-greenhouse <url>` / `/ats-ashby <url>` 单独投
+  → 心里挑出 dream 那 1-3 家 → 用 `/mrweirdo-greenhouse <url>` / `/mrweirdo-ashby <url>` 单独投
   → 投完手动在 「🏢 大公司投递配额追踪」 sub-page 记一笔（Google 1/3 etc.）
 
 Notion: 已 auto-mark 8 个「✅ 已投」+ 投递日期 + 来源="ATS 直投" (+ confirmation_url 落进 Bot 备注).
 Inbox check: confirmation emails 到用户注册邮箱 (Greenhouse 通常有, Ashby 小 startup 经常没).
 
-Log: /tmp/ats-skills/log/2026-05-23.jsonl
-Screenshots: /tmp/ats-skills/log/2026-05-23/
+Log: /tmp/mrweirdo-jobs/log/2026-05-23.jsonl
+Screenshots: /tmp/mrweirdo-jobs/log/2026-05-23/
 Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 
 ## v0.5 feedback loop status
@@ -665,9 +665,9 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
 未投 37 家（仍在 Notion「✅ Approved」队列里，下次跑接着投）。
 
 下次触发:
-  - 等本地时间 0:00 (America/New_York) 后跑 `/ats-skills`，剩余 37 家自动续接。
+  - 等本地时间 0:00 (America/New_York) 后跑 `/mrweirdo-jobs`，剩余 37 家自动续接。
   - 临时切 fast pace: 把 profile.json 的 batch_pace 改成 "normal" 或 "fast" → 立刻可以接着跑（但平台反爬风险↑）。
-  - 跑 `/ats-skills resume` 直接从 ~/.ats-skills/batch_progress.json 续接（v0.8 stretch）。
+  - 跑 `/mrweirdo-jobs resume` 直接从 ~/.ats-skills/batch_progress.json 续接（v0.8 stretch）。
 ```
 
 如果是因为 `ClassifierBlocked` 提前 break：
@@ -685,7 +685,7 @@ Feedback log: ~/.ats-skills/feedback.jsonl (新 append 2 条 fail 记录)
   - [8] Twilio, [9] Crusoe, [10] Polymarket Graphic
 
 修复:
-  对剩下的 row 用 single-URL skill 一家一家投 — `/ats-greenhouse <url>` 或 `/ats-ashby <url>` 拿 per-application 授权。
+  对剩下的 row 用 single-URL skill 一家一家投 — `/mrweirdo-greenhouse <url>` 或 `/mrweirdo-ashby <url>` 拿 per-application 授权。
 ```
 
 ---
@@ -731,7 +731,7 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 1. batch 跑完，dashboard 看到 "🏢 N 家因 quota 保护被 skip"
 2. 用户打开 Notion 「📋 岗位追踪」 → 「🏢 大公司限投 (待手动选)」 view
 3. 心里挑出最 dream 的 1-3 家（每个公司 1 个 role）
-4. 对每个 cherry-pick 的 row 单独跑 `/ats-greenhouse <url>` / `/ats-ashby <url>` 等 single-URL skill
+4. 对每个 cherry-pick 的 row 单独跑 `/mrweirdo-greenhouse <url>` / `/mrweirdo-ashby <url>` 等 single-URL skill
 5. 投完去 「🏢 大公司投递配额追踪」 sub-page 手动 +1（"Google 用了 1/3，剩 2"）
 6. 剩下的 capped row 留在 view 里，下一 cycle 再 review
 
@@ -778,13 +778,13 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 
 ---
 
-## Log format (`/tmp/ats-skills/log/<date>.jsonl`)
+## Log format (`/tmp/mrweirdo-jobs/log/<date>.jsonl`)
 
 每行一个 JSON：
 
 ```json
-{"ts":"2026-05-23T14:32:11-04:00","ats":"greenhouse","company":"Cresta","role":"DS Intern CS","url":"https://...","page_id":"...","success":true,"screenshots":["/tmp/ats-skills/log/2026-05-23/Cresta_pre_submit.png","/tmp/ats-skills/log/2026-05-23/Cresta_post_submit.png"]}
-{"ts":"2026-05-23T14:34:02-04:00","ats":"greenhouse","company":"Crusoe","role":"Motion Designer","url":"https://...","page_id":"...","success":false,"error":"no .select__option visible after 1500ms on #country","screenshots":["/tmp/ats-skills/log/2026-05-23/Crusoe_pre_submit.png"]}
+{"ts":"2026-05-23T14:32:11-04:00","ats":"greenhouse","company":"Cresta","role":"DS Intern CS","url":"https://...","page_id":"...","success":true,"screenshots":["/tmp/mrweirdo-jobs/log/2026-05-23/Cresta_pre_submit.png","/tmp/mrweirdo-jobs/log/2026-05-23/Cresta_post_submit.png"]}
+{"ts":"2026-05-23T14:34:02-04:00","ats":"greenhouse","company":"Crusoe","role":"Motion Designer","url":"https://...","page_id":"...","success":false,"error":"no .select__option visible after 1500ms on #country","screenshots":["/tmp/mrweirdo-jobs/log/2026-05-23/Crusoe_pre_submit.png"]}
 ```
 
 可供后续 retry / 统计 / debug 分析。
@@ -803,8 +803,8 @@ quota guard 是 **设计内** 的 skip，不是 fail；ClassifierBlocked 是 **h
 - `shared/handshake_helpers.js` — v0.6 beta
 - `shared/workday/<tenant>.js` — v0.7 stretch, per-company config
 - `shared/profile.json` — 用户填的真实 profile (gitignored)
-- `.claude/skills/ats-greenhouse/SKILL.md` — single-URL Greenhouse flow (本 skill 是 batch 版)
-- `.claude/skills/ats-ashby/SKILL.md` — single-URL Ashby flow
+- `.claude/skills/mrweirdo-greenhouse/SKILL.md` — single-URL Greenhouse flow (本 skill 是 batch 版)
+- `.claude/skills/mrweirdo-ashby/SKILL.md` — single-URL Ashby flow
 - Notion DB / data_source IDs come from `~/.ats-skills/config.json` (see `shared/config.template.json`). For Lee's legacy setup the defaults in `shared/paths.mjs` apply.
 - Harness classifier rule: `feedback_ats_auto_apply_strategy_2026.md`
 - react-select mousedown trick: `feedback_ats_react_select_mousedown.md`

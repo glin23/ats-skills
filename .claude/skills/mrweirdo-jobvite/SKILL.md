@@ -1,6 +1,6 @@
 ---
-name: ats-jobvite
-description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`jobs.jobvite.com/*`) application form filling using CDP via shared/cdp.mjs. Most tenants allow guest apply (no account required); resume upload via file input. Trigger with '投这个 JobVite URL：<url>' or '/ats-jobvite <url>'. User must explicitly authorize Submit — skill never auto-submits."
+name: mrweirdo-jobvite
+description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`jobs.jobvite.com/*`) application form filling using CDP via shared/cdp.mjs. Most tenants allow guest apply (no account required); resume upload via file input. Trigger with '投这个 JobVite URL：<url>' or '/mrweirdo-jobvite <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # JobVite ATS 投递 skill (v0.8 ALPHA)
@@ -22,7 +22,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
 
 - 用户说 "用 ats-jobvite 投这个：`<URL>`"
 - 用户说 "投这个 JobVite URL：`<URL>`"
-- 用户输入 `/ats-jobvite <URL>`
+- 用户输入 `/mrweirdo-jobvite <URL>`
 - 用户给的 URL host 是 `jobs.jobvite.com`
 
 非 JobVite 域名 → 让用户改用对应 skill。注意：少数公司用 `careers.<company>.com` 做 redirect proxy 到 JobVite — 先看 navigator 跳转后的 host。
@@ -33,7 +33,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
-2. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
+2. **`~/.ats-skills/profile.json` 存在**（由 `/mrweirdo-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
 3. **可选：JobVite 账户登录**。少数 tenant 强制注册（特别是金融行业），多数允许 guest apply。如检测到 sign-in wall → 提示 Lee 登录。
 4. **Node 24+**。
 

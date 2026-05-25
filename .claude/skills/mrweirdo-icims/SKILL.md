@@ -1,6 +1,6 @@
 ---
-name: ats-icims
-description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career portal (`careers-*.icims.com`) application form filling using CDP via shared/cdp.mjs. iCIMS REQUIRES account creation; flow includes resume upload + multi-step wizard + EEOC. Trigger with '投这个 iCIMS URL：<url>' or '/ats-icims <url>'. User must explicitly authorize Submit — skill never auto-submits."
+name: mrweirdo-icims
+description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career portal (`careers-*.icims.com`) application form filling using CDP via shared/cdp.mjs. iCIMS REQUIRES account creation; flow includes resume upload + multi-step wizard + EEOC. Trigger with '投这个 iCIMS URL：<url>' or '/mrweirdo-icims <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # iCIMS ATS 投递 skill (v0.8 ALPHA)
@@ -22,7 +22,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 
 - 用户说 "用 ats-icims 投这个：`<URL>`"
 - 用户说 "投这个 iCIMS URL：`<URL>`"
-- 用户输入 `/ats-icims <URL>`
+- 用户输入 `/mrweirdo-icims <URL>`
 - 用户给的 URL host 匹配 `careers-*.icims.com` 或 `*.icims.com`
 
 非 iCIMS 域名 → 让用户改用对应 skill。
@@ -34,7 +34,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **iCIMS 账号已注册** — 每个 tenant subdomain 都是独立账户体系（thermofisher 和 cintas 不互通）。第一次投某 tenant 时 Lee 必须手动注册一次（邮箱 + 密码 + 简历）。建议用密码管理器记。
-3. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
+3. **`~/.ats-skills/profile.json` 存在**（由 `/mrweirdo-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
 4. **Node 24+**。
 
 任意一项缺失 → 不要继续，报告给用户。

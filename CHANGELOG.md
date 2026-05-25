@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.2.0] - 2026-05-25 — Rebrand to mrweirdo-jobs
+
+Project rebranded from `ats-skills` to `mrweirdo-jobs` (Lee's personal brand).
+Everything works the same; the changes are user-facing names only.
+
+### Renamed
+
+- **GitHub repo**: `glin23/ats-skills` → `glin23/mrweirdo-jobs`
+  (GitHub auto-redirects old URLs, but new clones / install commands should
+  use the new URL).
+- **Slash commands** (all 12 skills):
+  - `/ats-skills` → `/mrweirdo-jobs` (batch orchestrator — same name as repo)
+  - `/ats-init` → `/mrweirdo-init`
+  - `/ats-source` → `/mrweirdo-source`
+  - `/ats-confirm` → `/mrweirdo-confirm`
+  - `/ats-greenhouse` → `/mrweirdo-greenhouse`
+  - `/ats-ashby` → `/mrweirdo-ashby`
+  - `/ats-lever` → `/mrweirdo-lever`
+  - `/ats-smartrecruiters` → `/mrweirdo-smartrecruiters`
+  - `/ats-icims` → `/mrweirdo-icims`
+  - `/ats-jobvite` → `/mrweirdo-jobvite`
+  - `/ats-handshake` → `/mrweirdo-handshake`
+  - `/ats-workday` → `/mrweirdo-workday`
+- `.claude/skills/ats-*/` directories renamed to `mrweirdo-*/`
+- README.md, setup.sh, all SKILL.md frontmatter `name:` fields updated
+
+### Unchanged (deliberately preserved for stability)
+
+- **User data dir**: `~/.ats-skills/` stays. Renaming would break existing
+  installs and require migration scripts. The data location is internal
+  implementation detail; users rarely cd into it.
+- **Env vars**: `$ATS_HOME`, `$ATS_REPO_ROOT`, `ATS_DB_PATH` stay.
+- **Historical CHANGELOG entries** (v0.x, v1.0, v1.1): keep their original
+  `/ats-X` references for historical accuracy. Those slash commands
+  worked at the time of those releases.
+- **Tags**: v1.0.0 / v1.0.1 / v1.1.0 / v1.1.1 stay as-is (immutable history).
+
+### Install command
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
+```
+
+(The old `glin23/ats-skills` URL still 302-redirects to the new repo for
+the next ~30 days per GitHub's policy, but new installs should use the
+new URL.)
+
 ## [1.1.0] - 2026-05-24 — SQLite + Datasette, zero cloud
 
 Replaces Notion as the job-tracking DB with local SQLite. New users no longer
@@ -72,7 +119,7 @@ The project moves from "Lee's private daily-driver" to "anyone can install + run
 
 ### Changed
 - **`setup.sh`** is now a curl-pipe bootstrap:
-  `bash <(curl -fsSL https://raw.githubusercontent.com/glin23/ats-skills/main/setup.sh)`.
+  `bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)`.
   Clones to `~/.ats-skills/repo`, symlinks `.claude/skills/*` into
   `~/.claude/skills/` so Claude Code globally picks them up, creates
   `~/.ats-skills/{log,.env}`. Idempotent + re-runnable for updates.
@@ -214,9 +261,9 @@ with `notion_db_id` + `resume_path`.
 - Handshake (no working code yet)
 - LinkedIn Easy Apply (TOS red line)
 
-[0.7.0]: https://github.com/glin23/ats-skills/releases/tag/v0.7.0
-[0.6.0]: https://github.com/glin23/ats-skills/releases/tag/v0.6.0
-[0.5.0]: https://github.com/glin23/ats-skills/releases/tag/v0.5.0
-[0.3.0]: https://github.com/glin23/ats-skills/releases/tag/v0.3.0
-[0.2.0]: https://github.com/glin23/ats-skills/releases/tag/v0.2.0
-[0.1.0]: https://github.com/glin23/ats-skills/releases/tag/v0.1.0
+[0.7.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.7.0
+[0.6.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.6.0
+[0.5.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.5.0
+[0.3.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.3.0
+[0.2.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.2.0
+[0.1.0]: https://github.com/glin23/mrweirdo-jobs/releases/tag/v0.1.0

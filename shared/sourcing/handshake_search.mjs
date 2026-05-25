@@ -69,7 +69,7 @@
  * error so callers fail fast rather than silently treat handshake as empty.
  */
 
-const USER_AGENT = 'ats-skills/0.6 (+https://github.com/glin23/ats-skills)';
+const USER_AGENT = 'ats-skills/0.6 (+https://github.com/glin23/mrweirdo-jobs)';
 const NOT_IMPLEMENTED_MSG =
   'handshake_search.mjs is a v0.6 stub — real implementation requires CDP-driven scraping of authenticated Handshake UI. See file header TODO for implementation steps.';
 

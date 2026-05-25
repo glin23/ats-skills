@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ats-skills v1.0 bootstrap
-# Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/ats-skills/main/setup.sh)
+# mrweirdo-jobs (v1.2) bootstrap
+# Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
 # What it does:
@@ -8,13 +8,13 @@
 #   2. Clone (or update) the repo to ~/.ats-skills/repo
 #   3. Symlink .claude/skills/* into ~/.claude/skills/ so Claude Code picks them up
 #   4. Create ~/.ats-skills/ layout (log/, empty .env with chmod 600)
-#   5. Print next-step: "open Claude Code, run /ats-init"
+#   5. Print next-step: "open Claude Code, run /mrweirdo-init"
 #
 # Re-runnable. Idempotent.
 
 set -e
 
-REPO_URL="${ATS_SKILLS_REPO_URL:-https://github.com/glin23/ats-skills.git}"
+REPO_URL="${ATS_SKILLS_REPO_URL:-https://github.com/glin23/mrweirdo-jobs.git}"
 REPO_BRANCH="${ATS_SKILLS_BRANCH:-main}"
 ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
 ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
@@ -26,7 +26,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "ats-skills v1.0 bootstrap"
+blue "mrweirdo-jobs (v1.2) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -106,18 +106,18 @@ green "  ~/.ats-skills/ layout ✓"
 echo ""
 blue "Setup complete. Next steps:"
 echo "  1. Open Claude Code (any directory)"
-echo "  2. Run: /ats-init"
+echo "  2. Run: /mrweirdo-init"
 echo "       → Collects Anthropic + Notion API keys, parses your resume,"
 echo "         provisions a Notion 「📋 岗位追踪」 database, asks 4 questions"
 echo "         to set up target_filters."
 echo ""
-echo "  After /ats-init you can use:"
-echo "      /ats-source            — AI-scored job sourcing → Notion"
-echo "      /ats-skills            — batch apply Approved queue"
-echo "      /ats-greenhouse <url>  — single Greenhouse URL"
-echo "      /ats-ashby      <url>  — single Ashby URL"
-echo "      /ats-lever      <url>  — single Lever URL"
-echo "      /ats-confirm           — Gmail confirmation → Notion mark"
+echo "  After /mrweirdo-init you can use:"
+echo "      /mrweirdo-source            — AI-scored job sourcing → Notion"
+echo "      /mrweirdo-jobs            — batch apply Approved queue"
+echo "      /mrweirdo-greenhouse <url>  — single Greenhouse URL"
+echo "      /mrweirdo-ashby      <url>  — single Ashby URL"
+echo "      /mrweirdo-lever      <url>  — single Lever URL"
+echo "      /mrweirdo-confirm           — Gmail confirmation → Notion mark"
 echo ""
 echo "  Update later with:  git -C $ATS_REPO_ROOT pull"
 echo ""

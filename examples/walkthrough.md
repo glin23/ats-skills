@@ -6,7 +6,7 @@ generic placeholders for privacy.
 ## Setup
 
 ```bash
-git clone https://github.com/glin23/ats-skills ~/.claude/skills/ats-skills
+git clone https://github.com/glin23/mrweirdo-jobs ~/.claude/skills/ats-skills
 cd ~/.claude/skills/ats-skills
 ./setup.sh
 # edit shared/profile.json — name/email/phone/linkedin/resume_path/standard_qa

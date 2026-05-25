@@ -40,11 +40,11 @@ Submits NEVER happen without your per-batch confirmation.
 ```
 Install on macOS:
 
-bash <(curl -fsSL https://raw.githubusercontent.com/glin23/ats-skills/main/setup.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 
 Then in Claude Code:  /ats-init
 
-MIT licensed.  github.com/glin23/ats-skills
+MIT licensed.  github.com/glin23/mrweirdo-jobs
 
 Built mostly with Claude Code itself — about 20k lines across two weeks.
 ```
@@ -83,7 +83,7 @@ What I learned shipping this:
 
 MIT license. Install in one curl-piped command:
 
-https://github.com/glin23/ats-skills
+https://github.com/glin23/mrweirdo-jobs
 
 Open to PRs, especially helper fixes when an ATS changes their DOM.
 ```
@@ -178,4 +178,4 @@ GitHub 搜 ats-skills（链接放 profile）
 
 平台间错开 24h+ 避免 cross-pollination 看着像 spam。
 
-每个平台都附 `github.com/glin23/ats-skills` 链接（XHS profile bio 放，正文不要长 URL）。
+每个平台都附 `github.com/glin23/mrweirdo-jobs` 链接（XHS profile bio 放，正文不要长 URL）。
