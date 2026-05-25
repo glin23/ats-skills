@@ -1,6 +1,6 @@
 ---
-name: ats-ashby
-description: Automate Ashby ATS application form filling using real Chrome via CDP. Text fields MUST go through `cdp.mjs typetext` (real keyboard, isTrusted=true) because Ashby's react-hook-form rejects JS-dispatched InputEvents (isTrusted=false). Yes/No buttons take a single click (NOT mousedown). Trigger with "投这个 Ashby URL：<url>" or `/ats-ashby <url>`. User must explicitly authorize Submit per harness classifier rules.
+name: mrweirdo-ashby
+description: Automate Ashby ATS application form filling using real Chrome via CDP. Text fields MUST go through `cdp.mjs typetext` (real keyboard, isTrusted=true) because Ashby's react-hook-form rejects JS-dispatched InputEvents (isTrusted=false). Yes/No buttons take a single click (NOT mousedown). Trigger with "投这个 Ashby URL：<url>" or `/mrweirdo-ashby <url>`. User must explicitly authorize Submit per harness classifier rules.
 ---
 
 # Ashby ATS 投递 skill
@@ -13,13 +13,13 @@ Ashby 比 Greenhouse 严格 —— 它的 react-hook-form 会检查 `event.isTru
    ```bash
    ./shared/chrome-cdp-launcher.sh    # open -na 强制独立 instance
    ```
-2. **`~/.ats-skills/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/ats-init` 生成）
+2. **`~/.ats-skills/profile.json` 已填** — name/email/phone/LinkedIn/visa 等（由 `/mrweirdo-init` 生成）
 3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
 
-- `/ats-ashby <apply-url>`
+- `/mrweirdo-ashby <apply-url>`
 - 或 "投这个 Ashby URL：`<url>`"
 
 ## 流程（8 步）
@@ -34,7 +34,7 @@ curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/s
 [ -f "$RESUME" ] || { echo "Resume not found: $RESUME"; exit 1; }
 [ -f "$PROFILE" ] && jq -e . "$PROFILE" > /dev/null   # 验证有效 JSON
 ```
-如缺：报错退出，提示用户跑 `/ats-init`。
+如缺：报错退出，提示用户跑 `/mrweirdo-init`。
 
 ### 2. 导航
 ```bash

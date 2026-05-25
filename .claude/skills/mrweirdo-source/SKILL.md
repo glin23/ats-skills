@@ -1,15 +1,15 @@
 ---
-name: ats-source
-description: AI-driven job sourcing from Greenhouse and Ashby public Job Board APIs. Fetches latest postings from your curated company list, scores each one against your profile + recent skip feedback, and writes results to your Notion 「📋 岗位追踪」 dashboard for review. Triggered via "/ats-source", "用 ats-source 找新岗位", "AI source 一下", "find new jobs", or "source jobs".
+name: mrweirdo-source
+description: AI-driven job sourcing from Greenhouse and Ashby public Job Board APIs. Fetches latest postings from your curated company list, scores each one against your profile + recent skip feedback, and writes results to your Notion 「📋 岗位追踪」 dashboard for review. Triggered via "/mrweirdo-source", "用 ats-source 找新岗位", "AI source 一下", "find new jobs", or "source jobs".
 ---
 
-# /ats-source — AI sourcing pipeline (v0.3 + v0.9)
+# /mrweirdo-source — AI sourcing pipeline (v0.3 + v0.9)
 
 **v0.9 (2026-05-24)**: Large-company quota guard. Companies with `apply_quota.enabled == true` in `company_list.json` (Google/Meta/MS/Amazon/Apple/etc., ~25 total) are tagged in Notion as 「大公司限投」 + flagged in Bot 备注. ats-skills batch will **skip** them — they must be cherry-picked + applied via single-URL skill manually so capped quota is spent on dream roles.
 
 One trigger. Skill pulls fresh job postings from the Greenhouse + Ashby public Job Board APIs for every company in `shared/sourcing/company_list.json`, filters to user's `target_filters.role_types`, scores each with Claude Sonnet (multi-dim fit score + key alignment/gaps), upserts to Notion with status `🤖 AI sourced`, and reports a top-N summary. Walk away, come back to a Notion dashboard you can approve/skip in 30 sec/row.
 
-This is the Step 1 of the v0.3 funnel: **source → approve → /ats-skills batch apply**. This skill **only sources + scores**; it does **not** apply to anything.
+This is the Step 1 of the v0.3 funnel: **source → approve → /mrweirdo-jobs batch apply**. This skill **only sources + scores**; it does **not** apply to anything.
 
 ---
 
@@ -17,8 +17,8 @@ This is the Step 1 of the v0.3 funnel: **source → approve → /ats-skills batc
 
 - 用户说 "找新岗位" / "AI source 一下" / "source jobs" / "用 ats-source 找新岗位" / "find new jobs"
 - 用户希望从公开 Job Board API 拉新岗位 + AI 打分 + 写 Notion 让自己审
-- **不要** 在用户手工提交单个 URL 让你投递时触发 — 那是 `/ats-greenhouse` / `/ats-ashby` 的事
-- **不要** 在用户说"投我的待投队列"时触发 — 那是 `/ats-skills` batch orchestrator 的事
+- **不要** 在用户手工提交单个 URL 让你投递时触发 — 那是 `/mrweirdo-greenhouse` / `/mrweirdo-ashby` 的事
+- **不要** 在用户说"投我的待投队列"时触发 — 那是 `/mrweirdo-jobs` batch orchestrator 的事
 
 ---
 
@@ -58,7 +58,7 @@ export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
 # 3. profile.json 存在 + 含 target_filters
 PROFILE="$ATS_HOME/profile.json"
 [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"  # legacy
-[ -f "$PROFILE" ] || { echo "Missing profile.json — run /ats-init first"; exit 1; }
+[ -f "$PROFILE" ] || { echo "Missing profile.json — run /mrweirdo-init first"; exit 1; }
 node -e "
 const p = require('$PROFILE');
 const tf = p.target_filters;
@@ -81,7 +81,7 @@ console.log('Pre-flight OK. ' + l.companies.length + ' companies on the list.');
 "
 
 # 5. log dir
-mkdir -p /tmp/ats-skills/log/$(date +%F)
+mkdir -p /tmp/mrweirdo-jobs/log/$(date +%F)
 ```
 
 **输出给用户**："Pre-flight OK. NOTION_API_KEY ✓ ANTHROPIC_API_KEY ✓ profile.target_filters ✓ company_list (N companies) ✓"
@@ -124,11 +124,11 @@ mkdir -p /tmp/ats-skills/log/$(date +%F)
 
 对 company_list.json 的每家 company 跑两边，结果合并。Greenhouse + Ashby helpers 已自带 1 req/sec throttle，串起来跑也安全（也可以并发，但保守串行更不踩 rate limit）。
 
-实操：写一个小 driver 脚本到 `/tmp/ats-source/source_jobs.mjs`，import 现有 helpers，循环 + 输出 JSON 到 stdout。Claude 跑这个 script 收集结果。
+实操：写一个小 driver 脚本到 `/tmp/mrweirdo-source/source_jobs.mjs`，import 现有 helpers，循环 + 输出 JSON 到 stdout。Claude 跑这个 script 收集结果。
 
 ```bash
-mkdir -p /tmp/ats-source
-cat > /tmp/ats-source/source_jobs.mjs <<'NODE'
+mkdir -p /tmp/mrweirdo-source
+cat > /tmp/mrweirdo-source/source_jobs.mjs <<'NODE'
 import * as GH from `${process.env.ATS_REPO_ROOT}/shared/sourcing/greenhouse_board_api.mjs`;
 import * as Ashby from `${process.env.ATS_REPO_ROOT}/shared/sourcing/ashby_board_api.mjs`;
 import { loadCompanyList, loadProfile } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
@@ -171,7 +171,7 @@ for (const c of list.companies) {
 process.stdout.write(JSON.stringify({ jobs: all, errors }, null, 2));
 NODE
 
-node /tmp/ats-source/source_jobs.mjs > /tmp/ats-source/raw_jobs.json
+node /tmp/mrweirdo-source/source_jobs.mjs > /tmp/mrweirdo-source/raw_jobs.json
 ```
 
 进度 print（stderr 流到用户）：
@@ -186,16 +186,16 @@ node /tmp/ats-source/source_jobs.mjs > /tmp/ats-source/raw_jobs.json
 
 **错误处理**：单家公司 fetch fail 不退出整个 step，append 进 `errors[]` 继续。所有 errors 收集后 Step 5 dashboard 一起 print。
 
-**结果**：`/tmp/ats-source/raw_jobs.json` 含 `{ jobs: [...], errors: [...] }`。每个 job 已经 normalized + role-filtered。
+**结果**：`/tmp/mrweirdo-source/raw_jobs.json` 含 `{ jobs: [...], errors: [...] }`。每个 job 已经 normalized + role-filtered。
 
 ---
 
 ## Step 3: AI score batch
 
-读 `/tmp/ats-source/raw_jobs.json` + load 最近 20 条 feedback，调 `scoreBatch()` with progress callback。
+读 `/tmp/mrweirdo-source/raw_jobs.json` + load 最近 20 条 feedback，调 `scoreBatch()` with progress callback。
 
 ```bash
-cat > /tmp/ats-source/score_jobs.mjs <<'NODE'
+cat > /tmp/mrweirdo-source/score_jobs.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
 import { scoreBatch } from `${process.env.ATS_REPO_ROOT}/shared/matching/ai_scorer.mjs`;
 import { loadRecent } from `${process.env.ATS_REPO_ROOT}/shared/feedback.mjs`;
@@ -204,7 +204,7 @@ const profile = JSON.parse(
   await readFile(`${process.env.ATS_REPO_ROOT}/shared/profile.json`, 'utf8'),
 );
 const { jobs, errors } = JSON.parse(
-  await readFile('/tmp/ats-source/raw_jobs.json', 'utf8'),
+  await readFile('/tmp/mrweirdo-source/raw_jobs.json', 'utf8'),
 );
 const recentFeedback = loadRecent(20);
 
@@ -238,11 +238,11 @@ const scored = jobs.map((job, i) => {
   };
 });
 
-await writeFile('/tmp/ats-source/scored_jobs.json', JSON.stringify({ scored, fetch_errors: errors }, null, 2));
+await writeFile('/tmp/mrweirdo-source/scored_jobs.json', JSON.stringify({ scored, fetch_errors: errors }, null, 2));
 process.stderr.write(`[score] done. ${scored.filter((j) => j.fit_score != null).length}/${scored.length} successfully scored.\n`);
 NODE
 
-node /tmp/ats-source/score_jobs.mjs
+node /tmp/mrweirdo-source/score_jobs.mjs
 ```
 
 进度 print 给用户：
@@ -261,7 +261,7 @@ node /tmp/ats-source/score_jobs.mjs
 
 ## Step 4: Notion upsert
 
-读 `/tmp/ats-source/scored_jobs.json`，按 Notion DB schema 映射，调 `batchUpsert()`。
+读 `/tmp/mrweirdo-source/scored_jobs.json`，按 Notion DB schema 映射，调 `batchUpsert()`。
 
 ### v0.9 Capped detection (大公司限投保护)
 
@@ -277,14 +277,14 @@ node /tmp/ats-source/score_jobs.mjs
 未带 `apply_quota` 或 `apply_quota.enabled == false` 的公司走原 flow，「分类」字段留空（不视为大公司限投）。
 
 ```bash
-cat > /tmp/ats-source/sync_notion.mjs <<'NODE'
+cat > /tmp/mrweirdo-source/sync_notion.mjs <<'NODE'
 import { readFile, writeFile } from 'node:fs/promises';
 import { batchUpsert } from `${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`;
 import { loadCompanyList } from `${process.env.ATS_REPO_ROOT}/shared/paths.mjs`;
 import { isCapReached } from `${process.env.ATS_REPO_ROOT}/shared/quota.mjs`;
 
 const { scored, fetch_errors } = JSON.parse(
-  await readFile('/tmp/ats-source/scored_jobs.json', 'utf8'),
+  await readFile('/tmp/mrweirdo-source/scored_jobs.json', 'utf8'),
 );
 const companyList = loadCompanyList();   // merged baseline + ~/.ats-skills/company_list.user.json
 const companyByName = new Map(companyList.companies.map((c) => [c.name, c]));
@@ -332,11 +332,11 @@ const result = await batchUpsert(rows, {
   },
 });
 
-await writeFile('/tmp/ats-source/notion_result.json', JSON.stringify({ result, scored, fetch_errors }, null, 2));
+await writeFile('/tmp/mrweirdo-source/notion_result.json', JSON.stringify({ result, scored, fetch_errors }, null, 2));
 process.stderr.write(`[notion] done. created=${result.created} updated=${result.updated} errors=${result.errors.length}\n`);
 NODE
 
-node /tmp/ats-source/sync_notion.mjs
+node /tmp/mrweirdo-source/sync_notion.mjs
 ```
 
 **错误处理**：`batchUpsert` 已经 try/catch 每个 row，单 row Notion 错（e.g. property name 不存在）→ 收集到 `result.errors[]`，不中断。Step 5 dashboard 显示。
@@ -378,23 +378,23 @@ Sourced summary:
   - Stripe (greenhouse): timeout after 12s
 
 ❌ Notion upsert errors (2):
-  - Faire — "Marketing Intern": local_db write error: <reason>. Re-run /ats-init to refresh schema if needed.
+  - Faire — "Marketing Intern": local_db write error: <reason>. Re-run /mrweirdo-init to refresh schema if needed.
 
 下一步:
   1. 打开 Notion → 「📋 岗位追踪」 → "🤖 AI Sourced (Pending Review)" view
   2. 按 fit_score 排序，逐 row decide:
      - ✅ approve → 拖到 "✅ Approved" view（改 状态 字段）
      - ❌ skip → 状态 改 "⚠️ 跳过未投" + skip_reason + user_note
-  3. 审完后跑 `/ats-skills` 一键投 Approved view 里的全部
+  3. 审完后跑 `/mrweirdo-jobs` 一键投 Approved view 里的全部
   4. **大公司限投 (v0.9)** → 单独看 「🏢 大公司限投 (待手动选)」 view + 「🏢 大公司投递配额追踪」 sub-page
      - 这些 row 已被 ats-skills batch 主动跳过（不会烧 quota）
-     - 自己 cherry-pick 几家最 dream 的，用 `/ats-greenhouse <url>` / `/ats-ashby <url>` 等 single-URL skill 投
+     - 自己 cherry-pick 几家最 dream 的，用 `/mrweirdo-greenhouse <url>` / `/mrweirdo-ashby <url>` 等 single-URL skill 投
      - 投完手动在 sub-page 记一笔（用了 1/3 / 4/5 etc.）
 
 Log:
-  /tmp/ats-source/raw_jobs.json       (fetch results)
-  /tmp/ats-source/scored_jobs.json    (AI scores)
-  /tmp/ats-source/notion_result.json  (sync results + errors)
+  /tmp/mrweirdo-source/raw_jobs.json       (fetch results)
+  /tmp/mrweirdo-source/scored_jobs.json    (AI scores)
+  /tmp/mrweirdo-source/notion_result.json  (sync results + errors)
 ```
 
 ---
@@ -413,7 +413,7 @@ Log:
 
 **问题**：如果 ats-skills batch 把这些公司 auto-apply 进去，配额会被烧在 **非 dream role** 上 — 等用户真的想投某个梦中岗位时，发现已经 hit cap = 失败。这是一个 hard product constraint，不是 nice-to-have。
 
-**解法**：v0.9 在 sourcing 端给这些公司打上 `apply_quota.enabled = true` 标签 + 「分类」 = `大公司限投`；batch 端 (`/ats-skills`) 拿到这些 row 主动 skip，引导用户用 single-URL skill 手动 cherry-pick 投。
+**解法**：v0.9 在 sourcing 端给这些公司打上 `apply_quota.enabled = true` 标签 + 「分类」 = `大公司限投`；batch 端 (`/mrweirdo-jobs`) 拿到这些 row 主动 skip，引导用户用 single-URL skill 手动 cherry-pick 投。
 
 ### 检测逻辑
 
@@ -428,20 +428,20 @@ Log:
 
 - 它们仍然是有价值的 sourcing 信号 (用户 想看 Google PM Intern 长什么样)
 - 用户 自己 cherry-pick 哪几家最 dream 的，是个 **人工决策**，sourcing 只负责提供候选
-- batch end (`/ats-skills`) 才是真正烧 quota 的地方 — 那里 skip 才是关键拦截
+- batch end (`/mrweirdo-jobs`) 才是真正烧 quota 的地方 — 那里 skip 才是关键拦截
 
 ### 用户操作流
 
-1. `/ats-source` 跑完 → Notion 「📋 岗位追踪」 同时多 N row capped
+1. `/mrweirdo-source` 跑完 → Notion 「📋 岗位追踪」 同时多 N row capped
 2. 用户去 「🏢 大公司限投 (待手动选)」 view 看这一批（按 fit_score 排）
 3. 心里挑出最 dream 的 1-3 家（每个公司 1 个 role）
-4. 对每个 cherry-pick 的 row 单独跑 `/ats-greenhouse <url>` / `/ats-ashby <url>` 之类 single-URL skill
+4. 对每个 cherry-pick 的 row 单独跑 `/mrweirdo-greenhouse <url>` / `/mrweirdo-ashby <url>` 之类 single-URL skill
 5. 投完去 「🏢 大公司投递配额追踪」 sub-page 手动 +1（"Google 用了 1/3，剩 2"）
 6. 剩下的 capped row 留在 view 里，下一 cycle 再 review
 
 ### 不要做的事
 
-- ❌ 不要在 capped row 上跑 `/ats-skills` batch —— 它会跳过它们；但用户错把它们标 ✅ Approved 又意外投了的情况要避免
+- ❌ 不要在 capped row 上跑 `/mrweirdo-jobs` batch —— 它会跳过它们；但用户错把它们标 ✅ Approved 又意外投了的情况要避免
 - ❌ 不要在 sourcing 端按 `apply_quota` 做 hard filter —— 让 用户 自己 cherry-pick
 - ❌ 不要 hardcode capped 公司名单 —— 全部从 `company_list.json` 的 `apply_quota` 字段读
 - ❌ 不要让 capped row 落到 「✅ Approved」 view —— 用户 改 status 时要意识到这是 batch 入口
@@ -461,14 +461,14 @@ Log:
 | 单 job AI scorer 5xx / 429 | scoreFit retry 1 次，仍 fail → 写 `results[i] = { error: ... }` 不 throw |
 | 单 row Notion upsert 失败 (property 不存在) | batchUpsert 写 `errors[]` 继续，dashboard 显示 |
 | Notion 429 rate-limited | notionFetch 已自带 retry-after backoff |
-| `/tmp/ats-source/` 目录写不进 | OS 错，pre-flight 之外 throw — 几乎不可能 |
+| `/tmp/mrweirdo-source/` 目录写不进 | OS 错，pre-flight 之外 throw — 几乎不可能 |
 | 用户在 Step 1 回 cancel | 直接退出，不跑 fetch/score/sync |
 
 ---
 
 ## 不要做的事
 
-- ❌ **不要自动跑 batch apply** — 那是 `/ats-skills` 的事。本 skill 只 source + score + write Notion，结束。
+- ❌ **不要自动跑 batch apply** — 那是 `/mrweirdo-jobs` 的事。本 skill 只 source + score + write Notion，结束。
 - ❌ **不要按 `min_fit_score` 在写 Notion 前过滤** — 用户 自己在 Notion view 里筛。低分 row 也写进去（让 feedback loop 完整 — 哪些被 skip 也是信号）。
 - ❌ **不要 hardcode 公司名 / slug** — 全部从 `company_list.json` 读。新增公司走 PR / 编辑 JSON。
 - ❌ **不要 hardcode role types** — 从 `profile.target_filters.role_types` 读。
@@ -498,7 +498,7 @@ Claude: [Step 2 fetch] [fetch] Cresta ...  [fetch] Notion ...  → 47 role-filte
         [Step 5 dashboard]
         ⭐ Top-10 fits: Cresta DS Intern (9), Mercury New Grad PA (8), Linear PM Intern (8) ...
         下一步: 去 Notion 「🤖 AI Sourced (Pending Review)」 view 审核 + 标 approve/skip
-        审完跑 /ats-skills batch 投递
+        审完跑 /mrweirdo-jobs batch 投递
 ```
 
 ---
@@ -513,5 +513,5 @@ Claude: [Step 2 fetch] [fetch] Cresta ...  [fetch] Notion ...  → 47 role-filte
 - `shared/local_db.mjs` — `upsertJob`, `batchUpsert`, `queryApprovedView`, `queryAiSourcedPending`（zero-dep SQLite via node:sqlite）
 - `shared/feedback.mjs` — `loadRecent(20)`, `formatForPrompt`, `summarize` (~/.ats-skills/feedback.jsonl)
 - `shared/profile.json` — 含 `target_filters` schema（v0.3 新增字段）
-- `.claude/skills/ats-skills/SKILL.md` — Step 2 的 batch apply orchestrator（消费本 skill 写的 ✅ Approved view）
+- `.claude/skills/mrweirdo-jobs/SKILL.md` — Step 2 的 batch apply orchestrator（消费本 skill 写的 ✅ Approved view）
 - `.claude/plans/peaceful-bouncing-karp.md` v0.3 phase plan — 完整 PRD

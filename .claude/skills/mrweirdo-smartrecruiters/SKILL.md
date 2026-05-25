@@ -1,6 +1,6 @@
 ---
-name: ats-smartrecruiters
-description: Automate SmartRecruiters ATS application form filling via Chrome CDP. v0.8 BETA — scaffold only, NOT yet dogfooded. SmartRecruiters is being migrated to SAP SuccessFactors; selectors may shift mid-rollout. Text fields go through `cdp.mjs typetext` (real keyboard, isTrusted=true) by default; native <select> dropdowns can use `SR.pickSelect`. Trigger with "投这个 SmartRecruiters URL：<url>" or `/ats-smartrecruiters <url>`. User must explicitly authorize Submit per harness classifier rules. Recommended: cap at ≤5 submissions/day until dogfood verifies the flow.
+name: mrweirdo-smartrecruiters
+description: Automate SmartRecruiters ATS application form filling via Chrome CDP. v0.8 BETA — scaffold only, NOT yet dogfooded. SmartRecruiters is being migrated to SAP SuccessFactors; selectors may shift mid-rollout. Text fields go through `cdp.mjs typetext` (real keyboard, isTrusted=true) by default; native <select> dropdowns can use `SR.pickSelect`. Trigger with "投这个 SmartRecruiters URL：<url>" or `/mrweirdo-smartrecruiters <url>`. User must explicitly authorize Submit per harness classifier rules. Recommended: cap at ≤5 submissions/day until dogfood verifies the flow.
 ---
 
 # SmartRecruiters ATS 投递 skill (v0.8 BETA — needs dogfood)
@@ -25,12 +25,12 @@ description: Automate SmartRecruiters ATS application form filling via Chrome CD
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— name/email/phone/LinkedIn 等
-3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）
+3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
 ## 触发
 
-- `/ats-smartrecruiters <apply-url>`
+- `/mrweirdo-smartrecruiters <apply-url>`
 - 或 "投这个 SmartRecruiters URL：`<url>`"
 
 Apply URL 形如 `https://jobs.smartrecruiters.com/<CompanySlug>/<uuid>`。

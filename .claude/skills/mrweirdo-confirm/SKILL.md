@@ -1,5 +1,5 @@
 ---
-name: ats-confirm
+name: mrweirdo-confirm
 description: Close the loop after batch apply. Reads Gmail threads labeled "applied-jobs" (user-curated via a Gmail filter), uses Claude to extract company + role + ATS source from each confirmation email, and updates the matching Notion 「📋 岗位追踪」 row from 「✅ 已投」 → 「✅ 已确认」 with confirmed_at + confirmation_email_id. Idempotent — re-running is safe.
 ---
 
@@ -9,7 +9,7 @@ description: Close the loop after batch apply. Reads Gmail threads labeled "appl
 
 **前置 (用户一次性 setup)**:
 1. Gmail 里建一个 filter — `from:noreply@greenhouse.io OR from:noreply@ashbyhq.com OR from:jobs@lever.co OR (subject:"thanks for applying" OR subject:"application received")` — 设 action = `Apply label "applied-jobs"`
-2. 用户已经跑过 `/ats-init`，`~/.ats-skills/config.json` 已有 notion_db_id
+2. 用户已经跑过 `/mrweirdo-init`，`~/.ats-skills/config.json` 已有 notion_db_id
 3. Claude Code 已连 Gmail MCP（`mcp__claude_ai_Gmail__*`）
 
 **为什么用 Gmail filter 而不是写 scope**：所有邮件流量留在用户自己 Gmail 端，skill 只查带 label 的子集（隐私让步最少；用户掌控数据流）。
@@ -24,7 +24,7 @@ export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
 [ -d "$ATS_REPO_ROOT" ] || ATS_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 
 # Verify config
-[ -f "$ATS_HOME/config.json" ] || { echo "Missing ~/.ats-skills/config.json — run /ats-init first"; exit 1; }
+[ -f "$ATS_HOME/config.json" ] || { echo "Missing ~/.ats-skills/config.json — run /mrweirdo-init first"; exit 1; }
 NOTION_DB_ID=$(jq -r .notion_db_id "$ATS_HOME/config.json")
 [ -n "$NOTION_DB_ID" ] && [ "$NOTION_DB_ID" != "null" ] || { echo "config.json missing notion_db_id"; exit 1; }
 ```
@@ -145,7 +145,7 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 - skill 跑 N 次效果相同：已经 mark 「✅ 已确认」的 row 不会再被 mark
 - Notion query 已经 filter `状态 == ✅ 已投`，confirmed row 自然 drop 出查询集
 
-如果想强制重新跑某 row：先在 Notion 把状态改回 ✅ 已投，再跑 /ats-confirm。
+如果想强制重新跑某 row：先在 Notion 把状态改回 ✅ 已投，再跑 /mrweirdo-confirm。
 
 ---
 
@@ -155,7 +155,7 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 |---|---|
 | Gmail MCP 不可用 | 打印安装指引，退出（不要 fallback 到 IMAP） |
 | 0 thread with label | 打印「Gmail 还没 confirmation 邮件 / filter 未生效」+ 给 filter 教程链接，退出 |
-| Notion 0 ✅ 已投 row | 打印「最近 14 天没有 ✅ 已投 row。先跑 /ats-skills 再跑 /ats-confirm」 |
+| Notion 0 ✅ 已投 row | 打印「最近 14 天没有 ✅ 已投 row。先跑 /mrweirdo-jobs 再跑 /mrweirdo-confirm」 |
 | AI parse 输出非 JSON | 跳过该 thread + log + 继续 |
 | Notion API 4xx/5xx | retry once，仍失败则报错继续下一封 |
 

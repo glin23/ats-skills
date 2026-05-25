@@ -1,6 +1,6 @@
 ---
-name: ats-handshake
-description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to ats-greenhouse / ats-ashby / ats-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/ats-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
+name: mrweirdo-handshake
+description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to ats-greenhouse / ats-ashby / ats-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/mrweirdo-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # Handshake ATS 投递 skill (v0.6 BETA)
@@ -16,10 +16,10 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 
 - 用户说 "用 ats-handshake 投这个：`<URL>`"
 - 用户说 "投这个 Handshake URL：`<URL>`"
-- 用户输入 `/ats-handshake <URL>`
+- 用户输入 `/mrweirdo-handshake <URL>`
 - 用户给的 URL host 是 `app.joinhandshake.com` 或 `joinhandshake.com`
 
-非 Handshake 域名 → 让用户改用 `/ats-greenhouse` / `/ats-ashby`。
+非 Handshake 域名 → 让用户改用 `/mrweirdo-greenhouse` / `/mrweirdo-ashby`。
 
 ## 前置要求
 
@@ -28,7 +28,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
    bash shared/chrome-cdp-launcher.sh
    ```
 2. **Handshake 账号已登录** — Handshake 所有 job pages 都需要 student SSO。隔离 profile 第一次跑时会要 用户 手动登录一次。
-3. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
+3. **`~/.ats-skills/profile.json` 存在**（由 `/mrweirdo-init` 生成）。注意：Handshake 大部分字段（学校、邮箱、电话、resume）走 student profile 自动填，所以本地 `profile.json` 主要用于 fallback + 答疑。
 4. **简历已在 Handshake Documents 上传** — Handshake 的"上传简历"是 document picker（选已传的 PDF），不是 file input。用户 必须事先在 Handshake 个人 documents store 传过简历。
 5. **Node 24+**。
 
@@ -83,8 +83,8 @@ node shared/cdp.mjs eval "$TAB" "JSON.stringify(Handshake.detectRedirectToExtern
 | `detectRedirectToExternalATS().redirected` | 处理 |
 |---|---|
 | `false` | 继续走本 skill 后续步骤。 |
-| `true` + target_ats=`greenhouse` | report to the user："Handshake 外跳到 Greenhouse (`<target_url>`) — 建议跑 `/ats-greenhouse <target_url>`。" 退出。 |
-| `true` + target_ats=`ashby` | 同上，dispatch 到 `/ats-ashby`。 |
+| `true` + target_ats=`greenhouse` | report to the user："Handshake 外跳到 Greenhouse (`<target_url>`) — 建议跑 `/mrweirdo-greenhouse <target_url>`。" 退出。 |
+| `true` + target_ats=`ashby` | 同上，dispatch 到 `/mrweirdo-ashby`。 |
 | `true` + target_ats=`workday`/`lever`/`icims`/`unknown` | 报告 + 退出，用户 决定。v0.6 暂不支持 workday auto-dispatch。 |
 
 ### 5. 触发 Apply UI（如未自动打开）

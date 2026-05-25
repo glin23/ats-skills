@@ -1,6 +1,6 @@
 ---
-name: ats-workday
-description: "v0.7 stretch — config-driven Workday ATS submission. NOT a generic Workday solver. Each company needs its own JSON config under shared/workday/companies/<slug>.json describing each wizard step's fields. Pure-DOM heuristics yield <60% coverage across Workday tenants because of variant 'Application Questions' selects, demographic option lists, and tenant-specific data-automation-id naming; per-company config is the practical workaround. Trigger with '投这个 Workday URL：<url>' or `/ats-workday <url>`. User must explicitly authorize Submit per harness classifier rules. Dogfood pending."
+name: mrweirdo-workday
+description: "v0.7 stretch — config-driven Workday ATS submission. NOT a generic Workday solver. Each company needs its own JSON config under shared/workday/companies/<slug>.json describing each wizard step's fields. Pure-DOM heuristics yield <60% coverage across Workday tenants because of variant 'Application Questions' selects, demographic option lists, and tenant-specific data-automation-id naming; per-company config is the practical workaround. Trigger with '投这个 Workday URL：<url>' or `/mrweirdo-workday <url>`. User must explicitly authorize Submit per harness classifier rules. Dogfood pending."
 ---
 
 # Workday ATS 投递 skill (v0.7 stretch, config-driven)
@@ -19,13 +19,13 @@ Workday tenant variant 太多 — 同样一份 "Application Questions" step，Le
    ./shared/chrome-cdp-launcher.sh
    ```
 2. **`profile.json` 已填**（仓库根）— personal.first_name / last_name / email / address.* / phone / linkedin
-3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）
+3. **简历 PDF 存在** — 路径在 `~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）
 4. **公司 config 存在** — `shared/workday/companies/<slug>.json`，schema 见 `_template.json`
 5. **Node 24+**
 
 ## 触发
 
-- `/ats-workday <apply-url>`
+- `/mrweirdo-workday <apply-url>`
 - 或 "投这个 Workday URL：`<url>`"
 
 ## 流程（8 步）
@@ -54,7 +54,7 @@ PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/s
 RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 CONFIG="$ATS_REPO_ROOT/shared/workday/companies/${SLUG}.json"
 test -f "$CONFIG" || { echo "ERROR: No config for $SLUG. Copy $ATS_REPO_ROOT/shared/workday/companies/_template.json to $CONFIG and fill in step_definitions. See SKILL.md 'How to add a new company'."; exit 1; }
-test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /ats-init"; exit 1; }
+test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /mrweirdo-init"; exit 1; }
 test -f "$RESUME" || { echo "ERROR: resume PDF missing: $RESUME"; exit 1; }
 curl -s http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 jq -e '._meta.last_verified != null' "$CONFIG" > /dev/null || echo "WARN: config $SLUG never dogfooded (last_verified=null). Proceeding but expect failures."
@@ -204,7 +204,7 @@ This is the contribution flow. Expect ~30 min per company the first time.
    - For `select` fields with non-obvious option text, populate `options_to_value_map` so `profile.standard_answers.work_authorized = "Yes"` maps to whatever Workday shows ("Yes — I am authorized").
 
 6. **Dogfood + iterate.**
-   Run `/ats-workday <URL>` against a real low-stakes job posting. Every time something fails, update the config. Once a full submission succeeds, set `_meta.last_verified` to today's date.
+   Run `/mrweirdo-workday <URL>` against a real low-stakes job posting. Every time something fails, update the config. Once a full submission succeeds, set `_meta.last_verified` to today's date.
 
 7. **PR to ats-skills repo** so the community can reuse the config. Strip anything tenant-private before pushing.
 

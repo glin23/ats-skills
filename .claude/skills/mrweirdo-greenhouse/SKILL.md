@@ -1,6 +1,6 @@
 ---
-name: ats-greenhouse
-description: Automate Greenhouse ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Greenhouse URL：<url>" or "/ats-greenhouse <url>". User must explicitly authorize the final Submit click — skill never auto-submits.
+name: mrweirdo-greenhouse
+description: Automate Greenhouse ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Greenhouse URL：<url>" or "/mrweirdo-greenhouse <url>". User must explicitly authorize the final Submit click — skill never auto-submits.
 ---
 
 # Greenhouse ATS 投递 skill
@@ -11,10 +11,10 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
 
 - 用户说 "用 ats-greenhouse 投这个：`<URL>`"
 - 用户说 "投这个 Greenhouse URL：`<URL>`"
-- 用户输入 `/ats-greenhouse <URL>`
+- 用户输入 `/mrweirdo-greenhouse <URL>`
 - 用户给的 URL host 是 `boards.greenhouse.io` / `job-boards.greenhouse.io` / `<company>.greenhouse.io`
 
-非 Greenhouse 域名 → 让用户改用 `/ats-ashby` 或其他 skill。
+非 Greenhouse 域名 → 让用户改用 `/mrweirdo-ashby` 或其他 skill。
 
 ## 前置要求
 
@@ -24,7 +24,7 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少包含 `first_name / last_name / email / phone / phone_country / linkedin_url / resume_path / country_label`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`profile.resume_path` 或 `~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）。
+3. **简历 PDF 可读**：`profile.resume_path` 或 `~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。

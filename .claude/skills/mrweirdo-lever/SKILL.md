@@ -1,6 +1,6 @@
 ---
-name: ats-lever
-description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/ats-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable (real prior experience from 用户's Palantir attempt).
+name: mrweirdo-lever
+description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/mrweirdo-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable (real prior experience from 用户's Palantir attempt).
 ---
 
 # Lever ATS 投递 skill — v0.8 stable
@@ -13,10 +13,10 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
 
 - 用户说 "用 ats-lever 投这个：`<URL>`"
 - 用户说 "投这个 Lever URL：`<URL>`"
-- 用户输入 `/ats-lever <URL>`
+- 用户输入 `/mrweirdo-lever <URL>`
 - 用户给的 URL host 是 `jobs.lever.co`（任何 `/<company>/<uuid>` 或 `/<company>/<uuid>/apply` 都接）
 
-非 Lever 域名 → 让用户改用 `/ats-greenhouse` / `/ats-ashby` / 其他 skill。
+非 Lever 域名 → 让用户改用 `/mrweirdo-greenhouse` / `/mrweirdo-ashby` / 其他 skill。
 
 ## 前置要求
 
@@ -26,7 +26,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
 2. **`shared/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
-3. **简历 PDF 可读**：`~/.ats-skills/config.json.resume_path`（由 `/ats-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
+3. **简历 PDF 可读**：`~/.ats-skills/config.json.resume_path`（由 `/mrweirdo-init` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
 任意一项缺失 → 不要继续，报告给用户。

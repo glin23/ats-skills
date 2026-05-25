@@ -1,13 +1,13 @@
 ---
-name: ats-init
-description: First-run onboarding for ats-skills v1.1. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.ats-skills/jobs.db. Persists everything to ~/.ats-skills/. Run once per user. After this, /ats-source + /ats-skills + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
+name: mrweirdo-init
+description: First-run onboarding for ats-skills v1.1. Collects the Anthropic API key, parses the user's resume PDF, asks 4 questions to build target_filters, and initializes a local SQLite database at ~/.ats-skills/jobs.db. Persists everything to ~/.ats-skills/. Run once per user. After this, /mrweirdo-source + /mrweirdo-jobs + single-URL skills all work end-to-end. Optional Datasette UI for browsing.
 ---
 
 # ats-init — Onboarding Orchestrator (v1.1, SQLite-backed)
 
 **何时跑**：用户首次使用 ats-skills，或想 reset 配置。一次性 setup，之后所有其它 skill (ats-source / ats-skills / ats-greenhouse / ats-ashby / ats-lever / ats-confirm 等) 都从 `~/.ats-skills/` 读配置。
 
-**何时不要跑**：用户已经有 `~/.ats-skills/jobs.db` 且能正常 sourcing — 直接走 /ats-source。
+**何时不要跑**：用户已经有 `~/.ats-skills/jobs.db` 且能正常 sourcing — 直接走 /mrweirdo-source。
 
 ---
 
@@ -242,11 +242,11 @@ Datasette 自带 SQL query + filter + JSON export + CSV export，比 Notion 还�
   - resume.pdf (你的简历副本)
 
 下一步:
-  /ats-source — 从 248 家公司抓岗位 → AI 评分 → 写 jobs.db
-  /ats-greenhouse <url> — 单 URL 投递（Greenhouse）
-  /ats-ashby <url>      — 单 URL 投递（Ashby）
-  /ats-skills           — 从 v_approved 批量投递 (在 datasette 里改 status 为 ✅ Approved)
-  /ats-confirm          — 抓 Gmail confirmation 邮件 → mark v_submitted 行
+  /mrweirdo-source — 从 248 家公司抓岗位 → AI 评分 → 写 jobs.db
+  /mrweirdo-greenhouse <url> — 单 URL 投递（Greenhouse）
+  /mrweirdo-ashby <url>      — 单 URL 投递（Ashby）
+  /mrweirdo-jobs           — 从 v_approved 批量投递 (在 datasette 里改 status 为 ✅ Approved)
+  /mrweirdo-confirm          — 抓 Gmail confirmation 邮件 → mark v_submitted 行
 
 可选: datasette serve "$ATS_HOME/jobs.db" --open --port 8001
 ```

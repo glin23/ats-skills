@@ -1,6 +1,6 @@
 # ats-skills — Engineer Handoff Brief
 
-> Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/ats-skills · 当前版本: **v0.9.0**（2026-05-23）
+> Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · 当前版本: **v0.9.0**（2026-05-23）
 >
 > 这是一份交付给工程师的需求 brief。读完应能：(1) 理解产品定位与红线 (2) 知道当前已建什么 (3) 拿到一份按优先级排好的 next-action 列表 (4) 知道在哪验收。
 
@@ -273,7 +273,7 @@ ats-skills/
 
 ```bash
 # 1. clone
-gh repo clone glin23/ats-skills && cd ats-skills
+gh repo clone glin23/mrweirdo-jobs && cd ats-skills
 
 # 2. 读 4 个文档（按序）
 cat README.md                                          # 用户视角
@@ -309,7 +309,7 @@ node /tmp/ats-source/dry_run.mjs                       # 上个 session 留下�
 - Chrome lily Profile 7 — `bash shared/chrome-cdp-launcher.sh` 启动
 - profile.json — `shared/profile.json`（gitignored）
 - Notion DB ID / data source ID / root page ID — 见 §9
-- GitHub repo — https://github.com/glin23/ats-skills
+- GitHub repo — https://github.com/glin23/mrweirdo-jobs
 
 > **不要 commit** 任何 `.env` / `profile.json` / API key。`setup.sh` 会自动 gitignore。
 
