@@ -350,6 +350,43 @@ export async function markApplied(pageId, info = {}) {
   }
 }
 
+export async function markConfirmed(pageId, info = {}) {
+  if (!pageId) return { ok: false, error: 'pageId required' };
+  const props = {
+    状态: selectProp('✅ 已确认'),
+  };
+  if (info.confirmed_at) props['confirmed_at'] = dateProp(info.confirmed_at);
+  else props['confirmed_at'] = dateProp(todayIso());
+  if (info.email_id) props['confirmation_email_id'] = richTextProp(info.email_id);
+  try {
+    const updated = await notionFetch('PATCH', `pages/${pageId}`, { properties: props });
+    return { ok: true, page_id: updated.id };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+
+// Query rows recently marked "✅ 已投" (last N days) for confirmation matching.
+export async function queryRecentlyApplied(days = 14) {
+  const sinceIso = new Date(Date.now() - days * 86400 * 1000).toISOString();
+  const result = await notionFetch('POST', `databases/${DATABASE_ID}/query`, {
+    filter: {
+      and: [
+        { property: '状态', select: { equals: '✅ 已投' } },
+        { property: '投递日期', date: { on_or_after: sinceIso } },
+      ],
+    },
+    page_size: 100,
+  });
+  return (result.results || []).map((row) => ({
+    page_id: row.id,
+    company: row.properties?.['公司']?.title?.[0]?.plain_text || '',
+    title: row.properties?.['岗位']?.rich_text?.[0]?.plain_text || row.properties?.['职位']?.rich_text?.[0]?.plain_text || '',
+    apply_url: row.properties?.['Apply URL']?.url || '',
+    submitted_at: row.properties?.['投递日期']?.date?.start || null,
+  }));
+}
+
 export async function markSkipped(pageId, reason, userNote = '') {
   if (!pageId) return { ok: false, error: 'pageId required' };
   const props = {
