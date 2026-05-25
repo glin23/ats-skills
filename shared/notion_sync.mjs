@@ -40,9 +40,13 @@
 // Notion telling you which property is unknown — add it and retry.
 // =============================================================================
 
+import { notionDbId, notionDataSourceId, notionViewId, loadEnv } from './paths.mjs';
+
+// load ~/.ats-skills/.env into process.env on import (no-op if already set)
+loadEnv();
+
 const NOTION_API_KEY = process.env.NOTION_API_KEY;
-const DATABASE_ID =
-  process.env.NOTION_JOB_DB_ID || '94b728d7-526d-4c9f-96f4-a8cb92c0f5fe';
+const DATABASE_ID = notionDbId();
 const NOTION_VERSION = '2022-06-28';
 const API_BASE = 'https://api.notion.com/v1';
 

@@ -33,7 +33,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
-2. **`shared/profile.json` 存在**（schema 见 `shared/profile.template.json`）+ `resume_path` 指向本地 PDF。
+2. **`~/.ats-skills/profile.json` 存在**（由 `/ats-init` 生成）+ `~/.ats-skills/config.json.resume_path` 指向本地 PDF。
 3. **可选：JobVite 账户登录**。少数 tenant 强制注册（特别是金融行业），多数允许 guest apply。如检测到 sign-in wall → 提示 用户 登录。
 4. **Node 24+**。
 
@@ -55,8 +55,11 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
 
 ### 2. 健康检查
 ```bash
-curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
-RESUME=$(jq -r .resume_path shared/profile.json)
+export ATS_HOME="${ATS_HOME:-$HOME/.ats-skills}"
+export ATS_REPO_ROOT="${ATS_REPO_ROOT:-$ATS_HOME/repo}"
+PROFILE="$ATS_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$ATS_REPO_ROOT/shared/profile.json"
+curl -sf http://localhost:9222/json/version > /dev/null || bash "$ATS_REPO_ROOT/shared/chrome-cdp-launcher.sh"
+RESUME=$(jq -r .resume_path "$ATS_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 [ -f "$RESUME" ] || { echo "resume missing: $RESUME"; exit 1; }
 ```
 缺 → 报错退出。
@@ -101,8 +104,8 @@ sleep 2
 
 ### 5. 调用 `JobVite.fillForm(profile)` 拿 plan + 执行
 ```bash
-PROFILE=$(cat shared/profile.json)
-PLAN=$(node shared/cdp.mjs eval "$TAB" "JSON.stringify(JobVite.fillForm($PROFILE))")
+PROFILE_JSON=$(cat "$PROFILE")
+PLAN=$(node shared/cdp.mjs eval "$TAB" "JSON.stringify(JobVite.fillForm($PROFILE_JSON))")
 ```
 返回 `{ ok, plan: [...] }`。每 plan item action ∈ `typetext | select | radio | file_upload | manual`：
 
