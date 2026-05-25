@@ -85,7 +85,7 @@ Confidence 启发式：
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const rows = await m.queryRecentlyApplied(14);
   console.log(JSON.stringify(rows, null, 2));
 }).catch(e => { console.error(e); process.exit(1); });
@@ -113,7 +113,7 @@ import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
 
 ```bash
 node -e "
-import(`${process.env.ATS_REPO_ROOT}/shared/notion_sync.mjs`).then(async m => {
+import(`${process.env.ATS_REPO_ROOT}/shared/local_db.mjs`).then(async m => {
   const result = await m.markConfirmed(
     '<page_id>',
     { confirmed_at: '<email date ISO>', email_id: '<thread_id>' }
@@ -171,6 +171,6 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 
 ## 参考
 
-- `shared/notion_sync.mjs.markConfirmed()` / `queryRecentlyApplied()` — v1.0 新增
+- `shared/local_db.mjs.markConfirmed()` / `queryRecentlyApplied()` — v1.1 (SQLite)
 - `mcp__claude_ai_Gmail__search_threads` / `mcp__claude_ai_Gmail__get_thread` — official Anthropic Gmail MCP
 - `shared/onboarding/resume_parser.mjs` — pattern for Anthropic API direct call (reuse for Step 2 AI parse if you want pure Node, but MCP 是更简单的路径在 Claude Code 里)

@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.0] - 2026-05-24 — SQLite + Datasette, zero cloud
+
+Replaces Notion as the job-tracking DB with local SQLite. New users no longer
+need a Notion account, integration token, or any cloud setup.
+
+### Added
+- `shared/local_db.mjs` (~340 lines) — SQLite wrapper using Node 24+
+  `node:sqlite`. Same API surface as `notion_sync.mjs` (upsertJob /
+  batchUpsert / markApplied / markSkipped / markConfirmed /
+  queryApprovedView / queryAiSourcedPending / queryRecentlyApplied) so
+  swap is a one-line import change. Schema:
+  - `jobs` table: 25+ columns matching v1.0 Notion schema
+  - 5 SQL views: `v_ai_sourced` / `v_approved` / `v_submitted` / `v_skipped`
+    / `v_large_company_pending` (auto-rendered as Datasette pages)
+  - `feedback` table mirrors feedback.jsonl, queryable in Datasette
+- Datasette as optional zero-config web UI (`pip install datasette &&
+  datasette serve ~/.ats-skills/jobs.db --open`).
+
+### Changed
+- `/ats-init` SKILL.md: dropped from 9 steps to 6 steps. No more Notion
+  integration token, no more parent-page id, no more MCP-driven view
+  creation, no more `config.json` writing. Just: API key → resume parse →
+  4 questions → SQLite init.
+- `/ats-source`, `/ats-skills`, `/ats-confirm` SKILL.md: switched
+  `import(... /shared/notion_sync.mjs)` → `local_db.mjs` (one-line change
+  per file). Pre-flight checks updated to verify `jobs.db` exists.
+- `README.md`: rewritten for v1.1 — emphasizes "zero cloud", documents
+  Datasette setup, drops Notion requirement from prerequisites.
+
+### Deprecated (kept for compatibility)
+- `shared/notion_sync.mjs` — retained as a Notion mirror tool for v1.0
+  users with existing Notion DBs. Header notice now flags it as
+  non-primary. Future migration script will let users export Notion → SQLite.
+- `shared/onboarding/notion_setup.mjs` — same.
+
+### Why this matters
+v1.0 onboarding had 4 Notion-specific steps (build integration, share page,
+get parent_page_id, MCP view creation). Each one was a friction point
+where non-technical users could fail. v1.1 reduces install + onboarding
+total time from ~15 min to ~5 min for a brand-new user, with stricter
+privacy: job data never leaves the machine.
+
 ## [1.0.0] - 2026-05-24 — Open OSS, self-host
 
 The project moves from "用户's private daily-driver" to "anyone can install + run."

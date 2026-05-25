@@ -1,10 +1,10 @@
 # ats-skills
 
-> **v1.0 — open OSS, self-host.** A Claude Code skill collection that turns job hunting into a single pipeline:
-> AI sourcing → Notion dashboard → batch auto-apply (with hard pre-Submit human gate) → Gmail confirmation loop.
+> **v1.1 — open OSS, self-host, zero cloud.** A Claude Code skill collection that turns job hunting into a single pipeline:
+> AI sourcing → local SQLite dashboard (Datasette web UI) → batch auto-apply (hard pre-Submit human gate) → Gmail confirmation loop.
 >
-> Zero npm deps. Driven by your own Chrome. Submits never happen without your explicit per-batch authorization.
-> Multi-tenant: any user can install + bring their own resume, Notion workspace, API keys.
+> Zero npm deps. Zero cloud DB. Driven by your own Chrome. Submits never happen without your explicit per-batch authorization.
+> Multi-tenant: any user can install + bring their own resume, Anthropic API key. **No Notion / Airtable / Google account required.**
 
 ---
 
@@ -28,13 +28,30 @@ Then open Claude Code (any directory) and run:
 
 `/ats-init` walks you through:
 - Anthropic API key (paste; written to `~/.ats-skills/.env`, chmod 600)
-- Notion integration token
 - Resume PDF → Claude Sonnet parses out personal/education/work_auth
 - 4 questions → `target_filters` (role types, locations, exclude keywords, min fit score)
-- Notion 「📋 岗位追踪」 database auto-created with full schema (20+ properties + 4 views)
+- Local SQLite DB auto-created at `~/.ats-skills/jobs.db` (zero schema config required)
 - Smoke test 1 Greenhouse fetch
 
-After `/ats-init` everything is ready.
+After `/ats-init` everything is ready. **No Notion / cloud account anywhere in the loop.**
+
+### Optional: Datasette web UI
+
+To browse / filter / approve jobs visually:
+
+```bash
+pip install datasette
+datasette serve ~/.ats-skills/jobs.db --open --port 8001
+```
+
+Opens a local web UI showing 5 pre-built views:
+- `v_ai_sourced` — AI-evaluated jobs waiting for your review
+- `v_approved` — Jobs you marked ✅ Approved; `/ats-skills` reads from here
+- `v_submitted` — Submitted / confirmed jobs
+- `v_skipped` — Skipped or rejected
+- `v_large_company_pending` — Quota-capped companies waiting for manual cherry-pick
+
+Datasette supports SQL queries, CSV / JSON export, link-shareable filters. You can also use TablePlus / DBeaver / DataGrip / `sqlite3` CLI — any SQLite client works.
 
 ---
 
@@ -43,8 +60,8 @@ After `/ats-init` everything is ready.
 | Command | Purpose |
 |---|---|
 | `/ats-init` | First-run setup. Run once. |
-| `/ats-source` | Pull jobs from ~250 companies' Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite boards → AI score (Sonnet, ~$0.003/job) → write your Notion DB. |
-| `/ats-skills` | Read `✅ Approved` rows from Notion → batch CDP fill each application form → human Submit per app → mark `✅ 已投`. |
+| `/ats-source` | Pull jobs from ~250 companies' Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite boards → AI score (Sonnet, ~$0.003/job) → write `~/.ats-skills/jobs.db`. |
+| `/ats-skills` | Read `✅ Approved` rows from local DB → batch CDP fill each application form → human Submit per app → mark `✅ 已投`. |
 | `/ats-greenhouse <url>` | Single Greenhouse application. |
 | `/ats-ashby <url>` | Single Ashby application. |
 | `/ats-lever <url>` | Single Lever application. |
@@ -53,7 +70,7 @@ After `/ats-init` everything is ready.
 | `/ats-jobvite <url>` | Single JobVite (alpha). |
 | `/ats-handshake <url>` | Single Handshake (beta). |
 | `/ats-workday <url>` | Single Workday (per-company JSON config). |
-| `/ats-confirm` | Read Gmail threads labeled `applied-jobs` → match to `✅ 已投` Notion rows → mark `✅ 已确认`. |
+| `/ats-confirm` | Read Gmail threads labeled `applied-jobs` → match to `✅ 已投` DB rows → mark `✅ 已确认`. |
 
 ---
 
@@ -98,14 +115,16 @@ Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, etc. typically cap how many 
 
 ---
 
-## Notion dashboard
+## Local SQLite dashboard
 
-`/ats-init` creates a Notion database with:
+`/ats-init` creates `~/.ats-skills/jobs.db` with the `jobs` table (25+ columns) plus 5 pre-built views (see Datasette section above). Status transitions:
 
-- 16 main properties: 公司 / 职位 / Apply URL / 地点 / 来源 / 状态 / fit_score / key_gaps / role_type_match / skip_reason / user_note / dim_scores / salary_min-max-currency-interval / hourly_rate / ats 平台 / apply_quota_* / submitted_at / confirmed_at / confirmation_email_id
-- 4 views: 🤖 AI Sourced (pending review) / ✅ Approved (ready to apply) / ❌ Skipped + Reason / 🏢 大公司限投
+```
+🤖 AI sourced  →  ✅ Approved  →  ✅ 已投  →  ✅ 已确认
+                  ↘  ⚠️ 跳过未投 / ❌ Rejected
+```
 
-You triage in Notion (✅ approve, ❌ skip with reason). The skill reads `状态` to drive batch apply.
+Approve jobs by setting status to `✅ Approved` in Datasette (or any SQLite client). `/ats-skills` reads `v_approved` view to drive batch apply.
 
 ---
 
@@ -120,7 +139,7 @@ Once you batch-apply, ATS confirmation emails arrive. To close the loop:
    - Action: Apply label `applied-jobs`
 2. **In Claude Code**: run `/ats-confirm`
 
-The skill uses the Anthropic-bundled Gmail MCP (`mcp__claude_ai_Gmail__`) to read only threads matching `label:applied-jobs newer_than:7d` — your full inbox is never scanned. Each thread is parsed by Sonnet (~$0.0003/email) to extract `{company, role, ats, is_confirmation}` then matched to a `✅ 已投` Notion row and flipped to `✅ 已确认`.
+The skill uses the Anthropic-bundled Gmail MCP (`mcp__claude_ai_Gmail__`) to read only threads matching `label:applied-jobs newer_than:7d` — your full inbox is never scanned. Each thread is parsed by Sonnet (~$0.0003/email) to extract `{company, role, ats, is_confirmation}` then matched to a `✅ 已投` row in `jobs.db` and flipped to `✅ 已确认`.
 
 Idempotent — safe to re-run.
 
@@ -132,19 +151,20 @@ Idempotent — safe to re-run.
 - Node 24+ (built-in `WebSocket` + `fetch` + PDF base64)
 - Google Chrome (default location, or edit `shared/chrome-cdp-launcher.sh`)
 - [Claude Code](https://docs.claude.com/en/docs/claude-code) installed
-- Notion account + integration token (free)
 - Anthropic API key (~$0.50–$2/month at typical usage)
 - A resume PDF
+- (Optional) `pip install datasette` for the local web UI
+- (Optional) Gmail filter for `/ats-confirm` loop
 
 ---
 
 ## File layout
 
 ```
-~/.ats-skills/                  # All user state (gitignored, never committed)
-├── .env                        # ANTHROPIC_API_KEY, NOTION_API_KEY (chmod 600)
+~/.ats-skills/                  # All user state (never committed)
+├── .env                        # ANTHROPIC_API_KEY (chmod 600)
 ├── profile.json                # Your parsed resume + target_filters
-├── config.json                 # Notion ids + view ids + resume path
+├── jobs.db                     # SQLite — main job tracker (queryable via Datasette)
 ├── company_list.user.json      # Your custom companies (optional)
 ├── resume.pdf                  # Copy of your resume
 ├── feedback.jsonl              # Per-apply outcome log → next sourcing prompt
@@ -182,7 +202,7 @@ Or re-run the install command — `setup.sh` is idempotent and will fast-forward
 ## Privacy
 
 - All API keys live in `~/.ats-skills/.env` (chmod 600). Never leaves your machine.
-- Notion writes go directly from your Node process to `api.notion.com`. No proxy.
+- **Job data stays on your machine in `~/.ats-skills/jobs.db`** (SQLite). No cloud DB. Zero network egress for job tracking.
 - Anthropic API calls (resume parse, AI scoring, confirmation email parse) go directly to `api.anthropic.com`. No proxy.
 - Gmail reading uses Anthropic's bundled Gmail MCP under the same OAuth you already granted Claude. The skill only reads threads with the `applied-jobs` label.
 
