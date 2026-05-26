@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-onboard
-description: v2 single-entry skill for mrweirdo-jobs — the FIRST thing a user runs after installing mrweirdo. Shows a Welcome banner (3-step preview), asks for resume PDF, then runs the entire pipeline end-to-end with zero user touch — extract search intent + profile from resume, discover jobs across Greenhouse/Ashby/Lever/YC/RemoteOK, score them with the main Claude session, gate by fit_score / daily cap / large-company quota, and AUTO-SUBMIT to Greenhouse / Ashby / Lever. User's only feedback is Gmail confirmation emails. PROACTIVELY TRIGGER ON these natural phrases (not just "/mrweirdo-onboard"): "I just installed", "刚装完", "我刚装完", "怎么开始", "how do I start", "help me start", "start applying", "find me internships", "帮我找实习", "我想找暑期实习", "我想找 PM 实习", "投实习", "上传简历开始", "first time using", "what now", "下一步", "next step". ALSO trigger when ~/.mrweirdo-jobs/.first_run sentinel file exists and user message is even vaguely related to jobs/internships.
+description: v2 single-entry skill for mrweirdo-jobs — the FIRST thing a user runs after installing mrweirdo. Shows a Welcome banner (3-step preview), asks for resume PDF, then runs the entire pipeline end-to-end with zero user touch — extract search intent + profile from resume, discover jobs across Greenhouse/Ashby/Lever/YC/RemoteOK, score them with the main Claude session, gate by fit_score + large-company quota (no daily blanket cap), and AUTO-SUBMIT to Greenhouse / Ashby / Lever. User's only feedback is Gmail confirmation emails. PROACTIVELY TRIGGER ON these natural phrases (not just "/mrweirdo-onboard"): "I just installed", "刚装完", "我刚装完", "怎么开始", "how do I start", "help me start", "start applying", "find me internships", "帮我找实习", "我想找暑期实习", "我想找 PM 实习", "投实习", "上传简历开始", "first time using", "what now", "下一步", "next step". ALSO trigger when ~/.mrweirdo-jobs/.first_run sentinel file exists and user message is even vaguely related to jobs/internships.
 ---
 
 # mrweirdo-onboard — v2 main entry (zero-touch)
@@ -18,7 +18,7 @@ This is the **only** skill a user should need to invoke after install. It runs:
 4. Discovery — RemoteOK fetch (v2 MVP single source)
 5. Hard filter (rule-based: location, role, exclude) — drops ≥80%
 6. AI scoring (main Claude batches of 50, per `shared/scoring/score_prompt.md`)
-7. Auto-apply gating (fit_score ≥ threshold AND not large-cap AND platform ∈ {gh, ashby, lever} AND daily cap not hit)
+7. Auto-apply gating (fit_score ≥ threshold AND not large-cap AND platform ∈ {gh, ashby, lever})
 8. Auto-submit dispatch to `mrweirdo-{greenhouse,ashby,lever}-auto` per row
 9. Final report
 
@@ -50,8 +50,7 @@ These are the safety-net knobs. Hard-coded for v2.0; users can edit `~/.mrweirdo
 | Knob | Default | Meaning |
 |---|---|---|
 | `fit_score_threshold` | 7 | Only auto-apply when `fit_score >= 7` (out of 10) |
-| `daily_apply_cap` | 50 | Hard cap on auto-submits per calendar day |
-| `quota_guard_enabled` | true | Skip the ~25 large companies marked `apply_quota.enabled = true` |
+| `quota_guard_enabled` | true | Skip the ~25 large companies marked `apply_quota.enabled = true` (per-company quota, not daily blanket — protects against ATS bot-flag) |
 | `score_batch_size` | 50 | Jobs per main-Claude scoring turn |
 
 ---
@@ -77,12 +76,16 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ║     2️⃣   I read it + ask ~7 short questions to lock your        ║
 ║          search intent (work auth, target roles, location)       ║
 ║     3️⃣   I discover jobs across 5 sources, score them,          ║
-║          and auto-submit up to 50 / day on Greenhouse /          ║
-║          Ashby / Lever — fit_score ≥ 7 only.                     ║
+║          and auto-submit every fit_score ≥ 7 match on            ║
+║          Greenhouse / Ashby / Lever (no daily cap).              ║
 ║                                                                  ║
 ║   You'll watch progress in your terminal. Once running, your     ║
 ║   only check-in is Gmail (confirmation emails arrive within      ║
 ║   24h per application). Run /mrweirdo-confirm to close the loop. ║
+║                                                                  ║
+║   📂  All state lives at ~/.mrweirdo-jobs/                       ║
+║       Jobs database: ~/.mrweirdo-jobs/jobs.db (inspect with      ║
+║       sqlite3 or `datasette serve <path> --open`)                ║
 ║                                                                  ║
 ║   👉  Ready? Drop your resume path on the next prompt.           ║
 ║                                                                  ║
@@ -94,7 +97,7 @@ Then immediately segue: "First let me do a 10-second pre-flight check, then I'll
 ### Returning-user preamble (compact, when no sentinel)
 
 ```
-mrweirdo onboard — resume → score → auto-apply (50/day cap, fit≥7).
+mrweirdo onboard — resume → score → auto-apply (fit≥7, no daily cap; per-company quota still on).
 Running pre-flight checks…
 ```
 
@@ -409,7 +412,7 @@ mkdir -p /tmp/mrweirdo-onboard
 KEYWORDS_JSON=$(node -e "
 const intent = JSON.parse(require('fs').readFileSync('$MRWEIRDO_HOME/search_intent.json'));
 const s = intent.search_intent.seniority || 'intern';
-const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM'];
+const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM', 'Summer'];
 const ftKws = ['New Grad', 'New Graduate', 'Early Career', 'Associate', 'Graduate'];
 const kws = s === 'intern' ? internKws : s === 'new_grad_FT' ? ftKws : [...internKws, ...ftKws];
 console.log(JSON.stringify(kws));
@@ -521,14 +524,20 @@ function passesLocation(loc) {
   return true; // unknown → keep, scorer will judge
 }
 
-function passesSeniority(title) {
+function passesSeniority(title, seniority) {
   const t = (title || '').toLowerCase();
   // hard reject senior / staff / principal / director / VP regardless of intent
   if (/\\b(senior|staff|principal|director|vp |head of |chief )\\b/.test(t)) return false;
+  // intern-only mode: require explicit intern signal AND reject explicit FT signal
+  if (seniority === 'intern') {
+    const internSignal = /\\b(intern|internship|co-?op|summer|apm|fellowship)\\b/.test(t);
+    const ftSignal     = /\\b(full[\\s-]?time|associate|new grad|new graduate|early career)\\b/.test(t);
+    if (!internSignal || ftSignal) return false;
+  }
   return true;
 }
 
-const kept = jobs.filter(j => passesExclude(j.title) && passesLocation(j.location) && passesSeniority(j.title));
+const kept = jobs.filter(j => passesExclude(j.title) && passesLocation(j.location) && passesSeniority(j.title, seniority));
 process.stderr.write('[hard-filter] ' + jobs.length + ' → ' + kept.length + '\n');
 process.stdout.write(JSON.stringify(kept));
 " > /tmp/mrweirdo-onboard/filtered.json 2>>"$MRWEIRDO_HOME/log/onboard.log"
@@ -539,15 +548,15 @@ echo "[hard-filter] $FILTERED_COUNT jobs after rule-based filter"
 
 If `FILTERED_COUNT == 0`: report "no matches across all sources for your profile — likely needs v2.1 (Computer-Use Handshake / school portals / industry boards) for non-tech majors" and stop the run.
 
-If `FILTERED_COUNT > 100`: cap to top 100 (sort by description length as quality proxy — longer JDs are more legit) to keep scoring window manageable.
+If `FILTERED_COUNT > 300`: cap to top 300 (sort by description length as quality proxy — longer JDs are more legit). Raised from 100 to give the AI scorer enough candidates that ~50–100 actually clear the fit≥7 gate.
 
 ```bash
 node -e "
 const fs = require('fs');
 let jobs = JSON.parse(fs.readFileSync('/tmp/mrweirdo-onboard/filtered.json'));
-if (jobs.length > 100) {
+if (jobs.length > 300) {
   jobs.sort((a, b) => (b.description?.length || 0) - (a.description?.length || 0));
-  jobs = jobs.slice(0, 100);
+  jobs = jobs.slice(0, 300);
 }
 fs.writeFileSync('/tmp/mrweirdo-onboard/to_score.json', JSON.stringify(jobs));
 console.log('to_score:', jobs.length);
@@ -574,7 +583,7 @@ test -f $MRWEIRDO_HOME/feedback.jsonl && tail -20 $MRWEIRDO_HOME/feedback.jsonl 
 
 Read `/tmp/mrweirdo-onboard/to_score.json` and chunk into batches of 50.
 
-For each batch (1–2 batches typical at 100 jobs cap):
+For each batch (4–6 batches typical at 300 jobs cap):
 - Apply the `score_prompt.md` instructions
 - Output the JSON array `[{ apply_url, fit_score, role_type_match, recommended, dim_scores, key_alignment, key_gaps, honest_reason }, ...]`
 - Write the batch result to `/tmp/mrweirdo-onboard/scored-batchN.json`
@@ -690,33 +699,28 @@ cat /tmp/mrweirdo-onboard/db_result.json
 
 ---
 
-## Step 9 — Daily cap check
+## Step 9 — Today's submission count (informational, no cap)
 
 ```bash
 TODAY=$(date -u +%Y-%m-%d)
 TODAY_COUNT=$(grep -c "\"date\":\"$TODAY\"" "$MRWEIRDO_HOME/daily_count.jsonl" 2>/dev/null || echo 0)
-CAP=50
-REMAINING=$((CAP - TODAY_COUNT))
-
-if [ "$REMAINING" -le 0 ]; then
-  echo "❌ Daily cap (50) already hit for $TODAY. Stopping before auto-apply."
-  exit 0
-fi
-echo "[cap] $TODAY_COUNT/$CAP applied today; $REMAINING budget remaining"
+echo "[info] $TODAY_COUNT submissions already logged today (no daily cap — apply count is user-driven)."
 ```
+
+Daily blanket cap was removed by user decision (2026-05-26). Per-company quota (Step 8 `quota_guard_enabled`) is still active — that protects against Cloudflare / Google / etc. flagging us as a bot when we'd otherwise mass-apply to 8 openings in one batch.
 
 ---
 
 ## Step 10 — Auto-apply dispatch loop
 
-For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-auto` skill. Cap by `REMAINING`.
+For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-auto` skill. No row limit — drain the full queue.
 
 ```bash
 node -e "
 import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(m.dbPath());
-  const rows = db.prepare('SELECT id, company, title, apply_url, ats_platform, fit_score FROM v_auto_apply_eligible LIMIT $REMAINING').all();
+  const rows = db.prepare('SELECT id, company, title, apply_url, ats_platform, fit_score FROM v_auto_apply_eligible').all();
   for (const r of rows) console.log(JSON.stringify(r));
 });
 " > /tmp/mrweirdo-onboard/queue.jsonl
@@ -727,8 +731,8 @@ echo "[apply] dispatching $QUEUE_SIZE rows"
 
 **Per row in the queue**: invoke the matching platform skill **inline** (you, the main Claude, follow each sub-skill's instructions per row):
 
-- `ats_platform == 'greenhouse'` → follow `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` for that URL
-- `ats_platform == 'ashby'`      → follow `.claude/skills/mrweirdo-ashby-auto/SKILL.md` (when written)
+- `ats_platform == 'greenhouse'` → follow `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` for that URL. After `GH.fillForm` and the gap-fill pass (Step 5.5 in that skill), upload the resume and submit.
+- `ats_platform == 'ashby'`      → follow `.claude/skills/mrweirdo-ashby-auto/SKILL.md`. Ashby's `fillForm` returns a `plan` array that MUST be dispatched via `shared/sourcing/_executors/ashby_plan_executor.mjs` (the skill walks you through the call). Don't try to dispatch typetext from in-page JS — Ashby's react-hook-form requires CDP `Input.insertText` (`isTrusted=true`).
 - `ats_platform == 'lever'`      → follow `.claude/skills/mrweirdo-lever-auto/SKILL.md` (when written)
 
 After EACH successful auto-submit, append to `daily_count.jsonl`:
@@ -757,7 +761,7 @@ Failure handling per row (PRD §Verification §4):
 
 ## Step 11 — Final report + cleanup first-run sentinel
 
-After the dispatch loop finishes (or hits daily cap):
+After the dispatch loop finishes:
 
 1. **Print the report** (template below).
 2. **Then delete the first-run sentinel** so subsequent runs use the compact preamble:
@@ -774,7 +778,7 @@ Report template:
 简历:       $(profile.personal.first_name) $(profile.personal.last_name) · $(profile.education.school) · $(profile.education.major)
 方向:       $(search_intent.role_categories[0..2].title_pattern)
 
-Discovery:  RemoteOK → $JOB_COUNT raw → $FILTERED_COUNT after hard-filter → 100 scored
+Discovery:  $SOURCES_USED → $JOB_COUNT raw → $FILTERED_COUNT after hard-filter → $SCORED_COUNT scored
 Auto-applied: $N_SUBMITTED 家
   - greenhouse:  $N_GH
   - ashby:       $N_ASHBY
@@ -784,15 +788,28 @@ Skipped (rule):
   - large-company quota guard:  $N_CAPPED 家 (Google/Meta/... — use /mrweirdo-cherry-pick)
   - other-platform unsupported: $N_OTHER 家 (SmartRecruiters/iCIMS/JobVite/Handshake — v2.4+)
   - fit_score < 7:              $N_LOW 家
-  - daily cap:                  $N_DEFERRED 家 (cap=50/day, hit limit)
 
 Failures (auto-apply error):    $N_FAIL 家 (logged to ~/.mrweirdo-jobs/log/onboard.log)
+
+📂 Your local database: ~/.mrweirdo-jobs/jobs.db
+  Everything from this run is here. You can inspect it any time:
+
+  • Browse in browser:
+      datasette serve ~/.mrweirdo-jobs/jobs.db --open
+
+  • Top fits (CLI):
+      sqlite3 ~/.mrweirdo-jobs/jobs.db "SELECT company,title,fit_score,status FROM jobs ORDER BY fit_score DESC LIMIT 30;"
+
+  • What got filtered out:
+      sqlite3 ~/.mrweirdo-jobs/jobs.db "SELECT company,title,skip_reason FROM v_skipped;"
+
+  • Score distribution:
+      sqlite3 ~/.mrweirdo-jobs/jobs.db "SELECT fit_score, COUNT(*) FROM jobs GROUP BY fit_score ORDER BY fit_score DESC;"
 
 Next steps:
   1. 等 Gmail confirmation 邮件 (15min – 24h)
   2. (可选) 跑 /mrweirdo-confirm 自动 sync confirmations 进 DB
-  3. (可选) datasette serve ~/.mrweirdo-jobs/jobs.db --open --port 8001 看 audit log
-  4. (可选) 想投大公司？跑 /mrweirdo-cherry-pick
+  3. (可选) 想投大公司？跑 /mrweirdo-cherry-pick
 
 ⚠️ MVP 限制提醒: 本次 discovery 仅源自 RemoteOK，偏 remote tech 岗位。如果你不是技术 / startup 方向，
    $JOB_COUNT 这个数字可能很低。v2.1 (Wellfound) / v2.2 (YC WAAS) / v2.3 (ATS bulk crawl) 会大幅扩源。
@@ -808,7 +825,6 @@ Next steps:
 - Does not auto-submit to large-quota companies (use `/mrweirdo-cherry-pick`)
 - Does not auto-submit to SmartRecruiters / iCIMS / JobVite / Handshake / Workday (v2.0 MVP scope — those use v1 half-auto helpers manually)
 - Does not invent personal info / answer JD questions creatively (verbatim only)
-- Does not exceed daily cap (50)
 - Does not retry a failed apply (one shot per row)
 
 ## Critical do-nots
@@ -829,4 +845,4 @@ Use a jitter sleep between rows in Step 10:
 sleep $((30 + RANDOM % 60))   # 30–90s between auto-submits
 ```
 
-This mimics human pacing + spreads load across the day. At 90s avg × 50 cap = ~75 min for a full day's apply queue.
+This mimics human pacing + spreads load across the day. At 90s avg, expect ~1.5 min/row → ~50 rows takes ~75 min, ~100 rows takes ~2.5 hr.

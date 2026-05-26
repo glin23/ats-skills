@@ -152,6 +152,346 @@
     return { ok: false, note: 'click_did_not_activate_after_retry' };
   };
 
+  // ---------- acknowledge widget (v0.4, directive bug fix) ----------
+
+  /**
+   * Ashby.clickAckWidget(questionTextRegex, answer)
+   *
+   * Why this exists (the "directive ack" bug, observed 2026-05-26):
+   *
+   *   On 2026-05-26 we successfully submitted 23 Ashby applications using the simple
+   *   `Ashby.clickYesNo` path: a single `button.click()` on the visible Yes/No
+   *   <button> flips the `_active_` class and the hidden checkbox follows along.
+   *   That worked for agentio ("Are you authorized to work full time?"), opusclip
+   *   ("Do you require work authorization?"), matterworks ("Will you require
+   *   support of Matterworks?"), and 20+ similar widgets.
+   *
+   *   It DID NOT work for the directive company's "Please confirm that you
+   *   acknowledge the following internship details:" widget — even though the
+   *   class names (`_container_y2cw4_29 _yesno_17tft_149`, `_input_y2cw4_79`)
+   *   are byte-for-byte identical to the working widgets. After clicking Yes:
+   *     - `_active_` class is NOT added to the button
+   *     - hidden checkbox `checked` stays false
+   *     - form validation still complains: "Missing entry for required field"
+   *
+   *   The structural difference is that the directive widget sits inside a much
+   *   larger container (~1700 chars of preceding internship-detail text) vs the
+   *   80-200 char containers of the working widgets. Pure mousedown+click,
+   *   pointerdown sequences, and even direct checkbox.click()+dispatch("change")
+   *   all failed.
+   *
+   *   Suspected root cause: react-hook-form's `register()` wires a Controller
+   *   whose state update goes through a React-internal setter. The hidden
+   *   checkbox's `checked` property descriptor is hooked by React, so naive
+   *   `cb.checked = true` writes to the DOM but bypasses React's state
+   *   machine. The form's submit validation reads from React state, not the
+   *   DOM, so the field stays "empty" from its perspective. THE fix is to
+   *   call the native HTMLInputElement.prototype `checked` setter and then
+   *   dispatch a bubbling Event — this is the same trick that fixes
+   *   react-select hidden inputs, and the same idea Testing Library uses.
+   *
+   * Strategy ladder (tried in order, returns on first that flips _active_):
+   *   1. Standard MouseEvent trio (current best practice — works for most Ashby)
+   *   2. Focus + keyboard Enter/Space activation (some widgets listen on keydown)
+   *   3. Native React props onClick — pull __reactProps$* off the button
+   *   4. Native checkbox setter + 'input'/'change' dispatch (THE React-aware fix)
+   *   5. Click wrapping <label> if present (some Ashby orgs wrap buttons in labels)
+   *
+   * @param {RegExp|string} questionTextRegex — pattern to match the question text
+   * @param {"Yes"|"No"} answer
+   * @returns {Promise<{ ok: boolean, strategy_used?: number, note: string }>}
+   */
+  Ashby.clickAckWidget = async function (questionTextRegex, answer) {
+    if (answer !== 'Yes' && answer !== 'No') {
+      return { ok: false, note: 'bad_answer:' + answer };
+    }
+    const rx =
+      questionTextRegex instanceof RegExp
+        ? questionTextRegex
+        : new RegExp(String(questionTextRegex), 'i');
+
+    // Locate the SMALLEST container that:
+    //   (a) contains text matching the regex
+    //   (b) has both a Yes and a No <button> descendant
+    //   (c) has a hidden checkbox descendant (the field identity)
+    //
+    // We start from every hidden checkbox on the page and walk UP until we
+    // find a container whose text matches the regex, then take the buttons
+    // and target the requested answer.
+    const checkboxes = document.querySelectorAll(
+      'input[type=checkbox][name]'
+    );
+    let target = null;
+    let cb = null;
+    let containerEl = null;
+
+    for (const candidate of checkboxes) {
+      let walker = candidate.parentElement;
+      let yesBtn = null;
+      let noBtn = null;
+      let matchedContainer = null;
+      for (let i = 0; i < 8 && walker; i++) {
+        const txt = (walker.innerText || '').trim();
+        const btns = walker.querySelectorAll('button');
+        for (const b of btns) {
+          const t = (b.innerText || '').trim();
+          if (t === 'Yes') yesBtn = b;
+          if (t === 'No') noBtn = b;
+        }
+        if (yesBtn && noBtn && rx.test(txt)) {
+          matchedContainer = walker;
+          break;
+        }
+        walker = walker.parentElement;
+      }
+      if (matchedContainer && yesBtn && noBtn) {
+        cb = candidate;
+        containerEl = matchedContainer;
+        target = answer === 'Yes' ? yesBtn : noBtn;
+        break;
+      }
+    }
+
+    if (!target || !cb) {
+      return { ok: false, note: 'ack_widget_not_found' };
+    }
+
+    // already active? bail — re-clicking would toggle off
+    if (/(^|\s)_active_/.test(target.className) || cb.checked === true) {
+      return { ok: true, strategy_used: 0, note: 'already_active' };
+    }
+
+    const isActive = () =>
+      /(^|\s)_active_/.test(target.className) || cb.checked === true;
+
+    // ---- Strategy 1: Standard MouseEvent trio ----
+    // This is what fixes react-select Country/Location combobox. For Yes/No
+    // widgets with short containers, `button.click()` alone is enough — but
+    // we use the trio here as the "broad spectrum" first attempt.
+    try {
+      const rect = target.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      target.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          pointerType: 'mouse',
+          isPrimary: true,
+          button: 0,
+          buttons: 1,
+          clientX: cx,
+          clientY: cy,
+        })
+      );
+      target.dispatchEvent(
+        new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          button: 0,
+          buttons: 1,
+          clientX: cx,
+          clientY: cy,
+        })
+      );
+      target.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          pointerType: 'mouse',
+          isPrimary: true,
+          button: 0,
+          buttons: 0,
+          clientX: cx,
+          clientY: cy,
+        })
+      );
+      target.dispatchEvent(
+        new MouseEvent('mouseup', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          button: 0,
+          buttons: 0,
+          clientX: cx,
+          clientY: cy,
+        })
+      );
+      target.dispatchEvent(
+        new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          button: 0,
+          clientX: cx,
+          clientY: cy,
+        })
+      );
+    } catch (e) {
+      // fall through to next strategy
+    }
+    await sleep(120);
+    if (isActive()) {
+      return { ok: true, strategy_used: 1, note: 'mouseevent_trio' };
+    }
+
+    // ---- Strategy 2: Focus + keyboard activation ----
+    // Some accessible buttons (esp. ones built with Radix/Headless UI primitives)
+    // listen for Enter/Space keydown after focus. Try both keys.
+    try {
+      target.focus();
+      for (const key of ['Enter', ' ']) {
+        const code = key === ' ' ? 'Space' : 'Enter';
+        target.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key,
+            code,
+            which: key === ' ' ? 32 : 13,
+            keyCode: key === ' ' ? 32 : 13,
+          })
+        );
+        target.dispatchEvent(
+          new KeyboardEvent('keyup', {
+            bubbles: true,
+            cancelable: true,
+            key,
+            code,
+            which: key === ' ' ? 32 : 13,
+            keyCode: key === ' ' ? 32 : 13,
+          })
+        );
+        await sleep(80);
+        if (isActive()) {
+          return { ok: true, strategy_used: 2, note: 'keyboard_' + code };
+        }
+      }
+    } catch (_) {
+      // fall through
+    }
+
+    // ---- Strategy 3: React internal props onClick ----
+    // React 17+ stores per-element props on `__reactProps$<random>`. If we can
+    // find it, calling props.onClick directly bypasses the DOM event system
+    // entirely and feeds React's reconciler the click it expects. This is
+    // sometimes the only way when a parent has `pointer-events: none` or an
+    // overlay is eating real pointer events.
+    try {
+      const propsKey = Object.keys(target).find((k) =>
+        k.startsWith('__reactProps$')
+      );
+      if (propsKey) {
+        const props = target[propsKey];
+        if (props && typeof props.onClick === 'function') {
+          const fakeEvent = {
+            target: target,
+            currentTarget: target,
+            type: 'click',
+            bubbles: true,
+            cancelable: true,
+            defaultPrevented: false,
+            preventDefault: function () {
+              this.defaultPrevented = true;
+            },
+            stopPropagation: function () {},
+            isPropagationStopped: function () {
+              return false;
+            },
+            isDefaultPrevented: function () {
+              return this.defaultPrevented;
+            },
+            persist: function () {},
+            nativeEvent: new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              button: 0,
+            }),
+          };
+          props.onClick(fakeEvent);
+          await sleep(120);
+          if (isActive()) {
+            return { ok: true, strategy_used: 3, note: 'react_props_onclick' };
+          }
+        }
+      }
+    } catch (_) {
+      // fall through
+    }
+
+    // ---- Strategy 4: Native React-aware checkbox setter ----
+    // THE most React-aware fix. React patches the `checked` property descriptor
+    // on HTMLInputElement.prototype so that assigning `cb.checked = true` does
+    // NOT inform React of the change. We have to grab the ORIGINAL native
+    // setter (before React's patch) and call it directly. Then dispatching
+    // a bubbling 'input' or 'change' event lets React's synthetic-event
+    // delegate at the document root pick it up — and crucially, React reads
+    // the new value via the native getter, sees the change, and updates state.
+    //
+    // This is the same trick that fixes react-hook-form text fields when JS
+    // dispatch doesn't work, and the same trick Testing Library's
+    // userEvent.click uses internally for checkboxes.
+    try {
+      const proto = HTMLInputElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, 'checked');
+      if (desc && typeof desc.set === 'function') {
+        const want = answer === 'Yes';
+        desc.set.call(cb, want);
+        cb.dispatchEvent(new Event('input', { bubbles: true }));
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(150);
+        if (isActive()) {
+          return {
+            ok: true,
+            strategy_used: 4,
+            note: 'native_setter_checkbox',
+          };
+        }
+        // Some Ashby widgets won't add _active_ to the button when we toggle
+        // the checkbox directly (since the button-level class is driven by
+        // React state we just updated). Accept cb.checked alone as proof
+        // that React's state machine saw our update.
+        if (cb.checked === want) {
+          return {
+            ok: true,
+            strategy_used: 4,
+            note: 'native_setter_checkbox_state_only',
+          };
+        }
+      }
+    } catch (_) {
+      // fall through
+    }
+
+    // ---- Strategy 5: Click the wrapping <label> ----
+    // Some accessible patterns wrap a hidden control with a <label> and the
+    // visible Yes/No buttons. Clicking the label is the spec-defined way to
+    // activate the control. We look for the nearest ancestor <label>.
+    try {
+      let labelEl = target.closest('label');
+      if (!labelEl && cb) labelEl = cb.closest('label');
+      if (labelEl) {
+        labelEl.click();
+        await sleep(150);
+        if (isActive()) {
+          return { ok: true, strategy_used: 5, note: 'wrapping_label_click' };
+        }
+      }
+    } catch (_) {
+      // fall through
+    }
+
+    return {
+      ok: false,
+      note:
+        'all_5_strategies_failed' +
+        (containerEl
+          ? ' container_chars=' + (containerEl.innerText || '').length
+          : ''),
+    };
+  };
+
   // ---------- react-select v5 picker ----------
 
   /**

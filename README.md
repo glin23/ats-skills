@@ -112,6 +112,23 @@ You can also use TablePlus, DBeaver, DataGrip, or the `sqlite3` CLI — any SQLi
 
 ---
 
+## v2.1 driver model (submit-error-driven)
+
+v2.1 introduces `shared/ashby_apply_driver.mjs` and `shared/greenhouse_apply_driver.mjs` — submit-error-driven drivers that fill what they can, hit Submit, parse the form's own validation errors, then loop. Compared to the v2.0 pre-emptive `fillForm` approach this is more resilient to per-tenant form variance. In field testing on 2026-05-26 the Ashby driver landed 23 of 29 attempted URLs (~80%) in a single session.
+
+Architecture:
+
+1. Open URL via CDP. Upload resume + dispatch React `change` event.
+2. Fill standard fields (`_systemfield_name`, `_systemfield_email`, any visible `tel`).
+3. Pre-fill Country (US) and Location (Boston, MA) via `reactSelect()` (handles Google Places autocomplete).
+4. Click Submit. Parse validation errors. Match each missing field to an answer in `shared/answer_bank.json`.
+5. Up to 4 retry rounds; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
+6. On `outcome: essay_pending`, surface the questions to main Claude (next session) for human-in-the-loop essay writing.
+
+Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
+
+---
+
 ## How the AI work happens — and what you don't need
 
 Everything that requires AI reasoning in v2 runs through the main Claude session that you already started when you ran the slash command. **There is no separate Anthropic API key requirement.** v1 used a fetch-based scorer that required `ANTHROPIC_API_KEY`; v2 does not. Your Claude Code subscription covers the cost.

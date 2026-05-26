@@ -1,0 +1,70 @@
+{
+  "_comment": "Externalized answer bank for ATS driver scripts (ashby_apply_driver.mjs, greenhouse_apply_driver.mjs). Loaded at startup. Regex strings are passed to `new RegExp(str, 'i')`, so escape every backslash twice when porting JS literals (e.g. `\\\\s` in JSON == `\\s` in JS).",
+
+  "essay_templates": [
+    {
+      "match": "why.{0,20}(apply|join|interested|choose|us|company|want|decided to apply)",
+      "answer_template": "I'm a Babson junior who has spent the last year shipping product end-to-end — Semori (AI-driven semantic search MVP) and Resume2Web (AI résumé-to-site builder) — while interning at growth + VC contexts (Kolect AI on B2B GTM, Scale Partners on early-stage diligence). What draws me to {{COMPANY_PRETTY}} is that the work seems to sit exactly where I get the most reps: live-product decisions with real users, fast iteration, and an AI-first stance. I'd rather be the intern who unblocks five small things a week than the one who writes a deck nobody reads.",
+      "tags": ["why_us", "motivation"]
+    },
+    {
+      "match": "(projects?\\s+(you[' ]ve|you have)\\s+built|what.{0,15}built|proud of|tell.{0,15}your.{0,10}work)",
+      "answer_template": "Two recent ones: (1) Semori (https://semori.online) — a vector-embedding-based semantic search engine I built solo with a RAG pipeline + custom embeddings, currently iterating on retrieval quality with a small group of early testers. (2) Resume2Web — an AI MVP that turns a résumé PDF into a personal site in under a minute, where I owned everything from prompt design to funnel instrumentation and A/B copy. Before those, I co-founded COR Senior Friends (intergen community on Little Red Book) and ran growth at Kolect AI (B2B sales scripts + n8n workflows). Common thread: I ship, measure, and re-cut quickly.",
+      "tags": ["projects", "portfolio"]
+    },
+    {
+      "match": "(how.{0,10}use.{0,5}ai|ai.{0,15}(automate|tools?|workflow)|describe.{0,15}ai)",
+      "answer_template": "Daily: Claude Code is my main IDE for shipping Semori — the entire RAG pipeline, embedding strategy, and most of the front-end were built in main-Claude-in-loop sessions with my eyes on the diff. I treat models as design partners, not autocomplete; the best velocity comes from giving them a sharp spec + the right code context. Beyond code: Cursor for one-off scripts, ChatGPT for brainstorming user-research synthesis, and custom n8n + Claude workflows for B2B sales outreach (Kolect AI). I'm also experimenting with agents that draft job-application forms (this very pipeline!), which is what got me hooked on the \"AI at the seam between intent and execution\" thesis.",
+      "tags": ["ai_usage", "tools"]
+    },
+    {
+      "match": "(when.{0,10}(can|could).{0,5}you.{0,5}start|start date|earliest start|hire.{0,10}as soon|availability|when.{0,10}available)",
+      "answer_template": "Available for Summer 2026 (full-time intern, May–August), and can also work 15-20 hrs/week part-time during Spring 2026 if useful before then. Open to extending into Fall 2026 part-time around classes. F-1 OPT eligible; no sponsorship needed for the internship itself.",
+      "tags": ["availability", "start_date"]
+    },
+    {
+      "match": "(industry trend|trend.{0,15}excit|excit.{0,10}about|area.{0,5}you.{0,5}follow|emerging.{0,5}area|trend.{0,15}follow)",
+      "answer_template": "The collapse of the gap between \"I have an idea\" and \"users are using it.\" Two years ago shipping a product meant a team of 5 and three months; today one person with Claude Code, vector DBs, and modern hosting can put a real product in front of users by the weekend. The interesting question isn't whether AI builds the code — it's how product/distribution/judgment moats shift when build-time goes to near zero. I think the next decade of product work is mostly about taste, distribution, and unit economics, not engineering volume.",
+      "tags": ["industry_trend", "thesis"]
+    },
+    {
+      "match": "(strengths?|what.{0,5}are.{0,5}you.{0,5}good at|superpower|how would.{0,10}describe.{0,10}yourself)",
+      "answer_template": "I move fast on ambiguity. Given a fuzzy goal + access to people / tools, I'll usually have a v1 of something measurable inside a week — and I'm honest when v1 is wrong. The flip side is I have to actively force myself to slow down on polish and write things down for others. The work where I've been most useful (Kolect AI growth, Scale Partners diligence, Semori) all had the same shape: figure out the first defensible move, ship it, measure it, decide.",
+      "tags": ["strengths", "superpower"]
+    },
+    {
+      "match": "(weakness|improve.{0,10}yourself|growth area|where.{0,10}(grow|improve))",
+      "answer_template": "I default to \"ship now, document later,\" which works for solo work but fails on a team — I'm actively trying to write up reasoning earlier so handoffs don't bottleneck on me. Concretely: I started keeping a daily decisions doc this semester so when teammates ask \"why this not that\" the answer is already written down.",
+      "tags": ["weakness", "growth"]
+    }
+  ],
+
+  "yes_no_defaults": {
+    "work_authorization": "Yes",
+    "sponsorship_future": "Yes",
+    "willing_to_relocate": "Yes",
+    "enrolled_in_university": "Yes",
+    "rto_office_in_person": "Yes",
+    "veteran": "I am not a protected veteran",
+    "disability": "I do not want to answer",
+    "gender": "I prefer not to answer",
+    "race": "I prefer not to answer"
+  },
+
+  "multichoice_preferences": {
+    "how_did_you_hear": ["LinkedIn", "Online", "Other", "Google"],
+    "years_of_experience": ["< 1", "<1", "0-1", "1", "0", "Less than 1"],
+    "seniority_level": ["Intern", "Student", "Entry", "Junior"]
+  },
+
+  "location_preferences": {
+    "city": "Boston",
+    "city_full_match": ["massachusetts", "united states"]
+  },
+
+  "fallback_text": {
+    "linkedin": "https://www.linkedin.com/in/lee-lin-204737291",
+    "graduation_date": "May 2027",
+    "start_date_summer_2026": "May 2026"
+  }
+}

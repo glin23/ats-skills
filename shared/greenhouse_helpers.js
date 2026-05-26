@@ -353,6 +353,41 @@
     }
     const personal = raw.personal || {};
     const auth = raw.work_authorization || {};
+    const edu = raw.education || {};
+    const qa = raw.standard_qa || {};
+
+    // Build derived answers from nested profile shape. Skip empty values so
+    // fillForm doesn't type "" into legitimate-but-unanswered fields.
+    const text = {};
+    const pick = {};
+    function addText(needle, val) { if (val != null && String(val).trim() !== '') text[needle] = String(val); }
+    function addPick(needle, val) { if (val != null && String(val).trim() !== '') pick[needle] = String(val); }
+
+    // Text answers — matched by case-insensitive substring against <label> text.
+    addText('linkedin', personal.linkedin);
+    addText('city', personal.address_city || personal.city);
+    addText('school', edu.school);
+    addText('college', edu.school);
+    addText('university', edu.school);
+    addText('gpa', edu.gpa);
+    addText('graduation', edu.graduation_date);
+    addText('expected graduation', edu.graduation_date);
+    addText('how did you hear', qa.how_did_you_hear);
+    addText('earliest start', qa.earliest_start_date);
+    addText('start date', qa.earliest_start_date);
+    addText('available', qa.earliest_start_date);
+    addText('salary', auth.salary_expectation_usd);
+
+    // Picker answers — Yes/No questions on react-select dropdowns.
+    if (auth.authorized_to_work_us != null) {
+      addPick('authorized to work', auth.authorized_to_work_us ? 'Yes' : 'No');
+      addPick('legally authorized', auth.authorized_to_work_us ? 'Yes' : 'No');
+    }
+    if (auth.requires_sponsorship_future != null) {
+      addPick('sponsorship', auth.requires_sponsorship_future ? 'Yes' : 'No');
+      addPick('require visa', auth.requires_sponsorship_future ? 'Yes' : 'No');
+    }
+
     return {
       first_name: personal.first_name,
       last_name: personal.last_name,
@@ -364,9 +399,10 @@
       location_text: personal.city,
       // Greenhouse country picker uses "United States +1" with the space.
       country_label: personal.phone_country_greenhouse,
-      // Per-company answers — skill orchestrator fills these.
-      custom_answers: {},
-      picker_answers: {},
+      // Derived from nested profile — caller can extend by merging additional
+      // per-company entries on top of these defaults.
+      custom_answers: text,
+      picker_answers: pick,
       // Pass-through to original profile so callers (and Claude) can read
       // work_authorization, education, standard_qa, etc.
       _raw: raw,

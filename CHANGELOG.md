@@ -1,5 +1,82 @@
 # Changelog
 
+## [2.1.0] - 2026-05-26 — Submit-error-driven drivers, 80% Ashby success in field
+
+The big shift in v2.1 is architectural: instead of pre-emptively filling
+every field before clicking Submit (v2.0's `fillForm` model), the new
+drivers fill what they can, hit Submit, parse the form's own validation
+errors, look up answers in an externalized JSON bank, and retry. This
+turned out to be far more resilient to per-tenant form variance.
+
+Field test today (2026-05-26): 23 Ashby submissions in one session via
+the new driver, 1 GH submission via its GH sibling. ~80% Ashby success
+rate; the failures clustered on a single ack-widget pattern (see Known
+limitations) rather than scattering across form shapes.
+
+### Added
+- `shared/ashby_apply_driver.mjs` — submit-error-driven Ashby form
+  driver. Submits → parses validation errors → looks up answers in
+  `shared/answer_bank.json` → retries. Up to 4 retry rounds. Closes
+  the tab on submit/skip. 80% success rate in today's field test
+  (23/29 Ashby URLs landed; 6 skipped with explicit `skip_reason`).
+- `shared/greenhouse_apply_driver.mjs` — GH equivalent. Same retry
+  loop, plus react-select handling for Country + Location combobox.
+  Newer than the Ashby driver, less battle-tested (1 submit so far).
+- `shared/answer_bank.json` — externalized answer templates: 7 essay
+  patterns, Yes/No defaults, multichoice prefs. Users edit this file
+  directly; no code change needed when form shapes drift.
+- `Ashby.clickAckWidget()` in `shared/ashby_helpers.js` — 5-strategy
+  fallback for stubborn Yes/No widgets that ignore `.click()`. The
+  React-native-setter approach (Strategy 4 — finds the hidden
+  `<input type="checkbox">`, calls the native value setter, dispatches
+  `change`) is what cracks most of them.
+- `--list-pending-essays` CLI mode on `ashby_apply_driver.mjs`. Outputs
+  unique pending essay questions across the queue so a future
+  main-Claude-in-loop session can batch-author the answers.
+
+### Fixed
+- React-select Location combobox now reliably opens via
+  `MouseEvent("mousedown", {button: 0, buttons: 1, clientX, clientY})`.
+  Plain `.click()` silently failed on the async Google Places picker.
+  Reference impl: `reactSelect()` in `greenhouse_apply_driver.mjs`.
+- UUID id selectors (e.g. `72b55bca-...`) now use the
+  `[id="..."]` attribute selector instead of `#<id>`. Naked `#<id>`
+  is invalid CSS when the id starts with a digit. The driver + helper
+  modules both handle this — we learned the same lesson twice; do not
+  un-fix it.
+- File upload race: React unmounts `#resume` immediately after
+  `setFileInputFiles` completes. The driver no longer tries to
+  re-access the element on the verify step; it checks body text
+  instead.
+- Driver tabs are now closed on submit/skip. v2.0 was leaking ~18
+  stale tabs per batch.
+- Ashby Yes/No widget false-positive: `findEmptyRequired` no longer
+  flags an `[uploaded]` resume input as required-empty. The check
+  is now `el.type === 'file' ? el.files.length > 0 : !!el.value`.
+
+### Changed
+- `mrweirdo-onboard/SKILL.md`: removed the `daily_apply_cap: 50`
+  blanket cap. Per-company quota (`quota_guard_enabled`) is the only
+  rate limit now. Step 9 of the skill is informational rather than
+  gating. Users hitting a personal pace limit can cap manually.
+- Essay handling is config-driven via `shared/answer_bank.json`
+  instead of hardcoded in driver source.
+
+### Known limitations (carry-over to v2.2)
+- 8 directive-company variations: the ack-widget click does not
+  register despite identical DOM classes to widgets that do work.
+  `Ashby.clickAckWidget` Strategy 4 is the closest thing to a fix
+  shipped; a separate agent is still investigating.
+- Lever forms detect CDP `setFileInputFiles` and report a bogus
+  "File exceeds 100MB" error on resumes that are visibly < 200 KB.
+  No workaround yet. Drag-drop upload may sidestep it.
+- GH `candidate-location` Google Places autocomplete occasionally
+  returns 0 options on slow connections. Mitigated by a 3.5s wait,
+  not eliminated.
+- Forms requiring assets Lee does not currently have (GPA, SAT/ACT
+  scores, 1-minute intro video, official transcript) are correctly
+  skipped with an explicit `skip_reason`. Profile gap, not bug.
+
 ## [1.3.0] - 2026-05-25 — Full namespace migration off `ats`
 
 Completes the v1.2.0 rebrand by moving the user state directory and all

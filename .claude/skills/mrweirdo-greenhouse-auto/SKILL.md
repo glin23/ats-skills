@@ -72,8 +72,42 @@ FILL_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(async () =
 
 Parse the JSON `{filled: N, errors: [...]}`. Errors handling:
 
-- **Empty `errors`** → continue to Step 6 (resume upload)
-- **`errors` has missing fields** (e.g. "no first_name input found"): **v2 attempts inferred fill** — log the error, attempt `GH.findEmptyRequired()`, then use main Claude reasoning (you, calling this skill) to fill remaining required fields from `profile.json` semantically. If still incomplete after one pass → skip + log `reason=incomplete_form, errors=[...]`. Do not loop indefinitely.
+- **Empty `errors`** → continue to Step 5.5 (gap-fill pass).
+- **`errors` has missing fields** → log them, then run Step 5.5. If gap-fill still leaves required gaps after one pass → skip + log `reason=incomplete_form, errors=[...]`. Never loop more than once.
+
+### 5.5. Inferred-fill pass (covers v2 BLOCKER fix — was unimplemented in pre-2026-05-26 runs)
+
+The default `normalizeProfile` derives a set of `custom_answers` / `picker_answers` keyed by label substring (LinkedIn URL, school, GPA, graduation date, authorized-to-work, sponsorship). These are pre-filled in step 5 above. This step handles the **remaining** gaps after `fillForm` runs — anything `GH.findEmptyRequired()` still reports as unfilled.
+
+```bash
+GAPS=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => JSON.stringify(GH.findEmptyRequired()))()")
+```
+
+Parse `GAPS` (JSON array of `{id, label, type, required, options?}`). For each entry:
+
+1. **Read the field's label** (e.g. "Are you based in NYC and able to work in our Union Sq office Mon–Fri?").
+2. **You (the main Claude) infer the answer** from `profile.json` and `search_intent.json` — they're already in your context. Pick the most defensible answer; never invent facts (if the question asks for GPA and `profile.education.gpa === ''`, answer the closest honest equivalent like `"Not listed on resume"` — never fabricate a number).
+3. **Dispatch the answer** with the right helper for the field type:
+
+```bash
+# For type=text/textarea: set value via the existing helper
+node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => GH.setText('$FIELD_ID', $JSON_ENCODED_ANSWER))()"
+
+# For type=react-select (single-pick dropdown): open picker, choose option
+node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(async () => {
+  const o = await GH.openPicker('$FIELD_ID');
+  if (!o.ok) return o;
+  return await GH.pickOption($JSON_ENCODED_ANSWER);
+})()"
+```
+
+Then re-run `GH.findEmptyRequired()` ONCE. If any required field still empty → skip the row with `reason=incomplete_form_after_gapfill, remaining=[...]`. Do NOT loop a second gap-fill pass — the field is either ambiguous or the form has a control we don't know how to dispatch.
+
+**Hard rules for inferred answers:**
+- Never invent numeric values (GPA, salary, years of experience). Say "Not listed on resume" or skip the row.
+- For yes/no work-auth / sponsorship questions, derive from `profile.work_authorization` (already in `picker_answers` defaults — only inferred-fill if `fillForm` couldn't match the label).
+- For diversity / EEO questions where the user hasn't declared, prefer `"Prefer not to say"` over inventing.
+- For "earliest start date" when blank → infer from `search_intent.target_cycle[0]` (e.g. "Summer 2026" → answer "May 2026") rather than guessing.
 
 ### 6. Upload resume
 
@@ -101,18 +135,26 @@ node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT"
 Before clicking submit, one last automated sanity check (NOT user-facing):
 
 ```bash
-# Detect common CAPTCHA / bot-check elements; if present, SKIP — don't auto-bypass.
+# Detect VISIBLE CAPTCHA / bot-check elements; if present, SKIP — don't auto-bypass.
+# Critical: Greenhouse embeds invisible reCAPTCHA v3 on every form. We must NOT skip on that;
+# only block when there's a visible challenge the user would actually have to solve.
 CAPTCHA_CHECK=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => {
-  const captchaSelectors = ['iframe[src*=\"recaptcha\"]', 'iframe[src*=\"hcaptcha\"]', '[id*=\"captcha\" i]', '.cf-challenge'];
-  const found = captchaSelectors.some(s => document.querySelector(s));
-  const text = (document.body.innerText || '').toLowerCase();
-  const challengeText = text.includes('verify you are human') || text.includes('are you a robot') || text.includes('checking your browser');
-  return { found_widget: found, found_text: challengeText };
+  const blockers = [];
+  for (const f of document.querySelectorAll('iframe[src*=\"recaptcha\"]')) {
+    const src = f.src || '';
+    const isInvisible = src.includes('size=invisible') || src.includes('size=invisibl');
+    if (!isInvisible) blockers.push('visible_recaptcha');
+  }
+  if (document.querySelector('iframe[src*=\"hcaptcha\"]')) blockers.push('hcaptcha');
+  if (document.querySelector('.cf-challenge, [data-cf-turnstile]')) blockers.push('cf_challenge');
+  const t = (document.body.innerText || '').toLowerCase();
+  if (t.includes('verify you are human') || t.includes('are you a robot') || t.includes('checking your browser')) blockers.push('challenge_text');
+  return { blocked: blockers.length > 0, blockers };
 })()")
 
-if echo "$CAPTCHA_CHECK" | grep -q '"found_widget":true\|"found_text":true'; then
-  echo "CAPTCHA detected — skipping (cannot auto-bypass safely)"
-  # Log: outcome=skip, reason=captcha_present
+if echo "$CAPTCHA_CHECK" | grep -q '"blocked":true'; then
+  echo "CAPTCHA blocker detected: $CAPTCHA_CHECK — skipping (cannot auto-bypass safely)"
+  # Log: outcome=skip, reason=captcha_present (see blockers array for which kind)
   exit 0
 fi
 ```

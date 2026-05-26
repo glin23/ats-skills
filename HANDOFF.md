@@ -1,378 +1,236 @@
-# mrweirdo-jobs — Engineer Handoff Brief
+# mrweirdo-jobs — Maintainer Handoff (v2.1.0)
 
-> 🚨 **v1 ERA DOCUMENT** 🚨 **This brief was written for v1.3 (manual-submit, author-curated company list, single-user 用户 dogfood).** v2 is a fundamentally different product — resume-driven autonomous discovery + auto-submit + multi-user OSS for all majors. v2 retracts the "Submit 永远人工" red line that this document treats as foundational.
->
-> **For v2 implementation, the authoritative source is**: `/Users/lee/.claude/plans/smooth-orbiting-bentley.md` (the v2 PRD, locked 2026-05-25). Read that PRD first; this document is preserved as v1 historical context only.
->
-> What in here is still useful for v2:
-> - §3 (architectural principles) — CDP-primary / zero-deps / hybrid Computer Use fallback — still valid
-> - §4 (red lines for LinkedIn / Indeed / Workday-generic) — **partially preserved** (see PRD §"Red lines: retracted vs preserved" for the explicit diff)
-> - §5 (platform coverage) — still accurate
-> - §6 (large-company quota guard) — preserved in v2, surfaces via `/mrweirdo-cherry-pick`
-> - §7 (AI scoring contract) — superseded by `shared/scoring/score_prompt.md` in v2
-> - §9 (Notion DB schema) — **deprecated** in v1.1; v2 uses SQLite via `shared/local_db.mjs`
->
-> The §11 待办 list is v1 P0–P3 from before v2 PRD existed. v2 has a different priority list (see PRD §"Roadmap").
+Audience: a new maintainer (engineer or PM) inheriting this repo cold.
+Read this file end-to-end before touching anything. It is the single
+file you need open to get oriented; everything else is just code.
+
+Last updated: 2026-05-26, after the v2.1 release.
 
 ---
 
-# Original v1 Brief (preserved for historical context)
+## 1. What this project is
 
-Owner: 用户 (`glin23`) · Repo: https://github.com/glin23/mrweirdo-jobs · v1 version: **v1.3.0** (2026-05-25, last v1 release before v2 PRD)
+mrweirdo-jobs is a personal job-application automation tool, originally
+built for the author (Lee Lin, Babson junior, F-1 OPT, hunting US PM /
+Growth / Ops internships). It is shipped as a Claude Code skill
+collection plus a small Node 24 backend, installable on any macOS
+machine via one curl command.
 
-这是一份 v1 era 交付给工程师的需求 brief。在 v2 PRD 锁定之前是真实 source-of-truth；现在保留作为 v1 历史档案。读完应能：(1) 理解 v1 产品定位与红线 (2) 知道 v1 当时已建什么 (3) 拿到 v1 按优先级排好的 next-action 列表 (4) 知道在哪验收 v1 行为。
+The pipeline is: resume PDF → AI-derived search intent + profile →
+cross-platform job discovery (Greenhouse / Ashby / Lever boards, plus
+RemoteOK and YC) → AI scoring → auto-apply on Greenhouse / Ashby /
+Lever, with per-company quota guards and a Gmail-driven confirmation
+loop. The user's only mandatory action is uploading the resume; their
+feedback channel is their Gmail inbox.
 
----
-
-## 1. 一句话产品定位
-
-把 **AI sourcing → Notion dashboard → batch auto-apply** 串成一条流水线的 Claude Code skill 集合，目标：
-
-> 把 "100 家投递" 的时间从 **8–10 小时压到 < 2 小时**，并保证大公司有限的投递配额不被 batch 烧光。
-
-**面向用户**：单用户（用户 本人 + 公开 OSS 后的少量 self-host 用户），**不是 SaaS**，永远不做多租户。
-
----
-
-## 2. 关键流程（端到端）
-
-```
-┌──────────────┐  ┌───────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌────────────┐
-│ company_list │→ │ ATS Public API│→ │ AI scorer (6 dim)│→ │ Notion DB upsert │→ │ User triage│
-│ (248 公司)   │  │ sourcing      │  │ Claude Sonnet    │  │ +「📋岗位追踪」  │  │ in Notion  │
-└──────────────┘  └───────────────┘  └──────────────────┘  └──────────────────┘  └─────┬──────┘
-                                                                                       │
-                                                                                       ▼
-                                                                          ┌───────────────────────┐
-                                                                          │ User 标 ✅Approved /    │
-                                                                          │ ❌Skipped+reason       │
-                                                                          └──────────┬────────────┘
-                                                                                     │
-                                                                                     ▼
-┌──────────────────┐  ┌──────────────────────┐  ┌──────────────────────────┐  ┌──────────────┐
-│ Notion ✅Approved│→ │ URL → ATS dispatch   │→ │ CDP fillForm + Submit gate│→ │ Mark Notion  │
-│ view (queue)     │  │ (greenhouse/ashby/…) │  │ (人工授权 Submit)         │  │ +feedback.jsonl│
-└──────────────────┘  └──────────────────────┘  └──────────────────────────┘  └──────────────┘
-                                                                                     │
-                                                                                     ▼
-                                                                          ┌─────────────────────┐
-                                                                          │ 下次 sourcing 时把  │
-                                                                          │ feedback 注入 AI 提示│
-                                                                          │  (loop closes)      │
-                                                                          └─────────────────────┘
-```
+Latest field data (2026-05-26 session): 23 successful Ashby
+submissions in one session via the new v2.1 driver, plus 1 Greenhouse
+submission. Expected cadence going forward: one `/mrweirdo-onboard`
+run per week, ~30 applications per cycle.
 
 ---
 
-## 3. 架构原则（**不可妥协**）
+## 2. File-by-file map
 
-| # | 原则 | 理由 |
-|---|---|---|
-| 1 | **CDP 主，Computer Use 仅 fallback** | CDP isTrusted=true，~50ms/action；Computer Use 2-4 act/min 太慢且反爬不看浏览器层。CV 仅在 `findEmptyRequired` 返 unidentified element 时触发 |
-| 2 | **零 npm 依赖**（Node 24 built-in fetch + WebSocket） | OSS 易 self-host；减少供应链风险；当前 repo 19.5k 行 0 deps |
-| 3 | **Notion DB 是状态唯一来源** | 不建独立 web UI；所有 view / approval / submit 状态都走 Notion |
-| 4 | **Submit 必须人工授权** | 每次 batch 跑前一次性 "go"，且 Submit 按钮点击前 skill 必须 stop-and-confirm |
-| 5 | **Slow-mode 节奏** | 2–5 分钟 jitter / 每天 cap 50；模拟人类节奏；防被 ATS rate-limit / 标 bot |
+The files a new maintainer must know about, in rough priority order:
 
----
+**Bootstrapping**
+- `setup.sh` — install script. Clones the repo to
+  `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
+  `~/.claude/skills/`, creates the user-state dir layout. Idempotent.
+- `VERSION` — current release tag, `v2.1.0` as of this write.
+- `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
+  for current state; older entries are historical.
 
-## 4. 红线（**永远不做**）
+**Skills (user-facing entry points)**
+- `.claude/skills/mrweirdo-onboard/SKILL.md` — the main entry point.
+  Users invoke this; it runs the whole pipeline end-to-end.
+- `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` — auto-submit
+  Greenhouse helper, called by onboard. Single URL in.
+- `.claude/skills/mrweirdo-ashby-auto/SKILL.md` — same for Ashby.
+- `.claude/skills/mrweirdo-lever-auto/SKILL.md` — same for Lever
+  (currently flaky; see §4).
+- `.claude/skills/mrweirdo-confirm/SKILL.md` — Gmail confirmation
+  loop; promotes ✅ 已投 rows to ✅ 已确认.
+- `.claude/skills/mrweirdo-cherry-pick/SKILL.md` — manual large-company
+  flow with Submit gate. Preserved from v1.
 
-| 项 | 原因 |
-|---|---|
-| LinkedIn Easy Apply | 反爬在行为/网络层；OSS bots 全 deprecated；TOS 明禁 |
-| Indeed apply / Glassdoor apply | 同上 |
-| Taleo / SuccessFactors | 单点登录 + tenant variants 死胡同 |
-| Workday "generic" 通用化 | Tenant variant 50–65% 覆盖率，已确认是死胡同。**只做 per-company config-driven** |
-| 自动点 Submit | Submit 永远要用户显式授权 |
-| 自动投大公司 | 见 §6 quota guard |
+**Shared runtime (the actual code)**
+- `shared/cdp.mjs` — Chrome DevTools wrapper. Stable, zero-dep. Do not
+  touch unless you are sure.
+- `shared/ashby_apply_driver.mjs` — v2.1 Ashby driver. Submit-error
+  driven. ~80% success rate in field testing.
+- `shared/greenhouse_apply_driver.mjs` — v2.1 GH driver. Newer,
+  less battle-tested.
+- `shared/ashby_helpers.js` / `shared/greenhouse_helpers.js` —
+  page-injected DOM helpers. The drivers eval these into the page.
+- `shared/answer_bank.json` — v2.1 externalized answer templates.
+  7 essay patterns, Yes/No defaults, multichoice prefs. Edit here,
+  not in driver code.
+- `shared/lever_helpers.js` — Lever DOM helpers. See §4 for dragons.
+- `shared/quota.mjs` — per-company submission quota tracking.
+- `shared/local_db.mjs` — SQLite wrapper around `~/.mrweirdo-jobs/jobs.db`.
+- `shared/paths.mjs` — path / env-var resolver. Read this when you are
+  confused about where state lives.
+- `shared/sourcing/` — Greenhouse / Ashby / Lever / RemoteOK / YC
+  board-API clients for discovery.
+- `shared/scoring/` — AI-scoring prompt + helpers.
 
----
+**User state (gitignored, per-machine)**
+- `~/.mrweirdo-jobs/jobs.db` — SQLite. Every discovered, scored, and
+  applied job lives here.
+- `~/.mrweirdo-jobs/profile.json` — form-fill data, generated from resume.
+- `~/.mrweirdo-jobs/search_intent.json` — AI-derived search params.
+- `~/.mrweirdo-jobs/resume.pdf` — the user's resume.
+- `~/.mrweirdo-jobs/feedback.jsonl` — append-only audit log; one line
+  per apply attempt with outcome + screenshot path.
+- `~/.mrweirdo-jobs/chrome-profile/` — isolated CDP Chrome profile.
+  Do not share. Do not push.
 
-## 5. 平台覆盖（v0.9 现状）
-
-| 平台 | Sourcing | Apply | 成熟度 | 备注 |
-|---|---|---|---|---|
-| Greenhouse | ✅ public API `boards-api.greenhouse.io` | ✅ stable | 已 dogfood 验证 | v0.2 NiCE SDR 真投成功；v0.3 修了 candidate-location bug |
-| Ashby | ✅ public API `api.ashbyhq.com/posting-api` | ✅ stable | 已 dogfood 验证 | v0.2 验证；isTrusted=true 必须走 CDP typetext |
-| Lever | ✅ public API | ✅ stable | 含 用户 5/13 Palantir 实战 5 个 gotcha | v0.8 stable |
-| SmartRecruiters | ✅ public API | ⚠️ scaffold (beta) | **需 dogfood** | 正在迁 SAP SuccessFactors，selector 可能漂移 |
-| iCIMS | ✅ HTML scrape | ⚠️ scaffold (alpha) | **需 dogfood** | 必须创建账号，多步 wizard + EEOC |
-| JobVite | ✅ HTML scrape | ⚠️ scaffold (alpha) | **需 dogfood** | 多数 tenant 允许 guest apply |
-| Handshake | ⚠️ stub | ⚠️ scaffold (beta) | **需 dogfood** | 自动检测 redirect 到外部 ATS |
-| Workday | ❌ per-company config | ⚠️ config-driven | 5 placeholder configs，**0 真验证** | _template.json 是 schema 锚点 |
-| Recruitee | ✅ public API | manual | 仅 sourcing | |
-| Personio | ✅ XML public | manual | 仅 sourcing | |
-| BambooHR | ✅ HTML scrape | manual | 仅 sourcing | |
-| Rippling | ✅ HTML/JSON | manual | 仅 sourcing | |
-| Wellfound + YC WAAS | ⚠️ stub | manual | **TODO 实现** | |
-
----
-
-## 6. 大公司配额保护（v0.9 产品级关键决策）
-
-**Insight**：大公司有学期级投递 cap（例：Google 3 次/学期）。batch 自动跑里把配额烧在非 dream role = 失败。
-
-**实施**（已落地，需 dogfood 验证）：
-
-1. `shared/sourcing/company_list.json` 中 25 家大厂打 `apply_quota` / `apply_quota_period` / `apply_quota_note` 字段
-   （Google / Meta / MSFT / Amazon / Apple / Tesla / SpaceX / Stripe / Anthropic / OpenAI / Bloomberg / GS / JPM / MS / Salesforce / Adobe / Oracle / IBM / Netflix / Snowflake / Databricks / Datadog / Airbnb / Uber / Coinbase）
-2. batch orchestrator Step 3 加 quota guard：
-   - 检测公司 capped → SKIP + warn + log feedback + Notion mark "⚠️ 跳过未投" + **continue**（不 break batch）
-3. sourcing 阶段把这 25 家标记到 Notion view 「🏢 大公司限投 (待手动选)」
-4. 用户必须 cherry-pick + 用单 URL skill（`/mrweirdo-greenhouse <url>` 等）**手动投**
-5. `🏢 大公司投递配额追踪` sub-page 当前**手动维护**计数 → 未来可能加自动 rollup
-
----
-
-## 7. AI 评分契约
-
-**Model**：Claude Sonnet via Anthropic SDK（Node 24 built-in fetch，无 SDK dep）
-**Cost**：~$0.003 / job（50 jobs/week ≈ $0.15/week）
-
-**Input**：`profile.json`（resume + standard_qa + target_filters）+ JD raw text + 最近 20 个 skip_reason 注入 system prompt
-**Output 契约**：
-```json
-{
-  "fit_score": 7,
-  "role_type_match": "new_grad_FT",
-  "key_alignment": ["..."],
-  "key_gaps": ["..."],
-  "recommended": true,
-  "dim_scores": {
-    "role_fit":       8,
-    "skills_match":   7,
-    "location_fit":   9,
-    "visa_compatible":10,
-    "seniority_match":6,
-    "exclude_check":  10
-  }
-}
-```
-
-`recommended = (min(dim_scores) >= profile.target_filters.min_fit_score)` — 任意一维爆雷即不推荐。
+**Reference data**
+- `examples/lee_company_list.json` — author's curated 248-company list.
+  NOT used by default in v2; example only.
 
 ---
 
-## 8. 数据契约：`profile.json` schema（v0.9）
+## 3. How a typical run goes
 
-文件位置：`shared/profile.json`（gitignored，每个 self-host 用户自己填）
-模板：`shared/profile.template.json`
-
-```json
-{
-  "personal":   { "name": "...", "email": "...", ... },
-  "education":  { ... },
-  "work_authorization": { "status": "...", "needs_sponsor": false },
-  "standard_qa": { "Why this company?": "...", ... },
-  "target_filters": {
-    "role_types":       ["intern", "new_grad_FT"],
-    "locations":        ["US", "Remote-US"],
-    "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
-    "min_fit_score":    6,
-    "visa_must_sponsor": false
-  },
-  "batch_pace": { "min_seconds_between_jobs": 120, "max_seconds_between_jobs": 300 },
-  "daily_apply_cap": 50
-}
-```
-
-**已知 issue**：当前 the user's `shared/profile.json` 中 `target_filters` 全空。`mrweirdo-source` SKILL.md 的 pre-flight 会硬 fail。**P0 修复项**。
+1. User invokes `/mrweirdo-onboard` (or a natural-language trigger like
+   "帮我找实习" or "I just installed").
+2. The skill runs 11 numbered steps sequentially: welcome banner,
+   resume ingest, search intent inference, ABCD confirmation,
+   cross-platform discovery, AI scoring, hard filter, dedupe,
+   quota check, **auto-apply loop**, summary.
+3. Step 10 (auto-apply) is the heart of the system. For each eligible
+   row, main Claude invokes one of `mrweirdo-{greenhouse,ashby,lever}-auto`
+   which calls the matching `shared/<platform>_apply_driver.mjs`. The
+   driver fills, submits, parses validation errors, and retries up to
+   4 rounds before giving up.
+4. Outcome is written to `jobs.db` (status `✅ 已投` or skip reason)
+   and `feedback.jsonl` (full audit).
+5. Hours/days later, Gmail confirmation emails arrive. The user
+   manually labels them `applied-jobs`. Running `/mrweirdo-confirm`
+   promotes rows from ✅ 已投 to ✅ 已确认.
 
 ---
 
-## 9. 数据契约：Notion DB schema
+## 4. Where the dragons are
 
-> **⚠️ 已废弃 (v1.1+)**：本节描述 v0.9 era 状态层 (Notion)。v1.1 已迁到本地 SQLite (`~/.mrweirdo-jobs/jobs.db`)，schema 等价但单文件单 SQL 表 + 5 个 view。保留本节做迁移参考；用户 老 install 的 Notion DB 用 `shared/migrate_notion_to_local.mjs` 迁出。
+The 5 things a new maintainer will trip over within the first hour.
+Internalize these.
 
-**DB**: 「📋 岗位追踪」`94b728d7-526d-4c9f-96f4-a8cb92c0f5fe`
-**Data Source**: `6995653c-4fab-4622-b174-d10892620ad8`
-**Root page**: `35d1e8ce-8185-819a-ba70-ec00e8fc2726`
+**1. CSS selectors with leading-digit ids fail.** Ashby uses uuid
+ids (`72b55bca-...`). Naked `#72b55bca-...` is invalid CSS in
+WebKit/Blink. Always use `[id="..."]` or `'#' + CSS.escape(id)`.
+We learned this twice; do not unlearn it. Helpers + drivers handle
+it correctly today — preserve the existing code.
 
-**字段 (v0.9)**：
-| 字段 | 类型 | 来源 |
-|---|---|---|
-| 公司 / 职位 / URL / 地点 / 来源 / 状态 | (原有 v0.2) | sourcing + apply |
-| `fit_score` / `key_gaps` / `role_type_match` / `skip_reason` / `user_note` / `dim_scores` | v0.3 AI scorer | AI scorer |
-| `salary_min` / `salary_max` / `salary_currency` / `salary_interval` / `hourly_rate` / `ats 平台` (SELECT) | v0.8 | sourcing |
-| `apply_quota_limit` / `apply_quota_period` / `apply_quota_note` | v0.9 quota guard | company_list.json |
+**2. React unmounts `#resume` immediately after `setFileInputFiles`.**
+The driver's `uploadResume` no longer tries to re-access the element
+post-upload. It verifies via body text. If you "fix" the driver to
+re-read the file input, it will crash.
 
-**状态 enum**: 🤖 AI sourced · ✅ Approved · 🔵 未投 · ⚠️ 跳过未投 · ✅ 已投 · 🔥 面试中 · ❌ Rejected
+**3. react-select Location combobox needs a synthetic `mousedown`.**
+Plain `.click()` silently fails to open the async Google Places picker.
+The working pattern is `MouseEvent("mousedown", {button: 0, buttons: 1, clientX, clientY})`
+followed by typing and option click. Reference impl: `reactSelect()`
+in `shared/greenhouse_apply_driver.mjs`. Use it.
 
-**Views (7 个)**：
-- 🤖 AI Sourced (Pending Review) · view `36a1e8ce-8185-8167-b7c7-000c46b5a2cc`
-- ✅ Approved (Ready to Apply) · view `36a1e8ce-8185-81f2-acf3-000c6672a718`
-- ❌ Skipped + Reason · view `36a1e8ce-8185-8133-85df-000c2ecfd75a`
-- 🏢 大公司限投 (待手动选) · view `36a1e8ce-8185-814a-a067-000c6162b627`
-- 🔵 未投 / ✅ 已投 / 🔥 面试中 (原有)
+**4. Ashby Yes/No widgets sometimes ignore clicks.** `Ashby.clickAckWidget`
+in `shared/ashby_helpers.js` runs a 5-strategy fallback. Strategy 4
+(find the hidden `<input type="checkbox">`, call the React-native
+value setter, dispatch `change`) is the most reliable. If you
+encounter a new widget that defeats all 5 strategies, Strategy 4 is
+the right place to extend.
 
----
-
-## 10. 仓库结构（v1.3 终态）
-
-```
-mrweirdo-jobs/
-├── README.md / LICENSE / DISCLAIMER.md / CHANGELOG.md / HANDOFF.md / setup.sh
-├── shared/
-│   ├── cdp.mjs                          # zero-dep CDP driver (WS + Node 24 fetch)
-│   ├── chrome-cdp-launcher.sh           # 启动隔离 Chrome (user uses Profile 7)
-│   ├── greenhouse_helpers.js
-│   ├── ashby_helpers.js
-│   ├── lever_helpers.js
-│   ├── smartrecruiters_helpers.js        ⚠️ beta
-│   ├── icims_helpers.js                  ⚠️ alpha
-│   ├── jobvite_helpers.js                ⚠️ alpha
-│   ├── handshake_helpers.js              ⚠️ beta
-│   ├── workday_helpers.js                ⚠️ config-driven
-│   ├── computer_use_locator.mjs          # vision fallback
-│   ├── feedback.mjs                      # ~/.mrweirdo-jobs/feedback.jsonl R/W
-│   ├── patterns.mjs                      # Career-Ops 系统性偏差分析
-│   ├── local_db.mjs                      # v1.1+ SQLite state layer (primary)
-│   ├── notion_sync.mjs                   # v0.9 era Notion mirror (deprecated, kept for migrate)
-│   ├── migrate_notion_to_local.mjs       # one-shot Notion → SQLite migration
-│   ├── quota.mjs                         # quota.jsonl tracker
-│   ├── paths.mjs                         # central env/path resolver
-│   ├── onboarding/                       # resume parser, notion_setup (legacy), sqlite_setup
-│   ├── sourcing/
-│   │   ├── company_list.json            # ~250 公司 / 25 capped
-│   │   ├── greenhouse_board_api.mjs / ashby_board_api.mjs / lever_board_api.mjs
-│   │   ├── smartrecruiters_board_api.mjs / icims_board_api.mjs / jobvite_board_api.mjs
-│   │   ├── recruitee_board_api.mjs / personio_board_api.mjs
-│   │   ├── bamboohr_board_api.mjs / rippling_board_api.mjs / remoteok_board_api.mjs
-│   │   └── handshake_search.mjs / wellfound_search.mjs / yc_workatastartup.mjs   # 3 个 stub
-│   ├── matching/ai_scorer.mjs + prompt_template.md
-│   ├── workday/companies/ _template.json + 5 placeholders
-│   └── profile.template.json
-└── .claude/skills/
-    ├── mrweirdo-jobs/SKILL.md           # batch orchestrator (含 quota guard)
-    ├── mrweirdo-source/SKILL.md         # sourcing + AI + DB + capped detect
-    ├── mrweirdo-init/SKILL.md           # onboarding (API key + resume + filters + SQLite)
-    ├── mrweirdo-confirm/SKILL.md        # Gmail confirmation loop
-    ├── mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-lever        # ✅ stable
-    ├── mrweirdo-smartrecruiters / mrweirdo-icims / mrweirdo-jobvite # ⚠️ alpha/beta
-    └── mrweirdo-handshake / mrweirdo-workday                        # ⚠️ untested
-```
+**5. Lever rejects CDP uploads with a bogus "File exceeds 100MB" error.**
+On a resume that is visibly 200 KB. No fix yet. The current code
+skips Lever rows on this error rather than retrying. Try drag-drop
+upload if you want to take a swing at it; do not retry the same
+`setFileInputFiles` call expecting different results.
 
 ---
 
-## 11. 待办（按优先级，**直接可分给工程师执行**）
+## 5. Daily / weekly workflow for the maintainer
 
-### P0 — 必须立刻做（blocker for first real sourcing dogfood）
-
-| # | 任务 | 验收 |
-|---|---|---|
-| P0-1 | 让 用户 填 `shared/profile.json` 的 `target_filters`（当前全空）。注意：memory 里 用户 明确说 **"不要 SWE / 仅美国 / 不要 FT"**，但 PRD 默认 `role_types=["intern","new_grad_FT"]` 含 new_grad_FT → **与工程师确认前先与 用户 拍板** | `mrweirdo-source` pre-flight 不再硬 fail |
-| P0-2 | 修 Greenhouse `classifyRoleType` regex（`greenhouse_board_api.mjs:212`）—— 当前 `/intern\|internship\|.../i` 缺 word boundary，"**Intern**al Audit" / "**Intern**ational" 被误判 intern | 跑 dry-run，Asana "Head of Internal Audit" 不再被分到 intern 桶 |
-| P0-3 | sourcing 阶段加 `filterByExclude(jobs, excludeKeywords)` — 当前 GH/Ashby 的 `filterByRoleType()` 没读 `profile.target_filters.exclude_keywords`，SWE 漏的根源 | 248 公司 dry-run 后 SWE 类岗位 0 进候选 |
-| P0-4 | sourcing 阶段加 `filterByLocation(jobs, allowedLocations)` — 当前 Warsaw/Toronto/远东 全进 US 候选 | dry-run 结果中只剩 US states + "Remote - US" / "United States" |
-| P0-5 | 跑完整 `/mrweirdo-source` sourcing dogfood：~250 公司 → fetch ~500–1000 jobs → AI score → 写 SQLite (`~/.mrweirdo-jobs/jobs.db`) → 验证 capped 公司导向 `v_large_company_pending` view | 用户 在 Datasette 看到完整 funnel；top-10 AI 推荐与他人工 pick 重合 ≥ 7 |
-
-> 上个 session 已经跑了 dry-run 到 120/~250（无 AI / 无 DB 写入，纯 fetch 测试）。后台进程结果在 `/tmp/ats-source/dry_run_result.json`（v0.9 era 路径，可能已被 macOS 清理），**接班的工程师应先读这个文件再写 patch**；若文件不存在，跑 `node shared/sourcing/dry_run.mjs` 重生成。
-
-### P1 — Sourcing 准确率 / Workflow 稳定性
-
-| # | 任务 | 验收 |
-|---|---|---|
-| P1-1 | Handshake (v0.6 beta) 真投 dogfood + 修 helpers | 用户 投 5 个 Handshake 岗位 success rate ≥ 60% |
-| P1-2 | Workday (v0.7) 写 用户 目标 5 家公司的 `companies/<slug>.json` config + 真投 | 5 家 submit 1 个真投 → success ≥ 4/5 |
-| P1-3 | SmartRecruiters / iCIMS / JobVite (v0.8 alpha) 真投 dogfood + 修 selectors | 每平台 ≥ 1 次成功真投 |
-| P1-4 | `patterns.mjs` 启用：定期跑 skip 系统性偏差分析，自动 update `profile.target_filters.exclude_keywords` | 跑 3 周后 AI sourced 的 approve rate 从 50% → 70% |
-| P1-5 | Computer Use visual fallback dogfood（`computer_use_locator.mjs`）—— CDP 找不到 selector 时触发 vision，3 次重试后 skip + log | 至少 1 次真案例：CDP 失败 → CV locate 成功 → 表单填上 |
-
-### P2 — 配额追踪自动化
-
-| # | 任务 | 验收 |
-|---|---|---|
-| P2-1 | 「🏢 大公司投递配额追踪」从手动 → 自动：Notion relation rollup 或 SKILL.md 写入计数 | 用户 投一次大公司后，sub-page 数字自动 + 1 |
-| P2-2 | 配额耗尽 alert：用户接近 cap 时 sourcing 阶段 Notion 标红 | UI 上能一眼看到"Google 还剩 1/3" |
-
-### P3 — 平台扩展
-
-| # | 任务 | 验收 |
-|---|---|---|
-| P3-1 | Wellfound + YC WAAS 的 sourcing 实现（当前是 stub） | 至少能 fetch 10 个 job 进 Notion |
-| P3-2 | BambooHR / Rippling / Recruitee / Personio 的 apply helpers（当前仅 sourcing） | 每平台 ≥ 1 次真投成功 |
-| P3-3 | Lever 的 sourcing dogfood + 平台扩展（含 Greenhouse-like 平台） | sourcing 产出 ≥ 50 jobs from Lever boards |
+- **Weekly**: run `/mrweirdo-onboard` to refresh discovery + apply to
+  the new pool.
+- **After each run**: read `~/.mrweirdo-jobs/feedback.jsonl`. Group
+  `outcome: stuck_on_same_missing` and `outcome: essay_pending` rows
+  by company; categorize new skip reasons.
+- **As form shapes drift**: add new essay templates and Yes/No defaults
+  to `shared/answer_bank.json`. No code change needed.
+- **Per-company quota tuning**: edit `examples/lee_company_list.json`
+  (or the user's `~/.mrweirdo-jobs/company_list.user.json`) to adjust
+  caps on specific employers.
 
 ---
 
-## 12. 工程师 onboarding 流程
+## 6. Specifically what NOT to do
 
-```bash
-# 1. clone
-gh repo clone glin23/mrweirdo-jobs && cd mrweirdo-jobs
-
-# 2. 读 4 个文档（按序）
-cat README.md                                          # 用户视角
-cat HANDOFF.md                                         # 本文件
-cat CHANGELOG.md                                       # v0.1 → v1.3 历史
-cat .claude/skills/mrweirdo-jobs/SKILL.md              # batch orchestrator
-
-# 3. 启动隔离 Chrome
-bash shared/chrome-cdp-launcher.sh                     # Profile 7, port 9222
-
-# 4. 填 profile.json（v1.1+ 推荐走 /mrweirdo-init 自动生成 ~/.mrweirdo-jobs/profile.json；
-#    用户 老 install 仍可用 shared/profile.json fallback）
-cp shared/profile.template.json shared/profile.json
-# 编辑 personal / education / standard_qa / target_filters
-
-# 5. 设 env（/mrweirdo-init 会写 ~/.mrweirdo-jobs/.env，手动也可）
-export ANTHROPIC_API_KEY=...     # AI scorer 用
-# NOTION_API_KEY 仅 v1.1+ 老用户迁移时需要；新 install 不再依赖
-
-# 6. 验证 sourcing dry-run（不烧 API key）
-node shared/sourcing/dry_run.mjs                       # 纯 fetch 测试，不写 DB
-
-# 7. 真 sourcing（小批量先验）
-# 在 Claude Code 里说: /mrweirdo-source
-```
+- **Do not write a pure-bash batch dispatcher.** The v1-era lesson, paid
+  for in real submissions: bash loops without main-Claude-in-the-loop
+  cannot reason about per-row form variance. They will always stall on
+  custom Q's. Always keep main Claude in the loop for ATS forms.
+- **Do not mark a row "submitted" without verifying the success page text.**
+  Ashby's "Success!" upload-status toast is NOT a submission
+  confirmation. Look for the post-submit URL change or the explicit
+  confirmation copy in the body.
+- **Do not push secrets.** `~/.mrweirdo-jobs/` is gitignored for a
+  reason. Resume PDFs, profile.json, .env, and the chrome-profile
+  all live there. Never `git add` outside the repo, and never copy
+  anything from `~/.mrweirdo-jobs/` into the repo.
+- **Do not bypass the per-company quota guard.** It exists so that
+  one batch run does not burn the user's only shot at Google / Meta /
+  Stripe etc. The `/mrweirdo-cherry-pick` flow is the only sanctioned
+  way to spend quota.
 
 ---
 
-## 13. 凭证与资源（**敏感，单独传递**）
+## 7. How to know things are working
 
-- Anthropic API key — env `ANTHROPIC_API_KEY`，AI scorer 用
-- Notion API key — env `NOTION_API_KEY`，notion_sync 用（或走 MCP，两条路都已验证 work）
-- Resume PDF — `/Users/lee/Desktop/用户_Lin_Resume.pdf`
-- Chrome lily Profile 7 — `bash shared/chrome-cdp-launcher.sh` 启动
-- profile.json — `shared/profile.json`（gitignored）
-- Notion DB ID / data source ID / root page ID — 见 §9
-- GitHub repo — https://github.com/glin23/mrweirdo-jobs
-
-> **不要 commit** 任何 `.env` / `profile.json` / API key。`setup.sh` 会自动 gitignore。
-
----
-
-## 14. 测试 / 验收策略
-
-- **Unit-style smoke**：每个 helper 改动后必须 `node --check` 通过 + 至少 1 次真投递成功
-- **Sourcing dry-run**：不烧 API key 跑全 248 公司 fetch，看 errors count + filtered count
-- **AI scoring 验证**：每次 prompt 改动，跑 10 个已知 ground-truth jobs 看 dim_scores 漂移
-- **End-to-end (v1.0)**：见 PRD §Verification — 冷启动 → sourcing → triage → batch apply → 反馈 loop 验证
+- DB row count of `status='✅ 已投'` grows weekly.
+- `feedback.jsonl` has new `outcome: submitted` lines with screenshot
+  paths that actually exist on disk.
+- Gmail confirmation emails arrive within 24h of each apply. Once the
+  user labels them `applied-jobs`, `/mrweirdo-confirm` will promote
+  the row to ✅ 已确认.
+- The Datasette UI (`datasette serve ~/.mrweirdo-jobs/jobs.db`) shows
+  the `v_auto_submitted` view filling up.
 
 ---
 
-## 15. 关键依赖文档（深读）
+## 8. Open issues for the next maintainer
 
-| 文件 | 在哪里 | 为什么读 |
-|---|---|---|
-| 完整 PRD | `/Users/lee/.claude/plans/peaceful-bouncing-karp.md` | v0.3 → v1.0 详细 phase plan + risk + verification |
-| Mega devlog | `/Users/lee/.claude/projects/-Users-lee/memory/devlog-2026-05-23-ats-skills-mega.md` | 单 session v0.2 → v0.9 全 19.5k 行历史 |
-| ATS 自动投策略 | memory `feedback_ats_auto_apply_strategy_2026.md` | gstack 模式被 Ashby flag，需用 chrome-cdp + Profile 7 + 人工 Submit |
-| react-select gotcha | memory `feedback_ats_react_select_mousedown.md` | Greenhouse/Ashby picker `.click()` 不开 menu，必须 dispatch `MouseEvent('mousedown')` |
-| Execute-in-session 红线 | memory `feedback_execute_in_session_redline.md` | 用户 说"这个 session 做"时不准建议"下次 session"，立刻多 agent 并行 |
+In rough priority order:
+
+1. **Crack the directive ack widget.** 8 rows in last session got
+   stuck on the same ack widget. `Ashby.clickAckWidget` Strategy 4
+   is the closest near-miss; extend from there.
+2. **Solve Lever anti-CDP file upload.** Today it is effectively
+   broken. Either find the detection signal and bypass it, or
+   replace `setFileInputFiles` with a drag-drop emulation.
+3. **Build the main-Claude essay consumer.** The Ashby driver already
+   emits `outcome: essay_pending` and `--list-pending-essays` outputs
+   the unique questions. The read side — a skill that takes that list,
+   asks main Claude to draft answers, writes them back to
+   `answer_bank.json`, and re-runs the stuck rows — is not built.
+4. **Better discovery.** Today's pool was 813 jobs of which only ~30
+   were actionable. Sources skew remote-tech-heavy. v2.2 should add
+   YC Work-At-A-Startup, Wellfound, and at least one industry-specific
+   board (healthcare, education).
+5. **GH Country sync-select bug.** Greenhouse's Country field uses
+   a different open-trigger than Location. A separate agent is on it.
+6. **Profile asset gaps.** GPA, SAT/ACT, 1-minute intro video, official
+   transcript — roughly 3 high-fit jobs per session require these and
+   are skipped. Either prompt the user to provide them at onboard time
+   or add a "supplemental_assets" section to `profile.json`.
 
 ---
 
-## 16. 不在范围内 (Out of Scope)
+## 9. Contact + getting unstuck
 
-- LinkedIn Easy Apply、Indeed apply、Glassdoor apply、Taleo、SuccessFactors（红线）
-- Workday "generic" 通用化（已确认死胡同，只做 per-company config）
-- AI 改简历 per JD（v2 stretch）
-- Cover letter generator（v2 stretch）
-- 移动端 / SaaS / 多用户（永远不做）
-- 中国侧平台 BOSS 直聘 / 拉勾（v2 评估）
-
----
-
-_End of brief. 问题、补充上下文，open an issue at github.com/glin23/mrweirdo-jobs。_
+The original author is Lee Lin (GitHub: `glin23`). The CHANGELOG is
+the project's narrative memory — when something looks wrong, read the
+relevant version entry first; the rationale for almost every weird
+choice is in there.

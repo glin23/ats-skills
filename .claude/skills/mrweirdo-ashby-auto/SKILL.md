@@ -69,23 +69,31 @@ node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "$(cat "$MRWEIRDO_REPO_ROO
 
 Expected response contains `"Ashby"` namespace ready. If different → skip + log `reason=helpers_inject_fail`.
 
-### 5. `Ashby.fillForm(profile)`
+### 5. `Ashby.fillForm(profile)` + execute via `ashby_plan_executor.mjs`
 
 ```bash
 PROFILE=$(cat "$MRWEIRDO_HOME/profile.json")
 FILL_PLAN=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "JSON.stringify(Ashby.fillForm($PROFILE))")
 ```
 
-**Critical Ashby gotcha**: `Ashby.fillForm` returns a **plan** (not a result). Each action in the plan must be dispatched via the right CDP method:
+**Critical Ashby gotcha**: `Ashby.fillForm` returns a **plan** (not a result). Pre-2026-05-26 this skill described what each action *should* do but no caller actually dispatched the plan — every Ashby row silently fell through. Now the executor handles dispatch:
 
-- `typetext` actions → `node cdp.mjs typetext "$TAB" "$SELECTOR" "$VALUE"` (real keyboard via CDP)
-- `yesno` actions → `node cdp.mjs eval "$TAB" "document.querySelector('$SELECTOR').click()"`
-- `select` actions → `node cdp.mjs eval "$TAB" "Ashby.pickSelect('$SELECTOR', '$VALUE')"`
-- `date` actions → use `cdp.mjs typetext` per Ashby's date input pattern
+```bash
+echo "$FILL_PLAN" > /tmp/mrweirdo-ashby-plan-${RUN_ID}.json
+EXEC_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/sourcing/_executors/ashby_plan_executor.mjs" "$TAB" /tmp/mrweirdo-ashby-plan-${RUN_ID}.json)
+echo "$EXEC_RESULT"
+```
 
-Iterate the plan, dispatch each item. Log per-action outcome.
+The executor dispatches each action via the right driver:
+- `typetext` → `cdp.mjs typetext` (CDP `Input.insertText`, `isTrusted=true` — required for Ashby's react-hook-form)
+- `upload`   → `cdp.mjs upload` (CDP `DOM.setFileInputFiles`)
+- `select`   → in-page `Ashby.pickSelect(fieldId, optionText)`
+- `date`     → in-page `Ashby.setDate(fieldId, mmddyyyy)`
+- `yesno`    → in-page click on the matching Yes/No button (re-discovers selector by walking up from the checkbox name)
 
-After all plan items dispatched, run `Ashby.findEmptyRequired()` to confirm zero gaps. If gaps exist → main Claude (you) reasons over `profile.json` to fill them semantically (one pass). Still incomplete → skip + log `reason=incomplete_form`.
+Plan entries with `value: null` (the planner couldn't derive an answer from profile, see BUGS#6) are skipped and reported in `result.skipped[]` for manual handling. Plan entries that fail at dispatch end up in `result.errors[]`.
+
+After execution, run `Ashby.findEmptyRequired()` to confirm zero gaps. If gaps remain → main Claude (you) reasons over `profile.json` to fill them semantically (one pass via the same action types above). Still incomplete → skip + log `reason=incomplete_form, remaining=[...]`.
 
 ### 6. Upload resume
 
@@ -111,17 +119,25 @@ Saved to disk for forensic audit. NOT shown to user.
 ### 8. CAPTCHA check → auto-click Submit → verify
 
 ```bash
+# Detect VISIBLE CAPTCHA / bot-check only — invisible reCAPTCHA v3 is signal-only
+# and would falsely skip every form (was BUG #4 in pre-2026-05-26 GH skill).
 CAPTCHA_CHECK=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => {
-  const captchaSelectors = ['iframe[src*=\"recaptcha\"]', 'iframe[src*=\"hcaptcha\"]', '[id*=\"captcha\" i]', '.cf-challenge'];
-  const found = captchaSelectors.some(s => document.querySelector(s));
-  const text = (document.body.innerText || '').toLowerCase();
-  const challengeText = text.includes('verify you are human') || text.includes('are you a robot');
-  return { found_widget: found, found_text: challengeText };
+  const blockers = [];
+  for (const f of document.querySelectorAll('iframe[src*=\"recaptcha\"]')) {
+    const src = f.src || '';
+    const isInvisible = src.includes('size=invisible') || src.includes('size=invisibl');
+    if (!isInvisible) blockers.push('visible_recaptcha');
+  }
+  if (document.querySelector('iframe[src*=\"hcaptcha\"]')) blockers.push('hcaptcha');
+  if (document.querySelector('.cf-challenge, [data-cf-turnstile]')) blockers.push('cf_challenge');
+  const t = (document.body.innerText || '').toLowerCase();
+  if (t.includes('verify you are human') || t.includes('are you a robot') || t.includes('checking your browser')) blockers.push('challenge_text');
+  return { blocked: blockers.length > 0, blockers };
 })()")
 
-if echo "$CAPTCHA_CHECK" | grep -q '"found_widget":true\|"found_text":true'; then
-  echo "CAPTCHA detected — skipping (cannot auto-bypass safely)"
-  exit 0  # log: outcome=skip, reason=captcha_present
+if echo "$CAPTCHA_CHECK" | grep -q '"blocked":true'; then
+  echo "CAPTCHA blocker detected: $CAPTCHA_CHECK — skipping (cannot auto-bypass safely)"
+  exit 0  # log: outcome=skip, reason=captcha_present (see blockers array)
 fi
 ```
 
