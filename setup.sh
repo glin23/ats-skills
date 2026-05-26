@@ -102,25 +102,69 @@ mkdir -p "$MRWEIRDO_HOME"/log
 [ -f "$MRWEIRDO_HOME/.env" ] || (touch "$MRWEIRDO_HOME/.env" && chmod 600 "$MRWEIRDO_HOME/.env")
 green "  ~/.mrweirdo-jobs/ layout ✓"
 
-# ---------- 7. Next steps ----------
+# ---------- 7. First-run sentinel ----------
+# Skip if user already has a populated profile.json (they're re-running setup,
+# not installing for the first time). Otherwise write the sentinel so the
+# onboard skill knows to surface its Welcome banner proactively.
+if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
+  cat > "$MRWEIRDO_HOME/.first_run" <<EOF
+{"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"v2.0"}
+EOF
+  chmod 600 "$MRWEIRDO_HOME/.first_run"
+  IS_FIRST_RUN=1
+else
+  IS_FIRST_RUN=0
+fi
+
+# ---------- 8. Welcome / next steps ----------
 echo ""
-blue "Setup complete. Next steps:"
-echo "  1. Open Claude Code (any directory)"
-echo "  2. Run: /mrweirdo-onboard"
-echo "       → Drops your resume, picks search intent via 7 quick questions,"
-echo "         multi-source discovery → AI scoring → zero-touch auto-apply"
-echo "         to top fit_score ≥ 7 jobs (daily cap 50). One end-to-end flow."
-echo ""
-echo "  Other v2 skills:"
-echo "      /mrweirdo-cherry-pick       — surface scored jobs, hand-pick, gated apply"
-echo "      /mrweirdo-greenhouse-auto <url>  — zero-touch single GH URL"
-echo "      /mrweirdo-ashby-auto      <url>  — zero-touch single Ashby URL"
-echo "      /mrweirdo-lever-auto      <url>  — zero-touch single Lever URL"
-echo "      /mrweirdo-greenhouse      <url>  — gated (user clicks Submit) single GH"
-echo "      /mrweirdo-ashby           <url>  — gated single Ashby"
-echo "      /mrweirdo-lever           <url>  — gated single Lever"
-echo "      /mrweirdo-confirm           — Gmail confirmation → mark DB ✅ 已投"
-echo ""
+if [ "$IS_FIRST_RUN" = "1" ]; then
+  cat <<'WELCOME'
+
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║          👋  Welcome to Mr. Weirdo Jobs  (v2.0)                  ║
+║                                                                  ║
+║   Your zero-touch internship / new-grad application agent.       ║
+║                                                                  ║
+║   Three steps to start applying:                                 ║
+║                                                                  ║
+║     1️⃣   Drop your resume (PDF)                                  ║
+║     2️⃣   Answer 7 quick questions (work auth · target roles)    ║
+║     3️⃣   Sit back — auto-apply up to 50 jobs/day                ║
+║                                                                  ║
+║   ──────────────────────────────────────────────────────────     ║
+║                                                                  ║
+║   👉  Open Claude Code, then type:                               ║
+║                                                                  ║
+║          /mrweirdo-onboard                                       ║
+║                                                                  ║
+║       (or just say "I want to start applying for internships"    ║
+║        — the agent will surface onboarding on its own)           ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+WELCOME
+else
+  blue "Setup re-run — existing profile detected at ~/.mrweirdo-jobs/profile.json"
+  echo "  Skipping first-run banner. Type /mrweirdo-onboard to re-onboard, or"
+  echo "  use /mrweirdo-cherry-pick / /mrweirdo-confirm for daily ops."
+  echo ""
+fi
+
+cat <<'REF'
+  Reference (advanced):
+    /mrweirdo-cherry-pick              hand-pick from scored queue, gated apply
+    /mrweirdo-greenhouse-auto <url>    zero-touch single Greenhouse URL
+    /mrweirdo-ashby-auto      <url>    zero-touch single Ashby URL
+    /mrweirdo-lever-auto      <url>    zero-touch single Lever URL
+    /mrweirdo-greenhouse      <url>    gated (you click Submit) single GH
+    /mrweirdo-ashby           <url>    gated single Ashby
+    /mrweirdo-lever           <url>    gated single Lever
+    /mrweirdo-confirm                  Gmail confirmation → mark DB ✅ 已投
+    node ~/.mrweirdo-jobs/repo/scripts/dashboard.mjs    live申请记录
+
+REF
 echo "  Update later with:  git -C $MRWEIRDO_REPO_ROOT pull"
 echo ""
 green "Done."

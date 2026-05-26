@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-onboard
-description: v2 single-entry skill for mrweirdo-jobs. User provides a resume PDF; this skill runs the entire pipeline end-to-end with zero user touch after upload — extract search intent + profile from resume, discover jobs across platforms (v2 MVP: RemoteOK), score them with the main Claude session, gate by fit_score / daily cap / large-company quota, and AUTO-SUBMIT applications to Greenhouse / Ashby / Lever. User's only feedback is Gmail confirmation emails. Triggered via "/mrweirdo-onboard", "帮我找实习", "用 mrweirdo 投实习", "上传简历开始投递".
+description: v2 single-entry skill for mrweirdo-jobs — the FIRST thing a user runs after installing mrweirdo. Shows a Welcome banner (3-step preview), asks for resume PDF, then runs the entire pipeline end-to-end with zero user touch — extract search intent + profile from resume, discover jobs across Greenhouse/Ashby/Lever/YC/RemoteOK, score them with the main Claude session, gate by fit_score / daily cap / large-company quota, and AUTO-SUBMIT to Greenhouse / Ashby / Lever. User's only feedback is Gmail confirmation emails. PROACTIVELY TRIGGER ON these natural phrases (not just "/mrweirdo-onboard"): "I just installed", "刚装完", "我刚装完", "怎么开始", "how do I start", "help me start", "start applying", "find me internships", "帮我找实习", "我想找暑期实习", "我想找 PM 实习", "投实习", "上传简历开始", "first time using", "what now", "下一步", "next step". ALSO trigger when ~/.mrweirdo-jobs/.first_run sentinel file exists and user message is even vaguely related to jobs/internships.
 ---
 
 # mrweirdo-onboard — v2 main entry (zero-touch)
@@ -26,8 +26,13 @@ This is the **only** skill a user should need to invoke after install. It runs:
 
 ## When to trigger
 
-- User says any of: "找实习" / "帮我投实习" / "/mrweirdo-onboard" / "上传我的简历开始" / "AI 投实习" / "用 mrweirdo 找工作"
-- User just installed and asks "how to start" or "what now"
+- **First-run path**: ~/.mrweirdo-jobs/.first_run sentinel exists (setup.sh wrote it on install) AND user's message even vaguely touches jobs / internships / "what now" / "start" / "how do I" — trigger PROACTIVELY without waiting for a slash command. New users don't know `/mrweirdo-onboard` exists; surfacing this is YOUR job.
+- **Explicit invoke**: `/mrweirdo-onboard`
+- **Natural phrases (any language)**:
+  - EN: "I just installed", "first time using", "help me start", "how do I start", "what now", "next step", "start applying", "find me internships", "begin onboarding"
+  - 中: "刚装完", "我刚装完", "怎么开始", "怎么用", "下一步", "找实习", "帮我找实习", "我想找暑期实习", "投实习", "上传简历开始", "用 mrweirdo 找工作", "找 PM 实习"
+
+When in doubt and the first-run sentinel exists, trigger this skill. False-positive cost (showing Welcome to someone who didn't need it) is much lower than false-negative cost (new user types "hi" and gets nothing).
 
 ## When NOT to trigger
 
@@ -51,7 +56,51 @@ These are the safety-net knobs. Hard-coded for v2.0; users can edit `~/.mrweirdo
 
 ---
 
-## Step 0 — Pre-flight checks (~10 seconds)
+## Step 0 — Welcome (display first, always)
+
+**Before running any Bash**, print this banner to the user. This is the user's first impression — it is non-negotiable. The wording sets expectations for the 3-stage flow + the zero-touch contract.
+
+If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — be extra welcoming and explain what's about to happen. After Step 11 (final report) succeeds, delete the sentinel so subsequent runs skip the lengthier preamble. If the sentinel does NOT exist, print only the compact preamble (3 lines) — don't re-welcome a returning user.
+
+### First-run banner (print verbatim, no markdown fence)
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.0)                   ║
+║                                                                  ║
+║   Your zero-touch internship / new-grad application agent.       ║
+║                                                                  ║
+║   Here's what happens next:                                      ║
+║                                                                  ║
+║     1️⃣   You drop one resume (PDF, absolute path)                ║
+║     2️⃣   I read it + ask ~7 short questions to lock your        ║
+║          search intent (work auth, target roles, location)       ║
+║     3️⃣   I discover jobs across 5 sources, score them,          ║
+║          and auto-submit up to 50 / day on Greenhouse /          ║
+║          Ashby / Lever — fit_score ≥ 7 only.                     ║
+║                                                                  ║
+║   You'll watch progress in your terminal. Once running, your     ║
+║   only check-in is Gmail (confirmation emails arrive within      ║
+║   24h per application). Run /mrweirdo-confirm to close the loop. ║
+║                                                                  ║
+║   👉  Ready? Drop your resume path on the next prompt.           ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+Then immediately segue: "First let me do a 10-second pre-flight check, then I'll ask for your resume." → continue to Step 0.5.
+
+### Returning-user preamble (compact, when no sentinel)
+
+```
+mrweirdo onboard — resume → score → auto-apply (50/day cap, fit≥7).
+Running pre-flight checks…
+```
+
+---
+
+## Step 0.5 — Pre-flight checks (~10 seconds)
 
 Run these via Bash. Any FAIL → report and stop (with the fix the user needs to make).
 
@@ -706,9 +755,18 @@ Failure handling per row (PRD §Verification §4):
 
 ---
 
-## Step 11 — Final report
+## Step 11 — Final report + cleanup first-run sentinel
 
 After the dispatch loop finishes (or hits daily cap):
+
+1. **Print the report** (template below).
+2. **Then delete the first-run sentinel** so subsequent runs use the compact preamble:
+   ```bash
+   [ -f "$MRWEIRDO_HOME/.first_run" ] && rm -f "$MRWEIRDO_HOME/.first_run"
+   ```
+   (If the run failed before Step 10, leave the sentinel — next run still deserves the full Welcome.)
+
+Report template:
 
 ```
 === mrweirdo-onboard run-$(RUN_ID) report ===
