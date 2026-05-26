@@ -203,11 +203,59 @@ function render(db) {
   process.stdout.write(lines.join('\n') + '\n');
 }
 
-// main loop
-const db = new DatabaseSync(DB_PATH, { readOnly: true });
+// main loop — DB may not exist yet (dashboard often started BEFORE onboard
+// creates jobs.db). Lazy-open + re-try every render.
+let db = null;
+function openDbIfReady() {
+  if (db) return db;
+  if (!fs.existsSync(DB_PATH)) return null;
+  try {
+    db = new DatabaseSync(DB_PATH, { readOnly: true });
+    return db;
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderEmptyState() {
+  cursorHome();
+  const lines = [];
+  lines.push(`${C.bold}mrweirdo${C.reset} ${C.dim}│${C.reset} ${C.fg.yel}waiting for jobs.db${C.reset} ${C.dim}│${C.reset} ${C.fg.cyn}^C quit${C.reset}`);
+  lines.push(`${C.dim}${hr('━')}${C.reset}`);
+  lines.push('');
+  lines.push(`  ${C.fg.yel}⏳${C.reset}  No applications yet.`);
+  lines.push('');
+  lines.push(`  Dashboard polls ${C.bold}${DB_PATH}${C.reset} every ${REFRESH_MS}ms.`);
+  lines.push(`  It will populate the moment you run an application flow:`);
+  lines.push('');
+  lines.push(`     ${C.fg.cyn}/mrweirdo-onboard${C.reset}                  ${C.dim}full pipeline (recommended for first run)${C.reset}`);
+  lines.push(`     ${C.fg.cyn}/mrweirdo-ashby-auto <url>${C.reset}        ${C.dim}single Ashby URL${C.reset}`);
+  lines.push(`     ${C.fg.cyn}/mrweirdo-greenhouse-auto <url>${C.reset}   ${C.dim}single Greenhouse URL${C.reset}`);
+  lines.push(`     ${C.fg.cyn}/mrweirdo-lever-auto <url>${C.reset}        ${C.dim}single Lever URL${C.reset}`);
+  lines.push('');
+  lines.push(`  ${C.dim}(open Claude Code in another terminal, type one of the above)${C.reset}`);
+  // clear leftover
+  const need = process.stdout.rows ? process.stdout.rows - lines.length : 8;
+  for (let i = 0; i < need; i++) lines.push('\x1b[K');
+  process.stdout.write(lines.join('\n') + '\n');
+}
+
+function tick() {
+  const ready = openDbIfReady();
+  if (ready) {
+    try { render(ready); }
+    catch (e) {
+      // DB may have been recreated mid-poll; drop handle and retry next tick
+      db = null;
+      console.error('render error, will retry:', e.message);
+    }
+  } else {
+    renderEmptyState();
+  }
+}
 
 if (ONCE) {
-  render(db);
+  tick();
   process.exit(0);
 }
 
@@ -216,8 +264,5 @@ hideCur();
 process.on('SIGINT', () => { showCur(); console.log('\n\nbye.'); process.exit(0); });
 process.on('exit', () => { showCur(); });
 
-render(db);
-setInterval(() => {
-  try { render(db); }
-  catch (e) { console.error('render error:', e.message); }
-}, REFRESH_MS);
+tick();
+setInterval(tick, REFRESH_MS);
