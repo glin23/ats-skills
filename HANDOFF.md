@@ -1,10 +1,11 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.3)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.4)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-27, after the v2.1.3 public-beta readiness patch.
+Last updated: 2026-05-27, after the v2.1.4 duplicate-guard /
+Greenhouse postmortem patch.
 
 ---
 
@@ -24,14 +25,17 @@ Gmail-driven confirmation loop. The user must provide a resume, answer
 the short questionnaire, and explicitly confirm the parsed profile
 before the agent submits anything.
 
-Latest field data (2026-05-26 session): local DB now has 38 submitted
-rows. This includes the v2.1.1 follow-up wins: 8 Directive Ashby rows
-unblocked, Cloudflare Greenhouse row 247 submitted, and 6
-`essay_pending` Ashby rows submitted through the main-agent-in-loop
-answer-bank workflow. Expected cadence going forward: start external
-users with `/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped
-at 10 auto-submits. Lee can raise `MRWEIRDO_MAX_AUTO_APPLY` only after
-the first run looks sane.
+Latest field data: the first post-readiness 10-row Greenhouse run
+produced 1 verified submission (`attentive` row 432) and a useful
+postmortem: most misses were unsupported custom questions, non-standard
+Greenhouse landing pages with no file input, and location/profile
+requirements, not generic CDP failure. v2.1.4 adds
+`shared/dedupe_jobs.mjs` and wires it into Step 10 so duplicate
+company/title rows cannot repeatedly consume apply attempts.
+Expected cadence going forward: start external users with
+`/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped at 10
+auto-submits. Lee can raise `MRWEIRDO_MAX_AUTO_APPLY` only after the
+first run looks sane.
 
 Packaging note (v2.1.3): the tracked canonical Skill source is still
 `.claude/skills/*`. `setup.sh` links that source into both
@@ -50,7 +54,7 @@ The files a new maintainer must know about, in rough priority order:
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   Claude Code + Codex skill locations, creates the user-state dir
   layout, and runs the install doctor. Idempotent.
-- `VERSION` — current release tag, `v2.1.3` as of this write.
+- `VERSION` — current release tag, `v2.1.4` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 
@@ -84,6 +88,9 @@ The files a new maintainer must know about, in rough priority order:
   not in driver code.
 - `shared/doctor.mjs` — user-safe readiness checker for install,
   Skill links, user-state files, and optional Chrome CDP.
+- `shared/dedupe_jobs.mjs` — idempotent jobs.db duplicate guard. It
+  marks duplicate pending rows as skipped by normalized company + title
+  before Step 10 selects an auto-apply queue.
 - `shared/lever_helpers.js` — Lever DOM helpers. See §4 for dragons.
 - `shared/quota.mjs` — per-company submission quota tracking.
 - `shared/local_db.mjs` — SQLite wrapper around `~/.mrweirdo-jobs/jobs.db`.
@@ -134,7 +141,7 @@ The files a new maintainer must know about, in rough priority order:
 
 ## 4. Where the dragons are
 
-The 6 things a new maintainer will trip over within the first hour.
+The 8 things a new maintainer will trip over within the first hour.
 Internalize these.
 
 **1. CSS selectors with leading-digit ids fail.** Ashby uses uuid
@@ -179,6 +186,20 @@ On a resume that is visibly 200 KB. No fix yet. The current code
 skips Lever rows on this error rather than retrying. Try drag-drop
 upload if you want to take a swing at it; do not retry the same
 `setFileInputFiles` call expecting different results.
+
+**7. Greenhouse confirmations do not always say "submitted."**
+AccuWeather reached `/confirmation` with "Thank you for your interest"
+and "receiving an email soon" copy, but the old strict regex returned
+`no_errors_no_success`. v2.1.4 treats `/confirmation` plus Greenhouse
+next-step/email copy as a valid submission signal. Still do not count a
+row as submitted on button click alone.
+
+**8. Discovery can duplicate the same company/title many times.**
+This is especially common when a company board appears under both
+`company` and `companyjobs` slugs, or when an ATS exposes the same row
+through multiple source paths. Never let Step 10 dispatch raw
+`v_auto_apply_eligible` rows directly. Run `shared/dedupe_jobs.mjs`
+first; it is idempotent and safe to repeat.
 
 ---
 

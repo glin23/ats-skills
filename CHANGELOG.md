@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.1.4] - 2026-05-27 — Duplicate guard and Greenhouse postmortem fixes
+
+This patch is a direct response to the first public-beta-style 10-row
+apply run, which produced 1 verified submission and exposed repeat
+queueing plus several Greenhouse form gaps.
+
+### Added
+- `shared/dedupe_jobs.mjs`, an idempotent jobs.db guard that marks
+  duplicate pending rows as skipped by normalized company + title before
+  the auto-apply queue is selected.
+- Feedback-table audit rows for duplicate skips so repeat prevention is
+  visible in local history.
+
+### Fixed
+- `/mrweirdo-onboard` Step 10 now runs the duplicate guard before queue
+  selection, enforces the fit≥7 threshold at queue time, and ranks only
+  one row per company/title fingerprint.
+- Greenhouse success detection now accepts `/confirmation` pages with
+  Greenhouse's "Thank you for your interest / next steps email" copy,
+  which prevents real confirmations from being misclassified as
+  `no_errors_no_success`.
+- Greenhouse custom-field handling now covers common school, degree,
+  major/discipline, project/portfolio URL, employer/title, graduation
+  date, and earliest-start-date fields.
+- Greenhouse location-specific questions are more conservative: the
+  driver no longer answers city-specific onsite/relocation/enrollment
+  questions when the city is outside the user's profile/search intent.
+
+### Field notes
+- The 10-row run had one verified submission (`attentive` row 432).
+  Most failures were not caused by CDP itself; they clustered around
+  unsupported custom questions, non-standard Greenhouse landing pages
+  with no file input, and location/profile-specific requirements.
+
 ## [2.1.3] - 2026-05-27 — Public beta readiness pass
 
 This release tightens the first-user path so the project can be tested

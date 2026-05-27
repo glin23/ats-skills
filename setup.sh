@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mrweirdo-jobs (v2.1.3) bootstrap
+# mrweirdo-jobs (v2.1.4) bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
@@ -27,7 +27,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "mrweirdo-jobs (v2.1.3) bootstrap"
+blue "mrweirdo-jobs (v2.1.4) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -136,7 +136,7 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 # not installing for the first time). Otherwise write the sentinel so the
 # onboard skill knows to surface its Welcome banner proactively.
 if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
-  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.3")"
+  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.4")"
   cat > "$MRWEIRDO_HOME/.first_run" <<EOF
 {"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"$SETUP_VERSION"}
 EOF
@@ -161,7 +161,7 @@ if [ "$IS_FIRST_RUN" = "1" ]; then
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.3)                ║
+║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.4)                ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║

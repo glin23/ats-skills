@@ -37,6 +37,7 @@ const RESUME = PROFILE.resume_path || join(HOME, 'resume.pdf');
 const CDP = join(REPO, 'shared/cdp.mjs');
 const ANSWER_BANK_PATH = join(REPO, 'shared/answer_bank.json');
 const ESSAY_PENDING_LOG = join(HOME, 'essay_pending.jsonl');
+const SEARCH_INTENT_PATH = join(HOME, 'search_intent.json');
 
 const APPLY_URL = process.argv[2];
 const JOB_ID = process.argv[3] || null;
@@ -44,6 +45,26 @@ if (!APPLY_URL) { console.error('usage: greenhouse_apply_driver.mjs <url> [<job_
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.error('[gh-driver]', ...a);
+function readJsonOptional(path, fallback = {}) {
+  try {
+    if (!existsSync(path)) return fallback;
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+const SEARCH_INTENT = readJsonOptional(SEARCH_INTENT_PATH, {});
+const latestExperience = Array.isArray(PROFILE.experience_summary) ? PROFILE.experience_summary[0] : null;
+const profilePortfolio =
+  PROFILE.personal?.portfolio ||
+  PROFILE.personal?.website ||
+  PROFILE.personal?.github ||
+  PROFILE.personal?.linkedin ||
+  '';
+const profileSchool = PROFILE.education?.school || 'Babson College';
+const profileMajor = PROFILE.education?.major || 'Business';
+const profileDegree = PROFILE.education?.degree || 'Bachelor of Science';
+const profileGraduationDate = PROFILE.education?.graduation_date || 'May 2027';
 function resolveCdpHost() {
   if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
   if (process.env.ATS_CDP_PORT) return `localhost:${process.env.ATS_CDP_PORT}`;
@@ -115,6 +136,55 @@ function loadAnswerBank() {
 }
 
 const BANK = loadAnswerBank();
+
+function degreeSelectValue() {
+  const d = String(profileDegree || '').toLowerCase();
+  if (/master|mba|m\.?s\.?|m\.?a\.?/.test(d)) return 'Master';
+  if (/doctor|ph\.?d/.test(d)) return 'Doctorate';
+  if (/associate/.test(d)) return 'Associate';
+  if (/bachelor|b\.?s\.?|b\.?a\.?/.test(d)) return 'Bachelor';
+  return profileDegree || 'Bachelor';
+}
+
+function preferredLocationAliases() {
+  const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
+  const metros = Array.isArray(geo.preferred_metros) ? geo.preferred_metros : [];
+  const raw = [
+    ...metros,
+    PROFILE.personal?.address?.city,
+    PROFILE.personal?.address?.state,
+    SEARCH_INTENT.user_summary?.school_location?.city,
+    SEARCH_INTENT.user_summary?.school_location?.state,
+  ].filter(Boolean).map((s) => String(s).toLowerCase());
+
+  const aliases = new Set(raw);
+  for (const item of raw) {
+    if (/new york|nyc/.test(item)) aliases.add('nyc'), aliases.add('new york'), aliases.add('ny');
+    if (/san francisco|bay area|sf/.test(item)) aliases.add('san francisco'), aliases.add('bay area'), aliases.add('sf');
+    if (/boston|massachusetts|\bma\b/.test(item)) aliases.add('boston'), aliases.add('massachusetts'), aliases.add('ma');
+    if (/anywhere|nationwide|all\s+(?:over\s+)?(?:the\s+)?(?:us|usa|united states)|open to.*(?:us|usa|united states)/.test(item)) aliases.add('anywhere_us');
+  }
+  return aliases;
+}
+
+function locationDecisionForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  const aliases = preferredLocationAliases();
+  if (aliases.has('anywhere_us')) return { ok: true, note: 'anywhere_us' };
+
+  const commonLocationWords = [
+    'austin', 'texas', 'tx', 'new york', 'nyc', 'ny', 'cincinnati', 'ohio', 'oh',
+    'menlo park', 'palo alto', 'san francisco', 'bay area', 'california', 'ca',
+    'boston', 'cambridge', 'massachusetts', 'ma', 'seattle', 'washington', 'wa',
+    'chicago', 'illinois', 'il', 'los angeles', 'la', 'denver', 'colorado', 'co',
+  ];
+  const mentioned = commonLocationWords.filter((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lt));
+  if (mentioned.length === 0) return { ok: true, note: 'no_specific_location_in_label' };
+  const preferred = mentioned.some((w) => aliases.has(w));
+  return preferred
+    ? { ok: true, note: 'preferred_location_match', mentioned }
+    : { ok: false, note: 'unsupported_specific_location', mentioned };
+}
 
 function companyFromUrl(url) {
   const m = url.match(/(?:boards|job-boards)\.greenhouse\.io\/([^/]+)/);
@@ -389,7 +459,11 @@ async function submitAndCheck(tab) {
   return await evalInTab(tab, `
     (() => {
       const body = document.body.innerText;
-      const success = /successfully submitted|application[\\s\\S]{0,30}(received|success)|thanks? for (applying|submitting)|thank you for (applying|submitting|your application)/i.test(body);
+      const strictSuccess = /successfully submitted|application[\\s\\S]{0,30}(received|success)|thanks? for (applying|submitting)|thank you for (applying|submitting|your application)/i.test(body);
+      const greenhouseConfirmation =
+        /\\/confirmation(?:[?#]|$)/i.test(location.href) &&
+        /thank you for your interest|receiv(?:e|ing)[\\s\\S]{0,80}email|next steps in the hiring process|track your status/i.test(body);
+      const success = strictSuccess || greenhouseConfirmation;
       // GH-style: error helper text is inside .input-wrapper--error or .select__control--error containers
       // The label sits in a sibling/parent. Walk back from each .helper-text--error to the field label.
       const missing = [];
@@ -510,19 +584,38 @@ async function answerMissing(tab, labelText) {
   if (!f.ok) return { ok: false, note: 'find_failed', detail: f, pending_for_main_claude: /\?$|describe|tell us|explain|why|projects|experience/i.test(labelText), question: labelText };
 
   // Bank defaults
-  const sponsorVal = PROFILE.work_authorization?.requires_sponsorship_future ? 'Yes' : (BANK.yes_no_defaults?.sponsorship_future || 'Yes');
+  const needsFutureSponsorship =
+    PROFILE.work_authorization?.requires_sponsorship_future ??
+    PROFILE.work_authorization?.needs_sponsor;
+  const sponsorVal = needsFutureSponsorship === false ? 'No' : (BANK.yes_no_defaults?.sponsorship_future || 'Yes');
 
   // City / Location / Country
   if (/^location|city|country/i.test(lt) || f.is_react_select) {
     let value;
     let mode = 'async';
-    if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
-    else if (/relocate|willing.*location|currently live/i.test(lt)) { value = "I am willing to relocate to this job's location."; mode = 'sync'; }
-    else if (/expect to graduate|graduate.*program|when do you expect|complete your program/i.test(lt)) { value = 'June 2027'; mode = 'sync'; }
+    if (/master'?s|masters|graduate degree/i.test(lt)) { value = 'No'; mode = 'sync'; }
+    else if (/legally authorized|authorized to work|work authorization|work authorised/i.test(lt)) { value = BANK.yes_no_defaults?.work_authorization || 'Yes'; mode = 'sync'; }
+    else if (/school|college|university/i.test(lt) && !/confirm|enrolled/i.test(lt)) { value = profileSchool; mode = 'async'; }
+    else if (/degree/i.test(lt)) { value = degreeSelectValue(); mode = 'sync'; }
+    else if (/discipline|major|field of study/i.test(lt)) { value = profileMajor; mode = 'sync'; }
+    else if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
+    else if (/relocate|willing.*location|currently live|located in|on-?site|office|commute/i.test(lt)) {
+      const loc = locationDecisionForLabel(labelText);
+      if (!loc.ok) return { ok: false, note: 'location_not_in_profile_preferences', detail: loc, needs_user_answer: true };
+      value = "I am willing to relocate to this job's location.";
+      mode = 'sync';
+    }
+    else if (/expect(?:ed)? to graduate|graduation date|graduate.*program|when do you expect|complete your program/i.test(lt)) { value = profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027'; mode = 'sync'; }
     else if (/location|city/i.test(lt)) value = BANK.location_preferences?.city || 'Boston';
     else if (/sponsor|work auth|visa/i.test(lt)) value = sponsorVal;
-    else if (/enrolled in.*university|currently enrolled/i.test(lt)) { value = BANK.yes_no_defaults?.enrolled_in_university || 'Yes'; mode = 'sync'; }
-    else if (/full.?time|consider.*ft|consideration for|full.?time offer|available to start/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
+    else if (/enrolled in.*university|currently enrolled/i.test(lt)) {
+      const loc = locationDecisionForLabel(labelText);
+      if (!loc.ok) return { ok: false, note: 'school_location_not_in_profile', detail: loc, needs_user_answer: true };
+      value = BANK.yes_no_defaults?.enrolled_in_university || 'Yes';
+      mode = 'sync';
+    }
+    else if (/full.?time|consider.*ft|consideration for|full.?time offer/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
+    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) { value = BANK.fallback_text?.start_date_summer_2026 || 'May 2026'; mode = 'sync'; }
     else if (/gender/i.test(lt)) value = BANK.yes_no_defaults?.gender || "Don't want to answer";
     else if (/race|ethnic/i.test(lt)) value = BANK.yes_no_defaults?.race || "Don't want to answer";
     else if (/veteran/i.test(lt)) value = BANK.yes_no_defaults?.veteran || 'I am not a protected veteran';
@@ -538,9 +631,17 @@ async function answerMissing(tab, labelText) {
   if (f.type === 'text' || f.type === 'textarea') {
     let value;
     if (/linkedin/i.test(lt)) value = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin;
+    else if (/project|portfolio|github|live url|website|shipped/i.test(lt)) value = profilePortfolio;
     else if (/legal name/i.test(lt)) value = `${PROFILE.personal.first_name} ${PROFILE.personal.last_name}`;
+    else if (/school|college|university/i.test(lt)) value = profileSchool;
+    else if (/degree/i.test(lt)) value = profileDegree;
+    else if (/discipline|major|field of study/i.test(lt)) value = profileMajor;
     else if (/how did you hear/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
-    else if (/expect to graduate/i.test(lt)) value = BANK.fallback_text?.graduation_date || 'May 2027';
+    else if (/expect(?:ed)? to graduate|graduation date|when do you expect|complete your program/i.test(lt)) value = profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027';
+    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) value = BANK.fallback_text?.start_date_summer_2026 || 'May 2026';
+    else if (/salary|compensation/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || 'Negotiable';
+    else if (/most recent employer|current employer|latest employer/i.test(lt)) value = latestExperience?.company || '';
+    else if (/most recent job title|current title|latest title/i.test(lt)) value = latestExperience?.title || '';
     else if (/gpa/i.test(lt)) value = ''; // skip GPA — fill empty (may still fail validation)
     else return { ok: false, note: 'no_value_rule_text:' + labelText.slice(0, 40) };
     if (!value) return { ok: false, note: 'value_empty_for:' + lt.slice(0, 30) };
@@ -620,6 +721,7 @@ async function main() {
 
   let lastMissing = [];
   let pendingForMainClaude = [];
+  let unanswerable = [];
   for (let attempt = 1; attempt <= 5; attempt++) {
     log(`Submit attempt ${attempt}…`);
     const res = await submitAndCheck(tab);
@@ -637,6 +739,17 @@ async function main() {
       return;
     }
     if (JSON.stringify(res.missing) === JSON.stringify(lastMissing)) {
+      if (unanswerable.length > 0) {
+        console.log(JSON.stringify({
+          outcome: 'skip',
+          reason: 'profile_specific_answer_required',
+          blockers: unanswerable,
+          missing: res.missing,
+          job_id: JOB_ID,
+        }));
+        await closeTab(tab);
+        return;
+      }
       if (pendingForMainClaude.length > 0) {
         const rec = { outcome: 'essay_pending', tab_id: tab, job_id: JOB_ID, pending: pendingForMainClaude, still_missing: res.missing, company: COMPANY, url: APPLY_URL };
         logEssayPending(rec);
@@ -669,6 +782,10 @@ async function main() {
           })()
         `);
         if (sel) pendingForMainClaude.push({ question: m, selector: sel.sel, tag: sel.tag });
+      }
+      if (a?.needs_user_answer) {
+        unanswerable.push({ question: m, note: a.note, detail: a.detail || null });
+        unanswerable = unanswerable.filter((v, i, arr) => arr.findIndex((x) => x.question === v.question && x.note === v.note) === i);
       }
       log('  →', m.slice(0, 40), JSON.stringify(a).slice(0, 80));
     }

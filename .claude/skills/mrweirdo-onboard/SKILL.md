@@ -68,7 +68,7 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.1.3)                 ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.4)                 ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
@@ -736,12 +736,40 @@ For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-a
 
 ```bash
 MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+
+# Hard guard: same company + same job title only gets one auto-apply slot.
+# This marks duplicate pending rows as skipped before queue selection.
+node "$MRWEIRDO_REPO_ROOT/shared/dedupe_jobs.mjs" --apply >>"$MRWEIRDO_HOME/log/onboard.log" 2>&1
+
 MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" node -e "
 import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(m.dbPath());
   const maxRows = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
-  const rows = db.prepare('SELECT id, company, title, apply_url, ats_platform, fit_score FROM v_auto_apply_eligible ORDER BY fit_score DESC, updated_at DESC LIMIT ?').all(maxRows);
+  const rows = db.prepare(\`
+    WITH ranked AS (
+      SELECT id, company, title, apply_url, ats_platform, fit_score, updated_at,
+             ROW_NUMBER() OVER (
+               PARTITION BY lower(trim(company)), lower(trim(title))
+               ORDER BY fit_score DESC,
+                        CASE
+                          WHEN lower(apply_url) LIKE '%job-boards.greenhouse.io%' THEN 0
+                          WHEN lower(apply_url) LIKE '%boards.greenhouse.io%' THEN 1
+                          WHEN lower(apply_url) LIKE '%ashbyhq.com%' THEN 2
+                          ELSE 9
+                        END,
+                        updated_at DESC,
+                        id ASC
+             ) AS rn
+        FROM v_auto_apply_eligible
+       WHERE fit_score >= 7
+    )
+    SELECT id, company, title, apply_url, ats_platform, fit_score
+      FROM ranked
+     WHERE rn = 1
+     ORDER BY fit_score DESC, updated_at DESC
+     LIMIT ?
+  \`).all(maxRows);
   for (const r of rows) console.log(JSON.stringify(r));
 });
 " > /tmp/mrweirdo-onboard/queue.jsonl
@@ -777,6 +805,7 @@ import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
 Failure handling per row (PRD §Verification §4):
 - Form selector miss / network timeout / CAPTCHA appears → log to `feedback.jsonl` with `outcome='skip'`, mark `status='⚠️ 跳过未投'`, **continue to next row** (don't abort batch)
 - **NEVER retry an apply more than once per onboard run** (avoid duplicate submissions if uncertain)
+- **NEVER apply the same company + same job title twice across runs**. Step 10's duplicate guard marks repeats as skipped before dispatch; only a deliberate manual single-URL run should revisit a skipped row after a code fix.
 
 ---
 
