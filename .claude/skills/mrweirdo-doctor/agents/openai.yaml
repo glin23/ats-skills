@@ -1,0 +1,6 @@
+interface:
+  display_name: "Mr. Weirdo Doctor"
+  short_description: "Check job agent setup readiness"
+  default_prompt: "Use $mrweirdo-doctor to check whether my mrweirdo-jobs setup is ready."
+policy:
+  allow_implicit_invocation: true

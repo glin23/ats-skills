@@ -61,6 +61,18 @@ if (!APPLY_URL) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.error('[driver]', ...a);
 
+function resolveCdpHost() {
+  if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
+  if (process.env.ATS_CDP_PORT) return `localhost:${process.env.ATS_CDP_PORT}`;
+  try {
+    const fromFile = readFileSync(join(HOME, 'cdp_host'), 'utf8').trim();
+    if (fromFile) return fromFile.replace(/^https?:\/\//, '');
+  } catch {
+    // no persisted host yet
+  }
+  return 'localhost:9222';
+}
+
 function cdp(...args) {
   const r = spawnSync('node', [CDP, ...args], { encoding: 'utf8' });
   return { stdout: r.stdout.trim(), stderr: r.stderr.trim(), code: r.status };
@@ -75,7 +87,7 @@ async function evalInTab(tab, js) {
 // is already gone (e.g. user closed it manually). Node 24+ global fetch.
 async function closeTab(tab) {
   if (!tab) return { ok: false, note: 'no_tab' };
-  const host = process.env.CDP_HOST || 'localhost:9222';
+  const host = resolveCdpHost();
   try {
     const res = await fetch(`http://${host}/json/close/${tab}`, { method: 'GET' });
     return { ok: res.ok, status: res.status };
@@ -372,7 +384,7 @@ async function answerMissing(tab, missingLabel) {
 
   const bucket = buckets.find((b) => b.match.test(ml));
   if (!bucket) {
-    // Last resort: textarea / long-text → mark pending for main Claude
+    // Last resort: textarea / long-text → mark pending for main agent
     return { ok: false, note: 'no_bucket_for:' + missingLabel.slice(0, 60), pending_for_main_claude: true, question: missingLabel };
   }
 
@@ -760,7 +772,7 @@ function listPendingEssays() {
 
 // Append an essay_pending record to the central log so --list-pending-essays
 // can find it later. This is the bridge between "driver said essay_pending"
-// and "main Claude consumes pending list."
+// and "main agent consumes pending list."
 function logEssayPending(rec) {
   try {
     appendFileSync(ESSAY_PENDING_LOG, JSON.stringify(rec) + '\n');
@@ -809,7 +821,7 @@ async function main() {
       return;
     }
     if (JSON.stringify(res.missing) === JSON.stringify(lastMissing)) {
-      // Same errors as last round — we're stuck. If pending essays exist, return that for main Claude.
+      // Same errors as last round — we're stuck. If pending essays exist, return that for main agent.
       if (pendingForMainClaude.length > 0) {
         const rec = {
           outcome: 'essay_pending', tab_id: tab, job_id: JOB_ID,
@@ -817,7 +829,7 @@ async function main() {
           still_missing: res.missing,
           company: COMPANY,
           url: APPLY_URL,
-          hint: 'main Claude: write answer for each pending question, then call: node cdp.mjs typetext <tab> <sel> "<answer>", then re-run this driver to retry submit',
+          hint: 'main agent: write answer for each pending question, then call: node cdp.mjs typetext <tab> <sel> "<answer>", then re-run this driver to retry submit',
         };
         logEssayPending(rec);
         console.log(JSON.stringify(rec));
@@ -832,7 +844,7 @@ async function main() {
     for (const m of res.missing) {
       const a = await answerMissing(tab, m);
       if (a?.pending_for_main_claude) {
-        // Try to locate the field to give main Claude a CSS selector
+        // Try to locate the field to give main agent a CSS selector
         const sel = await evalInTab(tab, `
           (() => {
             const targetQ = ${JSON.stringify(m.toLowerCase().slice(0, 40))};
@@ -855,7 +867,7 @@ async function main() {
     }
     await sleep(1200);
   }
-  // Hit max attempts. If pending essays exist, surface them for main Claude.
+  // Hit max attempts. If pending essays exist, surface them for main agent.
   if (pendingForMainClaude.length > 0) {
     const rec = {
       outcome: 'essay_pending', tab_id: tab, job_id: JOB_ID,

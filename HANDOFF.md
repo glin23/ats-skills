@@ -1,10 +1,10 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.2)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.3)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-27, after the v2.1.2 Skill packaging/productization patch.
+Last updated: 2026-05-27, after the v2.1.3 public-beta readiness patch.
 
 ---
 
@@ -18,19 +18,22 @@ machine via one curl command.
 
 The pipeline is: resume PDF → AI-derived search intent + profile →
 cross-platform job discovery (Greenhouse / Ashby / Lever boards, plus
-RemoteOK and YC) → AI scoring → auto-apply on Greenhouse / Ashby /
-Lever, with per-company quota guards and a Gmail-driven confirmation
-loop. The user's only mandatory action is uploading the resume; their
-feedback channel is their Gmail inbox.
+RemoteOK and YC) → AI scoring → auto-apply on Greenhouse / Ashby,
+with per-company quota guards, a public-beta per-run cap, and a
+Gmail-driven confirmation loop. The user must provide a resume, answer
+the short questionnaire, and explicitly confirm the parsed profile
+before the agent submits anything.
 
 Latest field data (2026-05-26 session): local DB now has 38 submitted
 rows. This includes the v2.1.1 follow-up wins: 8 Directive Ashby rows
 unblocked, Cloudflare Greenhouse row 247 submitted, and 6
-`essay_pending` Ashby rows submitted through the main-Claude-in-loop
-answer-bank workflow. Expected cadence going forward: one
-`/mrweirdo-onboard` run per week, ~30 applications per cycle.
+`essay_pending` Ashby rows submitted through the main-agent-in-loop
+answer-bank workflow. Expected cadence going forward: start external
+users with `/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped
+at 10 auto-submits. Lee can raise `MRWEIRDO_MAX_AUTO_APPLY` only after
+the first run looks sane.
 
-Packaging note (v2.1.2): the tracked canonical Skill source is still
+Packaging note (v2.1.3): the tracked canonical Skill source is still
 `.claude/skills/*`. `setup.sh` links that source into both
 `~/.claude/skills` and `~/.codex/skills`, then generates
 repo-local `.agents/skills` symlinks for Codex desktop. `.agents/` is
@@ -45,19 +48,23 @@ The files a new maintainer must know about, in rough priority order:
 **Bootstrapping**
 - `setup.sh` — install script. Clones the repo to
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
-  `~/.claude/skills/`, creates the user-state dir layout. Idempotent.
-- `VERSION` — current release tag, `v2.1.2` as of this write.
+  Claude Code + Codex skill locations, creates the user-state dir
+  layout, and runs the install doctor. Idempotent.
+- `VERSION` — current release tag, `v2.1.3` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 
 **Skills (user-facing entry points)**
 - `.claude/skills/mrweirdo-onboard/SKILL.md` — the main entry point.
   Users invoke this; it runs the whole pipeline end-to-end.
+- `.claude/skills/mrweirdo-doctor/SKILL.md` — local readiness check.
+  It runs `shared/doctor.mjs`; it never submits applications.
 - `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` — auto-submit
   Greenhouse helper, called by onboard. Single URL in.
 - `.claude/skills/mrweirdo-ashby-auto/SKILL.md` — same for Ashby.
-- `.claude/skills/mrweirdo-lever-auto/SKILL.md` — same for Lever
-  (currently flaky; see §4).
+- `.claude/skills/mrweirdo-lever-auto/SKILL.md` — preserved internal
+  helper for experimentation. Not part of public-beta batch auto-submit
+  until the Lever upload issue is fixed.
 - `.claude/skills/mrweirdo-confirm/SKILL.md` — Gmail confirmation
   loop; promotes ✅ 已投 rows to ✅ 已确认.
 - `.claude/skills/mrweirdo-cherry-pick/SKILL.md` — manual large-company
@@ -75,6 +82,8 @@ The files a new maintainer must know about, in rough priority order:
 - `shared/answer_bank.json` — v2.1 externalized answer templates,
   Yes/No defaults, multichoice prefs. Edit here,
   not in driver code.
+- `shared/doctor.mjs` — user-safe readiness checker for install,
+  Skill links, user-state files, and optional Chrome CDP.
 - `shared/lever_helpers.js` — Lever DOM helpers. See §4 for dragons.
 - `shared/quota.mjs` — per-company submission quota tracking.
 - `shared/local_db.mjs` — SQLite wrapper around `~/.mrweirdo-jobs/jobs.db`.
@@ -109,8 +118,9 @@ The files a new maintainer must know about, in rough priority order:
    resume ingest, search intent inference, ABCD confirmation,
    cross-platform discovery, AI scoring, hard filter, dedupe,
    quota check, **auto-apply loop**, summary.
-3. Step 10 (auto-apply) is the heart of the system. For each eligible
-   row, the main agent invokes one of `mrweirdo-{greenhouse,ashby,lever}-auto`
+3. Step 10 (auto-apply) is the heart of the system. Public beta caps
+   the queue at 10 rows per run by default. For each eligible row,
+   the main agent invokes one of `mrweirdo-{greenhouse,ashby}-auto`
    which calls the matching `shared/<platform>_apply_driver.mjs`. The
    driver fills, submits, parses validation errors, and retries up to
    4 rounds before giving up.

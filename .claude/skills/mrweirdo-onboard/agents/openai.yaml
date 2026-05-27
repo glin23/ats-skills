@@ -1,0 +1,6 @@
+interface:
+  display_name: "Mr. Weirdo Jobs"
+  short_description: "Find and apply to student jobs"
+  default_prompt: "Use $mrweirdo-onboard to start my internship search with my resume."
+policy:
+  allow_implicit_invocation: true

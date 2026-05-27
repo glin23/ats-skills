@@ -1,16 +1,30 @@
 #!/usr/bin/env node
-// cdp.mjs — minimal CDP CLI driver for Chrome on :9222
+// cdp.mjs — minimal CDP CLI driver for Chrome DevTools Protocol
 // Node 24+ required (uses global WebSocket). Zero deps by design.
 // Used by mrweirdo-jobs (Greenhouse / Ashby / Lever apply skills).
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve as pathResolve } from 'node:path';
+import { homedir } from 'node:os';
+import { join, resolve as pathResolve } from 'node:path';
 
-const HOST = process.env.CDP_HOST || 'localhost:9222';
+function resolveCdpHost() {
+  if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
+  if (process.env.ATS_CDP_PORT) return `localhost:${process.env.ATS_CDP_PORT}`;
+  try {
+    const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+    const fromFile = readFileSync(join(home, 'cdp_host'), 'utf8').trim();
+    if (fromFile) return fromFile.replace(/^https?:\/\//, '');
+  } catch {
+    // no persisted host yet
+  }
+  return 'localhost:9222';
+}
+
+const HOST = resolveCdpHost();
 const DEFAULT_TIMEOUT = 30_000;
 const GOTO_TIMEOUT = 60_000;
 
-const HELP = `cdp.mjs — Chrome DevTools Protocol CLI driver (requires Chrome on :9222)
+const HELP = `cdp.mjs — Chrome DevTools Protocol CLI driver
 
 Commands:
   tabs                                   List tabs as JSON [{id, url, title}]
@@ -22,7 +36,8 @@ Commands:
   cdp <tabId> <Method> <params-json>     Raw CDP call, e.g. cdp X Page.reload '{}'
 
 Env:
-  CDP_HOST   default localhost:9222
+  CDP_HOST       default localhost:9222, or ~/.mrweirdo-jobs/cdp_host when present
+  ATS_CDP_PORT   alternate port helper, e.g. ATS_CDP_PORT=9223
 `;
 
 // ---------- HTTP helpers (target discovery) ----------

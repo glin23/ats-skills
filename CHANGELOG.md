@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.1.3] - 2026-05-27 — Public beta readiness pass
+
+This release tightens the first-user path so the project can be tested
+by real students without immediately falling into avoidable setup or
+risk-boundary failures.
+
+### Added
+- `shared/doctor.mjs`, a local install/runtime readiness checker for
+  Node 24, git, Chrome, Skill links, user-state files, and optional
+  Chrome CDP connectivity.
+- `/mrweirdo-doctor`, a non-submitting Skill wrapper around the doctor
+  script for users who ask "can I use it now?" or need install help.
+- Codex UI metadata (`agents/openai.yaml`) for the main onboard and
+  doctor skills.
+
+### Changed
+- `setup.sh` now runs the install doctor and tells first-time users to
+  start the dedicated Chrome CDP window before onboarding.
+- `/mrweirdo-onboard` now launches Chrome CDP when missing, runs the
+  doctor pre-flight, and gives a clearer recovery path.
+- Chrome CDP tooling now supports alternate ports via `ATS_CDP_PORT`
+  and records the active host in `~/.mrweirdo-jobs/cdp_host`; the CDP
+  CLI and drivers read that host automatically.
+- `shared/chrome-cdp-launcher.sh` now falls back to launching the Chrome
+  binary directly if macOS `open -na` fails.
+- Public beta auto-submit is capped at 10 rows per run by default.
+  Maintainers can raise it deliberately with `MRWEIRDO_MAX_AUTO_APPLY`.
+- Lever remains discoverable/scored but is excluded from stable batch
+  auto-submit until the CDP upload issue is fixed.
+- Discovery audit fields now preserve each row's real source instead of
+  labeling every job as `remoteok`.
+- README and DISCLAIMER now align on sources, timing, caps, Lever
+  stability, and the optional nature of Notion.
+
 ## [2.1.2] - 2026-05-27 — Productize Skill packaging for Claude Code + Codex
 
 This release starts turning the repo from Lee's personal job agent into

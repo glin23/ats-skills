@@ -10,7 +10,9 @@
 set -e
 
 PORT="${ATS_CDP_PORT:-9222}"
-PROFILE_DIR="${MRWEIRDO_CHROME_PROFILE:-$HOME/.mrweirdo-jobs/chrome-profile}"
+MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+PROFILE_DIR="${MRWEIRDO_CHROME_PROFILE:-$MRWEIRDO_HOME/chrome-profile}"
+CDP_HOST_FILE="$MRWEIRDO_HOME/cdp_host"
 CHROME_APP="/Applications/Google Chrome.app"
 CHROME_BIN="$CHROME_APP/Contents/MacOS/Google Chrome"
 
@@ -20,6 +22,9 @@ yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 
 # 1. Is something already on port 9222?
 if curl -s --max-time 1 "http://localhost:$PORT/json/version" >/dev/null 2>&1; then
+  mkdir -p "$MRWEIRDO_HOME"
+  echo "localhost:$PORT" > "$CDP_HOST_FILE"
+  chmod 600 "$CDP_HOST_FILE" 2>/dev/null || true
   green "Chrome with CDP already running on port $PORT."
   curl -s "http://localhost:$PORT/json/version" | head -c 400
   echo ""
@@ -29,7 +34,8 @@ fi
 if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   red "Port $PORT is in use by another process, but it does not look like Chrome CDP."
   lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
-  red "Free the port (or set ATS_CDP_PORT=<other>) and try again."
+  red "Free the port, or use another one:"
+  red "  ATS_CDP_PORT=9223 bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh"
   exit 1
 fi
 
@@ -43,6 +49,7 @@ fi
 
 # 3. Make profile dir
 mkdir -p "$PROFILE_DIR"
+mkdir -p "$MRWEIRDO_HOME"
 
 green "Launching dedicated Chrome instance"
 echo "  profile : $PROFILE_DIR"
@@ -53,17 +60,29 @@ echo ""
 #    Without -n, macOS just brings the existing Chrome to the front and ignores
 #    the args. -a names the app bundle. `--args` passes everything after to
 #    Chrome itself.
-open -na "$CHROME_APP" --args \
+if ! open -na "$CHROME_APP" --args \
   --remote-debugging-port="$PORT" \
   --user-data-dir="$PROFILE_DIR" \
   --no-first-run \
   --no-default-browser-check \
-  --disable-features=ChromeWhatsNewUI
+  --disable-features=ChromeWhatsNewUI; then
+  yellow "macOS open failed; falling back to Chrome executable directly."
+  "$CHROME_BIN" \
+    --remote-debugging-port="$PORT" \
+    --user-data-dir="$PROFILE_DIR" \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-features=ChromeWhatsNewUI \
+    >/dev/null 2>&1 &
+fi
 
 # 5. Wait briefly for CDP to come up so the user gets a clear OK.
 for i in 1 2 3 4 5 6 7 8 9 10; do
   if curl -s --max-time 1 "http://localhost:$PORT/json/version" >/dev/null 2>&1; then
+    echo "localhost:$PORT" > "$CDP_HOST_FILE"
+    chmod 600 "$CDP_HOST_FILE" 2>/dev/null || true
     green "CDP is up on port $PORT."
+    green "Wrote CDP host to $CDP_HOST_FILE"
     exit 0
   fi
   sleep 0.5

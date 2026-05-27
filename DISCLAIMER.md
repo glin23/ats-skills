@@ -15,13 +15,15 @@ When you install `mrweirdo-jobs` and run `/mrweirdo-onboard`, the tool will:
 1. Read your resume PDF.
 2. Use AI to infer your job-search preferences (role, industry, location, etc.).
 3. Ask you a short ABCD questionnaire to disambiguate.
-4. Discover job listings from public job-board APIs (currently: RemoteOK; future versions add Wellfound, YC, and ATS bulk crawl).
+4. Discover job listings from public job-board APIs and public ATS board APIs, currently including Greenhouse, Ashby, Lever, YC Work-At-A-Startup, and RemoteOK sources where available.
 5. Filter and score them with AI.
-6. For listings on **Greenhouse / Ashby / Lever** that pass scoring + safety gates:
+6. For listings on **Greenhouse / Ashby** that pass scoring + safety gates:
    - Fill out the application form using your resume + answered questions.
    - **Click Submit automatically** without asking you again.
 
-The user's only required actions are: (a) uploading the resume, (b) optionally answering the 5–8 questionnaire questions, and (c) later checking their email for confirmation messages from companies.
+Lever is discoverable and still has manual/single-URL helpers, but it is not part of the stable public-beta batch auto-submit path because CDP file upload can trigger a bogus "100MB" error on some Lever tenants.
+
+The user's required actions are: (a) uploading the resume, (b) answering the short questionnaire, (c) explicitly confirming the parsed profile/search intent before discovery and auto-apply begins, and (d) later checking their email for confirmation messages from companies.
 
 This is **fundamentally different** from v1 of the same project, which always paused before Submit and required you to click "submit" yourself. v2 (which is this) removes that gate.
 
@@ -35,7 +37,7 @@ By running `mrweirdo-jobs` v2, **you are accepting the following risks**, all of
 
 3. **AI mistakes propagate without a human gate.** v1 had you review each filled form before submitting; v2 does not. If the AI mis-classifies a role, picks the wrong location, fills the wrong field, or answers a yes/no question incorrectly, those mistakes go directly into the application as submitted. There is no last-line-of-defense human review on a per-application basis.
 
-4. **Resume typos propagate to every application.** If your resume PDF has a typo (wrong phone, mis-spelled email, outdated school year), every application sent by the tool will have that typo. The 5-second "informed display" window after resume parsing is your only chance to catch this before the run starts.
+4. **Resume typos propagate to every application.** If your resume PDF has a typo (wrong phone, mis-spelled email, outdated school year), every application sent by the tool will have that typo. The explicit parse-confirmation step after resume parsing is your chance to catch this before the run starts.
 
 5. **The tool may apply to roles you wouldn't choose.** AI scoring is imperfect. A role can pass the fit-score threshold and still be wrong for you. Once submitted, the application is on your record at that company.
 
@@ -47,7 +49,7 @@ The v2 tool includes several safety nets, none of which eliminates the risks abo
 
 - **Resume-verbatim filling.** The tool fills fields directly from your resume without inventing answers. If a field isn't on your resume, the tool leaves it blank or skips the application.
 - **Hard fit-score threshold.** Only listings with `fit_score >= 7` (configurable) are auto-applied.
-- **Daily cap.** Maximum 50 auto-submissions per calendar day (configurable down, not up by default).
+- **Public-beta per-run cap.** `/mrweirdo-onboard` processes at most 10 auto-submit rows per run by default. A technical user can deliberately raise this with `MRWEIRDO_MAX_AUTO_APPLY`, but the default public path is small-batch first.
 - **Large-company quota guard.** ~25 large companies (Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, FAANG, top banks, etc.) are deliberately skipped from auto-apply because each has a hard submission cap per cycle. To apply to one of these, you run `/mrweirdo-cherry-pick` manually; that skill **preserves** the v1 Submit gate for large companies.
 - **CAPTCHA detection.** If a form shows a CAPTCHA / "verify you are human" widget, the tool skips that application rather than attempting to bypass.
 - **Per-application screenshots.** Pre-submit and post-submit screenshots are saved to `~/.mrweirdo-jobs/log/screenshots/` for forensic audit. You can review what was submitted on your behalf after the fact.
@@ -60,7 +62,7 @@ The v2 tool will **not** do these. This is non-negotiable and is enforced in the
 - **No automation on LinkedIn.** LinkedIn Easy Apply, LinkedIn job search scraping, LinkedIn messaging — none of it. Use LinkedIn manually.
 - **No automation on Indeed or Glassdoor.** Same reason as LinkedIn.
 - **No CAPTCHA solving.** The tool detects CAPTCHAs and stops; it does not try to defeat them.
-- **No mass-submission rate.** Default pacing is 30–90 seconds between submissions, even when the daily cap allows more in a shorter window. This is also enforced in code.
+- **No mass-submission rate.** Default pacing is 30–90 seconds between submissions, and public-beta onboarding defaults to a small per-run batch. This is also enforced in the Skill instructions.
 - **No financial actions on your behalf.** The tool only submits free job applications. It does not pay fees, accept terms involving money, or sign agreements outside the scope of a normal application form.
 
 ## Your responsibilities as the user
@@ -118,4 +120,4 @@ If you are not sure whether something you want to do is misuse, the answer is pr
 
 Use this tool for your own job search, treating each submission as if you had clicked Submit yourself — because for legal and accountability purposes, you did. The tool's automation does not absolve you of any responsibility for the applications it sends.
 
-If you want a tool that does not auto-submit, use the v1 single-URL skills (`/mrweirdo-greenhouse`, `/mrweirdo-ashby`, `/mrweirdo-lever`) or `/mrweirdo-cherry-pick` for large-company applications. They are explicitly preserved in this repository so you have that choice.
+If you want a tool that does not auto-submit, use the v1 single-URL skills (`/mrweirdo-greenhouse`, `/mrweirdo-ashby`, `/mrweirdo-lever`) or `/mrweirdo-cherry-pick` for large-company applications. They are explicitly preserved in this repository so you have that choice. If you only want to verify setup, run `/mrweirdo-doctor`; it never submits applications.

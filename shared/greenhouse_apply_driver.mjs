@@ -44,6 +44,17 @@ if (!APPLY_URL) { console.error('usage: greenhouse_apply_driver.mjs <url> [<job_
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.error('[gh-driver]', ...a);
+function resolveCdpHost() {
+  if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
+  if (process.env.ATS_CDP_PORT) return `localhost:${process.env.ATS_CDP_PORT}`;
+  try {
+    const fromFile = readFileSync(join(HOME, 'cdp_host'), 'utf8').trim();
+    if (fromFile) return fromFile.replace(/^https?:\/\//, '');
+  } catch {
+    // no persisted host yet
+  }
+  return 'localhost:9222';
+}
 function cdp(...args) {
   const r = spawnSync('node', [CDP, ...args], { encoding: 'utf8' });
   return { stdout: r.stdout.trim(), stderr: r.stderr.trim(), code: r.status };
@@ -56,7 +67,7 @@ async function evalInTab(tab, js) {
 // Close a tab via Chrome's debug HTTP endpoint. Safe to call when tab is gone.
 async function closeTab(tab) {
   if (!tab) return { ok: false, note: 'no_tab' };
-  const host = process.env.CDP_HOST || 'localhost:9222';
+  const host = resolveCdpHost();
   try {
     const res = await fetch(`http://${host}/json/close/${tab}`, { method: 'GET' });
     return { ok: res.ok, status: res.status };

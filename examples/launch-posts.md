@@ -1,6 +1,7 @@
-# mrweirdo-jobs v1.3 launch posts — drafts
+# mrweirdo-jobs launch posts — historical drafts
 
-> 不 commit 也行，但放 examples/ 留底。用户 改完后撕掉。
+> Historical copy drafts. Do not publish verbatim without updating
+> screenshots and safety wording for the current release.
 
 ---
 
@@ -17,7 +18,7 @@ into 100 job applications that I built a Claude Code skill for it.
 Open-sourced today: mrweirdo-jobs
 - AI sources from 250+ companies' public job boards
 - Local SQLite dashboard (zero cloud)
-- Fills the form, you click Submit
+- Confirms parsed resume/search intent, then small-batch auto-submits supported rows
 
 🧵
 ```
@@ -32,7 +33,8 @@ The other 5% — weird selectors, react-select v5 pickers — get
 escalated to Sonnet via screenshot.
 
 Zero npm deps. Node 24 + built-in node:sqlite.
-Submits NEVER happen without your per-batch confirmation.
+Current public beta uses a resume-parse confirmation, then small-batch
+auto-submit for supported Greenhouse/Ashby rows.
 ```
 
 ### Tweet 3 (CTA + link)
@@ -42,7 +44,10 @@ Install on macOS:
 
 bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 
-Then in Claude Code:  /mrweirdo-init
+Then:
+  bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh
+  /mrweirdo-doctor
+  /mrweirdo-onboard
 
 MIT licensed.  github.com/glin23/mrweirdo-jobs
 
@@ -69,13 +74,14 @@ phone, school, work-authorization yes/no into a slightly different form.
 
 What I learned shipping this:
 
-1. The submit button stays human. Submit is the consent gate; I never
-   auto-click it. Every other step (navigation, form fill, screenshot)
-   the skill does for you, then hands the page back.
+1. Consent happens before the batch, not per form. The agent shows the
+   parsed resume/search intent first; after confirmation, supported
+   Greenhouse/Ashby rows can be auto-submitted in a small public-beta
+   batch.
 
 2. Per-company opt-in beats LinkedIn-style aggregators. The repo ships
-   a 250-company seed list across Greenhouse / Ashby / Lever / SmartRecruiters
-   / iCIMS / JobVite. Sourcing is via each ATS's public board API, not scraping.
+   public board sources across Greenhouse / Ashby / Lever / YC / RemoteOK.
+   Stable public-beta auto-submit is limited to Greenhouse / Ashby.
 
 3. Zero cloud DB. v1.0 used Notion. v1.1 switched to local SQLite +
    optional Datasette web UI. Lower friction (no integration token,
@@ -123,7 +129,7 @@ GitHub 搜 mrweirdo-jobs（链接放 profile）
 能做的事:
 
 1. AI 从 250+ 公司的公开招聘 board 拉新岗位
-   Greenhouse / Ashby / Lever / SmartRecruiters / iCIMS / JobVite 全打通
+   Greenhouse / Ashby 稳定投递；Lever / 其他 ATS 保留为手动或 beta
 
 2. 用 Sonnet 给每个岗位打 6 维度分数
    role_fit / skills / location / visa / seniority / exclude_check
@@ -164,7 +170,7 @@ GitHub 搜 mrweirdo-jobs（链接放 profile）
   6. 流程图（README 里那个 ASCII pipeline 转成可读图）
   7. CDP + Computer Use 架构图
   8. GitHub repo 截图（star/fork count if any）
-  9. install 一行命令 + /mrweirdo-init
+  9. install 一行命令 + /mrweirdo-doctor + /mrweirdo-onboard
 
 可以用 baoyu-image-cards skill 出图。
 

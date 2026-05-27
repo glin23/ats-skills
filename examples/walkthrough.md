@@ -1,22 +1,25 @@
-# mrweirdo-jobs Walkthrough — Real Dogfood (originally 2026-05-23, then v0.2)
+# mrweirdo-jobs Historical Walkthrough — Real Dogfood (v0.2 era)
 
 This is a real dogfood log from May 23, 2026 (when the project was still
 called `ats-skills` and at v0.2). Names + URLs are kept; resume + profile
-details are generic placeholders for privacy. Commands below have been
-updated to the current `mrweirdo-*` namespace so you can copy-paste them.
+details are generic placeholders for privacy.
+
+**Do not use this file as the current install guide.** It is kept as a
+historical debugging record for old single-URL helpers. Current users
+should follow `README.md`: install, run `/mrweirdo-doctor`, start Chrome
+CDP, then run `/mrweirdo-onboard`.
 
 ## Setup
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
-# then in Claude Code:
-/mrweirdo-init   # API key + resume parse + 4 questions + SQLite init
 bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh
-# new Chrome window opens on CDP 9222 with profile at ~/.mrweirdo-jobs/chrome-profile
-# log into your CV upload host + linkedin inside that window
+node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp
+# then in Claude Code or Codex:
+/mrweirdo-onboard
 ```
 
-In Claude Code: load the skill and confirm CDP is reachable.
+The rest of this walkthrough shows the old manual single-URL path.
 
 ```
 > /mrweirdo-greenhouse https://job-boards.greenhouse.io/nice/jobs/4754106101

@@ -1,9 +1,9 @@
 // paths.mjs — central path / config resolver for mrweirdo-jobs (v1.0+ multi-tenant)
 // Node 24+. Zero deps.
 //
-// Layout (after `/mrweirdo-init`):
+// Layout (after `/mrweirdo-onboard`):
 //   $HOME/.mrweirdo-jobs/
-//   ├── .env                # ANTHROPIC_API_KEY (NOTION_API_KEY only for v0.9 era migrations)
+//   ├── .env                # optional local integration keys (for mirrors/migrations)
 //   ├── profile.json        # user's resume-derived profile + target_filters
 //   ├── jobs.db             # v1.1+ SQLite state (primary)
 //   ├── config.json         # v0.9 era Notion config (deprecated)
@@ -52,7 +52,7 @@ export const loadProfile = () => {
   const p = profilePath();
   if (!existsSync(p)) {
     throw new Error(
-      `profile.json not found at ${p}. Run /mrweirdo-init to create it.`
+      `profile.json not found at ${p}. Run /mrweirdo-onboard to create it.`
     );
   }
   return JSON.parse(readFileSync(p, 'utf8'));

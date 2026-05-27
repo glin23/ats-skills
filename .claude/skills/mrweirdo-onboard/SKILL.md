@@ -38,7 +38,8 @@ When in doubt and the first-run sentinel exists, trigger this skill. False-posit
 
 - User wants to manually investigate a single URL → route to `/mrweirdo-greenhouse` / `-ashby` / `-lever` (v1 half-auto helpers, with submit gate)
 - User wants to cherry-pick large-company applications → route to `/mrweirdo-cherry-pick`
-- User wants to re-score without re-discovery → route to `/mrweirdo-score`
+- User wants to check whether setup is ready → route to `/mrweirdo-doctor`
+- User wants to re-score without re-discovery → explain that this recovery skill is not packaged yet; rerun `/mrweirdo-onboard` or inspect `jobs.db`
 - User wants only the Gmail confirmation loop → route to `/mrweirdo-confirm`
 
 ---
@@ -52,6 +53,7 @@ These are the safety-net knobs. Hard-coded for v2.1; users can edit `~/.mrweirdo
 | `fit_score_threshold` | 7 | Only auto-apply when `fit_score >= 7` (out of 10) |
 | `quota_guard_enabled` | true | Skip the ~25 large companies marked `apply_quota.enabled = true` (per-company quota, not daily blanket — protects against ATS bot-flag) |
 | `score_batch_size` | 50 | Jobs per main-agent scoring turn |
+| `max_auto_apply_per_run` | 10 | Public beta default. Override with `MRWEIRDO_MAX_AUTO_APPLY=50` only after the user explicitly asks for a larger batch. |
 
 ---
 
@@ -66,7 +68,7 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.1.2)                 ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.3)                 ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
@@ -113,20 +115,34 @@ export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 [ -d "$MRWEIRDO_REPO_ROOT" ] || MRWEIRDO_REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"  # dev fallback
 
 mkdir -p "$MRWEIRDO_HOME/log"
-
-# 0.2 Chrome CDP must be up (for Step 8 auto-submit)
-if ! curl -sf http://localhost:9222/json/version >/dev/null 2>&1; then
-  echo "❌ Chrome CDP 9222 not up."
-  echo "   Run: bash \"$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh\""
-  echo "   Then re-run /mrweirdo-onboard."
-  exit 1
+if [ -z "${CDP_HOST:-}" ] && [ -f "$MRWEIRDO_HOME/cdp_host" ]; then
+  export CDP_HOST="$(cat "$MRWEIRDO_HOME/cdp_host")"
 fi
+export ATS_CDP_PORT="${ATS_CDP_PORT:-${CDP_HOST##*:}}"
+[ -n "$ATS_CDP_PORT" ] || ATS_CDP_PORT=9222
+export CDP_HOST="${CDP_HOST:-localhost:$ATS_CDP_PORT}"
+
+# 0.2 Chrome CDP must be up (for Step 8 auto-submit). If missing, launch it once.
+if ! curl -sf "http://$CDP_HOST/json/version" >/dev/null 2>&1; then
+  echo "Chrome CDP not up at $CDP_HOST. Launching dedicated Chrome…"
+  ATS_CDP_PORT="$ATS_CDP_PORT" bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh" || {
+    echo "❌ Could not launch Chrome CDP."
+    echo "   Run /mrweirdo-doctor for setup details, then retry /mrweirdo-onboard."
+    exit 1
+  }
+fi
+
+node "$MRWEIRDO_REPO_ROOT/shared/doctor.mjs" --cdp || {
+  echo "❌ Doctor found install/runtime issues."
+  echo "   Fix FAIL rows above, then retry /mrweirdo-onboard."
+  exit 1
+}
 
 # 0.3 Node 24+ (for built-in sqlite + fetch)
 NODE_MAJOR=$(node --version | sed -E 's/^v([0-9]+).*/\1/')
 [ "$NODE_MAJOR" -ge 24 ] || { echo "❌ Node 24+ required, found $(node --version)"; exit 1; }
 
-echo "✅ Pre-flight OK. CDP 9222 alive, Node $NODE_MAJOR."
+echo "✅ Pre-flight OK. CDP $CDP_HOST alive, Node $NODE_MAJOR."
 ```
 
 ---
@@ -135,7 +151,7 @@ echo "✅ Pre-flight OK. CDP 9222 alive, Node $NODE_MAJOR."
 
 Say to the user (Chinese-first since the project is bilingual but 用户 speaks Chinese):
 
-> 把你的简历 PDF 完整路径贴给我（绝对路径，例如 `/Users/you/Desktop/resume.pdf`）。我会读一遍 → 推导你的求职意向 → 跨平台找岗位 → 评分 → 自动投递。整个流程跑完前你不用做任何操作，跑完之后查邮箱确认就行。
+> 把你的简历 PDF 完整路径贴给我（绝对路径，例如 `/Users/you/Desktop/resume.pdf`）。我会读一遍 → 问几个关键问题 → 让你确认解析结果 → 跨平台找岗位 → 评分 → 小批量自动投递。确认解析前不会提交任何申请。
 
 Wait for user to give a path. Validate via Bash:
 
@@ -449,7 +465,9 @@ Sources currently active (per dispatcher's `DEFAULT_SOURCES`):
 - `lever_bulk` — Lever public posting API
 - `yc_waas` — YC's public Algolia + company directory
 - `remoteok` — RemoteOK aggregator (remote-only, mostly tech)
-- `wellfound` — gated stub (DataDome). Will be activated in v2.1 via CDP-driven Lily Chrome profile.
+
+Not currently in the default set:
+- `wellfound` — gated stub (DataDome). Keep disabled until a CDP-backed implementation ships.
 
 LinkedIn / Indeed / Glassdoor: **never** added to sources (red line — PRD §"Red lines: preserved").
 
@@ -653,7 +671,9 @@ const THRESHOLD = 7;
     return 'other'; // includes remoteok aggregator pages
   }
 
-  const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby', 'lever']);
+  // Public beta stable auto-submit path. Lever is discoverable/scored but
+  // excluded from batch auto-submit until the CDP upload "100MB" issue is fixed.
+  const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
 
   let eligible = 0;
   let stored  = 0;
@@ -669,7 +689,7 @@ const THRESHOLD = 7;
       title: j.title,
       apply_url: j.apply_url,
       location: j.location,
-      source: 'remoteok',
+      source: j.source || j._discovery_source || 'unknown',
       status: '🤖 AI sourced',
       fit_score: s.fit_score ?? null,
       key_gaps: Array.isArray(s.key_gaps) ? s.key_gaps.join(' / ') : null,
@@ -679,7 +699,7 @@ const THRESHOLD = 7;
       apply_quota_limit: capped ? 1 : null,
       scored: s.fit_score != null ? 1 : 0,
       auto_apply_eligible: ok ? 1 : 0,
-      search_source: 'remoteok',
+      search_source: j._discovery_source || j.search_source || j.source || 'unknown',
       discovery_run_id: RUN_ID,
       user_note: s.honest_reason || null,
     };
@@ -712,27 +732,29 @@ Daily blanket cap was removed by user decision (2026-05-26). Per-company quota (
 
 ## Step 10 — Auto-apply dispatch loop
 
-For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-auto` skill. No row limit — drain the full queue.
+For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-auto` skill. Public beta default: process at most 10 rows per run unless the user explicitly asks for a bigger batch. Lee/maintainers can override with `MRWEIRDO_MAX_AUTO_APPLY=50`.
 
 ```bash
-node -e "
+MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" node -e "
 import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(m.dbPath());
-  const rows = db.prepare('SELECT id, company, title, apply_url, ats_platform, fit_score FROM v_auto_apply_eligible').all();
+  const maxRows = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
+  const rows = db.prepare('SELECT id, company, title, apply_url, ats_platform, fit_score FROM v_auto_apply_eligible ORDER BY fit_score DESC, updated_at DESC LIMIT ?').all(maxRows);
   for (const r of rows) console.log(JSON.stringify(r));
 });
 " > /tmp/mrweirdo-onboard/queue.jsonl
 
 QUEUE_SIZE=$(wc -l < /tmp/mrweirdo-onboard/queue.jsonl)
-echo "[apply] dispatching $QUEUE_SIZE rows"
+echo "[apply] dispatching $QUEUE_SIZE rows (cap=$MAX_AUTO_APPLY)"
 ```
 
 **Per row in the queue**: invoke the matching platform skill **inline** (you, the main agent, follow each sub-skill's instructions per row):
 
 - `ats_platform == 'greenhouse'` → follow `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` for that URL. After `GH.fillForm` and the gap-fill pass (Step 5.5 in that skill), upload the resume and submit.
 - `ats_platform == 'ashby'`      → follow `.claude/skills/mrweirdo-ashby-auto/SKILL.md`. Ashby's `fillForm` returns a `plan` array that MUST be dispatched via `shared/sourcing/_executors/ashby_plan_executor.mjs` (the skill walks you through the call). Don't try to dispatch typetext from in-page JS — Ashby's react-hook-form requires CDP `Input.insertText` (`isTrusted=true`).
-- `ats_platform == 'lever'`      → follow `.claude/skills/mrweirdo-lever-auto/SKILL.md` (when written)
+- `ats_platform == 'lever'`      → do not auto-submit in public beta. Mark skipped with `skip_reason='lever_upload_unstable_public_beta'` unless the user explicitly chose a manual Lever single-URL flow.
 
 After EACH successful auto-submit, append to `daily_count.jsonl`:
 
@@ -846,4 +868,4 @@ Use a jitter sleep between rows in Step 10:
 sleep $((30 + RANDOM % 60))   # 30–90s between auto-submits
 ```
 
-This mimics human pacing + spreads load across the day. At 90s avg, expect ~1.5 min/row → ~50 rows takes ~75 min, ~100 rows takes ~2.5 hr.
+This mimics human pacing + spreads load across the day. With the public beta default cap of 10 rows, expect roughly 15–30 minutes for the apply phase after discovery/scoring. Larger explicit batches take longer: ~50 rows can take about 75 minutes, ~100 rows can take 2.5 hours.

@@ -1,7 +1,7 @@
 # Job Fit Scorer — Inline Scoring Prompt (v2)
 
 > **Used by**: `.claude/skills/mrweirdo-onboard/SKILL.md` (and any future re-score skill).
-> The main Claude session reads this as part of the SKILL.md flow and applies it to a batch of jobs in one turn. No separate API call.
+> The main agent session reads this as part of the SKILL.md flow and applies it to a batch of jobs in one turn. No separate API call.
 
 You are scoring how well a specific job listing matches the user's **search_intent** (derived from their resume). Output strict JSON per the schema below — one object per job.
 

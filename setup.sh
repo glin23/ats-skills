@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mrweirdo-jobs (v2.1.2) bootstrap
+# mrweirdo-jobs (v2.1.3) bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
@@ -27,7 +27,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "mrweirdo-jobs (v2.1.2) bootstrap"
+blue "mrweirdo-jobs (v2.1.3) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -66,11 +66,12 @@ if [ ! -d "$MRWEIRDO_REPO_ROOT/.git" ]; then
   green "  Cloned ✓"
 else
   blue "Updating existing checkout at $MRWEIRDO_REPO_ROOT"
-  git -C "$MRWEIRDO_REPO_ROOT" fetch origin "$REPO_BRANCH" --quiet
   # Don't auto-merge if user has local changes — just print
   if [ -n "$(git -C "$MRWEIRDO_REPO_ROOT" status --porcelain)" ]; then
-    yellow "  Local changes present. Skipping git pull. Run: git -C $MRWEIRDO_REPO_ROOT pull"
+    yellow "  Local changes present. Skipping git fetch/pull. Run manually after committing or stashing:"
+    yellow "    git -C $MRWEIRDO_REPO_ROOT pull"
   else
+    git -C "$MRWEIRDO_REPO_ROOT" fetch origin "$REPO_BRANCH" --quiet
     git -C "$MRWEIRDO_REPO_ROOT" pull --ff-only origin "$REPO_BRANCH" --quiet || \
       yellow "  Fast-forward pull failed (diverged?). Resolve manually in $MRWEIRDO_REPO_ROOT"
     green "  Updated ✓"
@@ -110,8 +111,11 @@ link_skill_tree() {
         continue
       fi
     fi
-    ln -s "${skill_dir%/}" "$target"
-    green "  ${skill_name} ✓ linked"
+    if ln -s "${skill_dir%/}" "$target"; then
+      green "  ${skill_name} ✓ linked"
+    else
+      yellow "  ${skill_name} ← could not create link at $target. Continuing."
+    fi
   done
 }
 
@@ -132,7 +136,7 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 # not installing for the first time). Otherwise write the sentinel so the
 # onboard skill knows to surface its Welcome banner proactively.
 if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
-  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.2")"
+  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.3")"
   cat > "$MRWEIRDO_HOME/.first_run" <<EOF
 {"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"$SETUP_VERSION"}
 EOF
@@ -142,14 +146,22 @@ else
   IS_FIRST_RUN=0
 fi
 
-# ---------- 8. Welcome / next steps ----------
+# ---------- 8. Install health check ----------
+blue "Running install health check"
+if node "$MRWEIRDO_REPO_ROOT/shared/doctor.mjs" --install-check; then
+  green "  doctor ✓"
+else
+  yellow "  doctor found install issues. Fix FAIL rows above before running real applications."
+fi
+
+# ---------- 9. Welcome / next steps ----------
 echo ""
 if [ "$IS_FIRST_RUN" = "1" ]; then
   cat <<'WELCOME'
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.2)                ║
+║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.3)                ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
@@ -161,7 +173,8 @@ if [ "$IS_FIRST_RUN" = "1" ]; then
 ║                                                                  ║
 ║   ──────────────────────────────────────────────────────────     ║
 ║                                                                  ║
-║   👉  Open Claude Code, then type:                               ║
+║   👉  Before first run, start the dedicated Chrome launcher.      ║
+║       Then open Claude Code or Codex and type:                   ║
 ║                                                                  ║
 ║          /mrweirdo-onboard                                       ║
 ║                                                                  ║
@@ -188,10 +201,14 @@ cat <<'REF'
     /mrweirdo-ashby           <url>    gated single Ashby
     /mrweirdo-lever           <url>    gated single Lever
     /mrweirdo-confirm                  Gmail confirmation → mark DB ✅ 已投
+    /mrweirdo-doctor                   check install + Chrome CDP readiness
     node ~/.mrweirdo-jobs/repo/scripts/dashboard.mjs    live申请记录
 
 REF
 echo "  Skills installed for Claude Code and Codex."
+echo "  Start Chrome CDP: bash \"$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh\""
+echo "  If 9222 is busy: ATS_CDP_PORT=9223 bash \"$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh\""
+echo "  Before first real run: node $MRWEIRDO_REPO_ROOT/shared/doctor.mjs --cdp"
 echo "  Update later with:  git -C $MRWEIRDO_REPO_ROOT pull"
 echo ""
 green "Done."
