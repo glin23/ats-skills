@@ -1,25 +1,25 @@
 ---
 name: mrweirdo-onboard
-description: v2 single-entry skill for mrweirdo-jobs — the FIRST thing a user runs after installing mrweirdo. Shows a Welcome banner (3-step preview), asks for resume PDF, then runs the entire pipeline end-to-end with zero user touch — extract search intent + profile from resume, discover jobs across Greenhouse/Ashby/Lever/YC/RemoteOK, score them with the main Claude session, gate by fit_score + large-company quota (no daily blanket cap), and AUTO-SUBMIT to Greenhouse / Ashby / Lever. User's only feedback is Gmail confirmation emails. PROACTIVELY TRIGGER ON these natural phrases (not just "/mrweirdo-onboard"): "I just installed", "刚装完", "我刚装完", "怎么开始", "how do I start", "help me start", "start applying", "find me internships", "帮我找实习", "我想找暑期实习", "我想找 PM 实习", "投实习", "上传简历开始", "first time using", "what now", "下一步", "next step". ALSO trigger when ~/.mrweirdo-jobs/.first_run sentinel file exists and user message is even vaguely related to jobs/internships.
+description: Main entry skill for mrweirdo-jobs after install. Trigger for first-run setup, resume intake, student job/internship discovery, scoring, and guarded auto-apply. Collects resume + short questionnaire + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
 ---
 
-# mrweirdo-onboard — v2 main entry (zero-touch)
+# mrweirdo-onboard — v2 main entry
 
 > **CRITICAL v2 BEHAVIOR — read the PRD red-line table before running this skill**:
-> v2 retracted the v1 red line "Submit 永远人工". This skill auto-submits applications without per-app user confirmation. The user's only active action is uploading a resume; their only feedback channel is Gmail confirmation emails. Several v1 docs (HANDOFF.md, DISCLAIMER.md v1 era, memory `feedback_ats_auto_apply_strategy_2026`) say "用户 手点 Submit" — that was v1 truth, NOT v2. The authoritative v2 design lives at `/Users/lee/.claude/plans/smooth-orbiting-bentley.md` §"Red lines: retracted vs preserved".
+> v2 retracted the v1 red line "Submit 永远人工". This skill auto-submits supported applications without per-app user confirmation after resume intake, short questionnaire, and explicit parse confirmation. Several v1 docs say "用户 手点 Submit" — that was v1 truth, NOT v2.
 >
 > Red lines that REMAIN in v2: LinkedIn / Indeed never automated; large-company quota guard skips ~25 capped companies; agent fills forms verbatim from resume (no invented info).
 
 This is the **only** skill a user should need to invoke after install. It runs:
 
-1. Resume → `search_intent.json` + `profile.json` (main Claude vision over PDF)
-2. 5-second informed-display window (user can `stop` if parse is wrong)
+1. Resume → `search_intent.json` + `profile.json` (main agent vision over PDF)
+2. explicit resume parse confirmation gate
 3. Init / migrate `~/.mrweirdo-jobs/jobs.db` (v2 schema)
-4. Discovery — RemoteOK fetch (v2 MVP single source)
+4. Discovery — multi-source dispatcher (Greenhouse, Ashby, Lever, YC, RemoteOK, and other board APIs)
 5. Hard filter (rule-based: location, role, exclude) — drops ≥80%
-6. AI scoring (main Claude batches of 50, per `shared/scoring/score_prompt.md`)
-7. Auto-apply gating (fit_score ≥ threshold AND not large-cap AND platform ∈ {gh, ashby, lever})
-8. Auto-submit dispatch to `mrweirdo-{greenhouse,ashby,lever}-auto` per row
+6. AI scoring (main agent batches of 50, per `shared/scoring/score_prompt.md`)
+7. Auto-apply gating (fit_score ≥ threshold AND not large-cap AND platform is supported)
+8. Auto-submit dispatch to supported `mrweirdo-*-auto` helpers per row
 9. Final report
 
 ---
@@ -45,19 +45,19 @@ When in doubt and the first-run sentinel exists, trigger this skill. False-posit
 
 ## Defaults (v2)
 
-These are the safety-net knobs. Hard-coded for v2.0; users can edit `~/.mrweirdo-jobs/profile.json` post-onboard to override.
+These are the safety-net knobs. Hard-coded for v2.1; users can edit `~/.mrweirdo-jobs/profile.json` post-onboard to override.
 
 | Knob | Default | Meaning |
 |---|---|---|
 | `fit_score_threshold` | 7 | Only auto-apply when `fit_score >= 7` (out of 10) |
 | `quota_guard_enabled` | true | Skip the ~25 large companies marked `apply_quota.enabled = true` (per-company quota, not daily blanket — protects against ATS bot-flag) |
-| `score_batch_size` | 50 | Jobs per main-Claude scoring turn |
+| `score_batch_size` | 50 | Jobs per main-agent scoring turn |
 
 ---
 
 ## Step 0 — Welcome (display first, always)
 
-**Before running any Bash**, print this banner to the user. This is the user's first impression — it is non-negotiable. The wording sets expectations for the 3-stage flow + the zero-touch contract.
+**Before running any Bash**, print this banner to the user. This is the user's first impression — it is non-negotiable. The wording sets expectations for the 3-stage flow + the auto-apply contract.
 
 If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — be extra welcoming and explain what's about to happen. After Step 11 (final report) succeeds, delete the sentinel so subsequent runs skip the lengthier preamble. If the sentinel does NOT exist, print only the compact preamble (3 lines) — don't re-welcome a returning user.
 
@@ -66,22 +66,21 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.0)                   ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.2)                 ║
 ║                                                                  ║
-║   Your zero-touch internship / new-grad application agent.       ║
+║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
 ║   Here's what happens next:                                      ║
 ║                                                                  ║
 ║     1️⃣   You drop one resume (PDF, absolute path)                ║
 ║     2️⃣   I read it + ask ~7 short questions to lock your        ║
 ║          search intent (work auth, target roles, location)       ║
-║     3️⃣   I discover jobs across 5 sources, score them,          ║
-║          and auto-submit every fit_score ≥ 7 match on            ║
-║          Greenhouse / Ashby / Lever (no daily cap).              ║
+║     3️⃣   I discover jobs across public ATS boards, score them,  ║
+║          and auto-submit supported Greenhouse/Ashby matches.     ║
 ║                                                                  ║
-║   You'll watch progress in your terminal. Once running, your     ║
-║   only check-in is Gmail (confirmation emails arrive within      ║
-║   24h per application). Run /mrweirdo-confirm to close the loop. ║
+║   You'll watch progress in your terminal. Afterwards, inspect    ║
+║   the local DB and Gmail confirmations. Run /mrweirdo-confirm    ║
+║   later to close the email loop.                                 ║
 ║                                                                  ║
 ║   📂  All state lives at ~/.mrweirdo-jobs/                       ║
 ║       Jobs database: ~/.mrweirdo-jobs/jobs.db (inspect with      ║
@@ -97,7 +96,7 @@ Then immediately segue: "First let me do a 10-second pre-flight check, then I'll
 ### Returning-user preamble (compact, when no sentinel)
 
 ```
-mrweirdo onboard — resume → score → auto-apply (fit≥7, no daily cap; per-company quota still on).
+mrweirdo onboard — resume → score → auto-apply (fit≥7, no daily blanket cap; per-company quota still on).
 Running pre-flight checks…
 ```
 
@@ -150,9 +149,9 @@ echo "✅ Resume copied to $MRWEIRDO_HOME/resume.pdf"
 
 ---
 
-## Step 2 — Read resume + generate search_intent + profile (main Claude vision)
+## Step 2 — Read resume + generate search_intent + profile (main agent vision)
 
-**This step is done by you (the main Claude session)**, not by a subprocess. Use the Read tool on `$MRWEIRDO_HOME/resume.pdf` to ingest the PDF (Claude Code supports PDF vision via Read), then produce TWO JSON files inline.
+**This step is done by you (the main agent session)**, not by a subprocess. Use the Read tool on `$MRWEIRDO_HOME/resume.pdf` to ingest the PDF (Claude Code supports PDF vision via Read), then produce TWO JSON files inline.
 
 Read the schema from `shared/intelligence/intent_schema.json` for the `search_intent.json` shape.
 
@@ -230,7 +229,7 @@ You read the PDF, you apply the prompt, you produce both JSON blobs in your resp
 
 ## Step 2.5 — Generate adaptive ABCD questionnaire
 
-After producing draft `profile.json` + `search_intent.json`, you (the main Claude session) decide which questions to ask. The goal is to disambiguate things the resume cannot answer reliably, NOT to re-ask things the resume already says.
+After producing draft `profile.json` + `search_intent.json`, you (the main agent session) decide which questions to ask. The goal is to disambiguate things the resume cannot answer reliably, NOT to re-ask things the resume already says.
 
 ### Always-ask 5 questions (every user, every run)
 
@@ -322,7 +321,7 @@ Now you have the questionnaire results. Update your draft JSONs:
 - **B4 (multi-select) → `seniority`** = derived: 1 choice ("仅 intern" / "仅 new grad FT") sets explicit; 2+ choices sets `"both"`.
 - **B5 (multi-select) → `caliber_signals.target_company_tiers`** = array (e.g. `["early_startup", "large_public"]` for barbell pattern). Scorer uses this to weight which tier-of-companies to surface.
 
-After refinement, your `profile.json` and `search_intent.json` are FINAL. Proceed to Step 3 (5-second informed display) with the refined versions.
+After refinement, your `profile.json` and `search_intent.json` are FINAL. Proceed to Step 3 (parse confirmation gate) with the refined versions.
 
 ---
 
@@ -565,9 +564,9 @@ console.log('to_score:', jobs.length);
 
 ---
 
-## Step 7 — AI scoring (main Claude, batches of 50)
+## Step 7 — AI scoring (main agent, batches of 50)
 
-**This step is done by you (the main Claude session)**, not a subprocess.
+**This step is done by you (the main agent session)**, not a subprocess.
 
 Read the scoring prompt:
 ```bash
@@ -729,7 +728,7 @@ QUEUE_SIZE=$(wc -l < /tmp/mrweirdo-onboard/queue.jsonl)
 echo "[apply] dispatching $QUEUE_SIZE rows"
 ```
 
-**Per row in the queue**: invoke the matching platform skill **inline** (you, the main Claude, follow each sub-skill's instructions per row):
+**Per row in the queue**: invoke the matching platform skill **inline** (you, the main agent, follow each sub-skill's instructions per row):
 
 - `ats_platform == 'greenhouse'` → follow `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` for that URL. After `GH.fillForm` and the gap-fill pass (Step 5.5 in that skill), upload the resume and submit.
 - `ats_platform == 'ashby'`      → follow `.claude/skills/mrweirdo-ashby-auto/SKILL.md`. Ashby's `fillForm` returns a `plan` array that MUST be dispatched via `shared/sourcing/_executors/ashby_plan_executor.mjs` (the skill walks you through the call). Don't try to dispatch typetext from in-page JS — Ashby's react-hook-form requires CDP `Input.insertText` (`isTrusted=true`).
@@ -811,26 +810,28 @@ Next steps:
   2. (可选) 跑 /mrweirdo-confirm 自动 sync confirmations 进 DB
   3. (可选) 想投大公司？跑 /mrweirdo-cherry-pick
 
-⚠️ MVP 限制提醒: 本次 discovery 仅源自 RemoteOK，偏 remote tech 岗位。如果你不是技术 / startup 方向，
-   $JOB_COUNT 这个数字可能很低。v2.1 (Wellfound) / v2.2 (YC WAAS) / v2.3 (ATS bulk crawl) 会大幅扩源。
+⚠️ Coverage reminder: current public ATS sources still skew startup/tech-adjacent.
+   If this student's field is healthcare, education, government, arts, or other
+   non-tech-heavy paths, the queue may be thin until more industry-specific
+   sources are added.
 ```
 
 ---
 
 ## What this skill explicitly DOES NOT do
 
-- Does not solicit additional questions from the user (zero-touch goal)
-- Does not preview applications before submitting (zero-touch goal — opt-out window is in Step 3 only)
+- Does not ask for per-application approval after resume, questionnaire, and parse confirmation
+- Does not preview every application before submitting (parse confirmation gate is in Step 3)
 - Does not touch LinkedIn / Indeed / Glassdoor (permanent red line)
 - Does not auto-submit to large-quota companies (use `/mrweirdo-cherry-pick`)
-- Does not auto-submit to SmartRecruiters / iCIMS / JobVite / Handshake / Workday (v2.0 MVP scope — those use v1 half-auto helpers manually)
+- Does not auto-submit to SmartRecruiters / iCIMS / JobVite / Handshake / Workday (current stable batch scope — those use v1 half-auto helpers manually)
 - Does not invent personal info / answer JD questions creatively (verbatim only)
 - Does not retry a failed apply (one shot per row)
 
 ## Critical do-nots
 
 - ❌ Do NOT pause to ask user "OK to submit?" — that breaks v2 design
-- ❌ Do NOT skip the 5-second opt-out window in Step 3 — that's the only safety net against bad resume parses
+- ❌ Do NOT skip the explicit parse confirmation gate in Step 3 — that is the safety net against bad resume parses
 - ❌ Do NOT batch-submit at >1/15s aggregate cadence (looks like a bot to ATS) — Step 10 should pace 30-90s between submits with jitter
 - ❌ Do NOT commit `~/.mrweirdo-jobs/` contents to git (all is user-private state)
 - ❌ Do NOT use the v1 `shared/matching/ai_scorer.mjs` (deleted) or `shared/onboarding/resume_parser.mjs` (deleted). All LLM work is inline by you in this skill.

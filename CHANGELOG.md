@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.1.2] - 2026-05-27 — Productize Skill packaging for Claude Code + Codex
+
+This release starts turning the repo from Lee's personal job agent into
+a cleaner, installable Skill collection for both Claude Code and Codex.
+
+### Changed
+- `setup.sh` now links the tracked `.claude/skills/*` source into
+  Claude Code (`~/.claude/skills`), Codex user skills
+  (`~/.codex/skills`), and a generated workspace-local
+  `.agents/skills` mirror for Codex desktop.
+- `.agents/` is now explicitly gitignored and treated as generated
+  compatibility output rather than a second source of truth.
+- `setup.sh` symlink collision handling is conservative by default:
+  existing links/files are skipped unless `MRWEIRDO_FORCE_LINK=1` is set.
+- README positioning now reflects v2.1.1 field reality: Greenhouse/Ashby
+  are the best-tested auto-submit path, Lever remains experimental, and
+  SQLite is the source of truth while Notion is an optional review mirror.
+- Skill docs use more host-neutral wording ("main agent session") and
+  clarify the onboarding contract: resume + questionnaire + parse
+  confirmation first, then no per-application approval for supported
+  auto-submit rows.
+
+### Notes
+- The canonical tracked Skill source is still `.claude/skills/*`.
+  A future refactor can move it to `skills/*` and make both `.claude`
+  and `.agents` pure symlink mirrors.
+
 ## [2.1.1] - 2026-05-26 — Directive ack cracked, GH Country verified, essay loop proved
 
 Field follow-up to v2.1.0. This release turns the highest-leverage

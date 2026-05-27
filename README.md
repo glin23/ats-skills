@@ -1,50 +1,73 @@
 # mrweirdo-jobs
 
-> **v2 — resume-driven autonomous job search agent.** A Claude Code skill collection that turns the US college internship hunt into one command. Upload your resume, the agent does the rest. **Reads → infers → discovers → scores → auto-applies.** Your feedback channel is your Gmail inbox.
+> **v2.1.2 — resume-driven job search agent for US college students.**
+> A Claude Code + Codex Skill collection with a Node 24/CDP backend:
+> resume intake → job discovery → fit scoring → ATS form filling →
+> submission audit → Gmail confirmation loop.
 >
-> **v2 auto-submits applications.** Read [DISCLAIMER.md](DISCLAIMER.md) before installing — there are real ATS-account and Terms-of-Service risks. The v1 single-URL skills with manual Submit gate are preserved if you want that mode instead.
+> **This tool can auto-submit real job applications.** Read
+> [DISCLAIMER.md](DISCLAIMER.md) before installing. Auto-apply carries
+> ATS account, accuracy, and Terms-of-Service risk. Manual single-URL
+> skills with a Submit gate are preserved for users who want more control.
 
 ---
 
-## What it does (v2 — zero-touch)
+## What it does
 
 ```
 你 → 上传简历 → /mrweirdo-onboard
                 ↓
-       agent 自动 (~10 min):
+       agent 前台执行:
          · 读简历 → AI 推 search intent + profile
-         · 问 5-8 道 ABCD 题 (single round, multi-select where it makes sense)
-         · 5s "informed display" — 让你 spot 简历 parse 错误
-         · 跨平台 discovery (v2 MVP: RemoteOK)
-         · Hard filter + AI score (主 Claude session, 零额外 API key)
-         · Auto-submit to Greenhouse / Ashby / Lever
+         · 问几个关键问题：目标岗位、地点、周期、授权状态
+         · 跨平台 discovery：Greenhouse / Ashby / Lever / YC / RemoteOK 等
+         · Hard filter + AI score
+         · 默认保护：大公司限投、LinkedIn/Indeed 不自动化
+         · Auto-submit 主要覆盖 Greenhouse / Ashby
                 ↓
-你 → 等 Gmail confirmation 邮件
+你 → 看 SQLite/Datasette/Notion 镜像 + Gmail confirmation
 ```
 
-The user's only mandatory action is uploading the resume. The ABCD questions take ~30 seconds and have AI-inferred defaults (you can rapid-accept all). The 5-second informed display is a safety check, not a decision point.
+The main product is a Skill collection, not a SaaS. All private state
+stays on the user's machine under `~/.mrweirdo-jobs/`.
 
 ## Who this is for
 
-US college students (any major, any year) looking for internships or new-grad full-time roles. v2 makes zero assumptions about your major — the AI reads your resume and adapts:
+US college students looking for internships or new-grad full-time roles,
+especially startup/tech-adjacent PM, growth, ops, business, data, and
+similar paths on public ATS boards. The system is designed to avoid
+hard-coded majors — it reads the resume and adapts — but source coverage
+is still uneven:
 - A business major with marketing internships gets recommended marketing/PM/Ops intern roles.
-- A nursing student gets clinical research intern roles (when v2.1+ adds healthcare-specific sources).
-- A mechanical engineering student gets mechanical/hardware intern roles.
-- A liberal arts student with prior internships in publishing gets publishing/editorial intern roles.
+- A mechanical engineering student may get hardware/ops roles when those appear on supported boards.
+- A nursing, public-health, government, arts, or education student will need more industry-specific sources before coverage feels good.
 
 No hard-coded major or industry preferences exist in the code.
 
 **Not for**: senior career changers, non-US job searches, people who want hands-on control of every submission.
 
-## v2 MVP limitations — read before installing
+## Current support level — read before installing
 
-This is the first public release of v2. Things it does NOT do well yet:
+The code is already dogfooded on real applications, but it is still an
+early, self-hosted agent. Treat the support matrix honestly:
 
-- **Discovery is RemoteOK-only.** RemoteOK is heavily weighted toward remote tech jobs. Business, healthcare, arts, education, government, and other non-tech students will find **very few matches** until v2.1+ adds Wellfound, YC Work-At-A-Startup, and ATS bulk crawl. If your field is non-tech, **wait for v2.1+ before installing**.
-- **Auto-apply on 3 platforms only.** Greenhouse / Ashby / Lever. Discovered jobs on SmartRecruiters / iCIMS / JobVite / Handshake / Workday are recorded in the local database but not auto-submitted. The v1 single-URL skills (`/mrweirdo-smartrecruiters` etc.) still exist for manual one-at-a-time submission of those.
+- **Best-tested auto-submit**: Greenhouse and Ashby. v2.1.1 field
+  testing includes 38 submitted rows in the author's local database,
+  including Cloudflare Greenhouse and multiple Ashby essay flows.
+- **Known weak spot**: Lever upload can trigger a bogus "100MB" error
+  under CDP. It is kept for manual/single-URL experimentation, not
+  treated as reliable batch infrastructure.
+- **Discovery sources**: Greenhouse, Ashby, Lever, YC Work-At-A-Startup,
+  RemoteOK, and several ATS board APIs exist in `shared/sourcing/`.
+  Coverage varies by industry; non-tech majors still need more sources.
+- **Manual / beta ATS skills**: SmartRecruiters, iCIMS, JobVite,
+  Handshake, and Workday are available as single-URL helpers, but are
+  not the stable batch path.
 - **Large companies are deliberately skipped from auto-apply.** Google, Meta, Microsoft, Amazon, Apple, Stripe, Anthropic, OpenAI, and ~17 others have hard per-cycle submission caps. The auto-apply skips them; use `/mrweirdo-cherry-pick` to manually invest your limited quota in dream roles.
 - **LinkedIn and Indeed are off-limits**, permanently. Use them manually.
-- **The author has dogfooded the GH/Ashby/Lever auto-apply flow on his own applications.** v2 has not had non-author testers yet. Expect bugs.
+- **Not all fields can be safely inferred.** GPA, transcripts, video
+  answers, location commitments, and visa/sponsorship wording may push a
+  row into a skip/manual queue. That is intentional.
 
 ---
 
@@ -58,10 +81,13 @@ This will:
 
 1. Verify Node 24+, Chrome, git.
 2. Clone the repo to `~/.mrweirdo-jobs/repo`.
-3. Symlink `.claude/skills/*` into `~/.claude/skills/` so Claude Code picks them up.
+3. Symlink `.claude/skills/*` into:
+   - `~/.claude/skills/` for Claude Code
+   - `~/.codex/skills/` for Codex
+   - `~/.mrweirdo-jobs/repo/.agents/skills/` for Codex workspace-local discovery
 4. Create `~/.mrweirdo-jobs/{log,chrome-profile}/` layout.
 
-Then in any Claude Code session:
+Then in Claude Code or Codex:
 
 ```
 /mrweirdo-onboard
@@ -90,13 +116,27 @@ Datasette renders the SQLite job database with 8 pre-built views:
 
 You can also use TablePlus, DBeaver, DataGrip, or the `sqlite3` CLI — any SQLite client works.
 
+### Optional: Notion review mirror
+
+SQLite is the source of truth. Notion is best used as a human review UI:
+
+1. The agent discovers/scores jobs into `~/.mrweirdo-jobs/jobs.db`.
+2. A Notion mirror can show the queue in a friendlier table.
+3. The student can mark rows as "want to apply", "skip", or adjust priority.
+4. The agent syncs those decisions back before applying, then writes
+   submitted/skipped/confirmed status back out.
+
+The current Notion client lives in `shared/notion_sync.mjs`. It is
+retained as an optional mirror, not the primary database, because Notion
+API latency and schema drift are bad foundations for an audit log.
+
 ---
 
 ## Commands
 
 | Command | Purpose | Mode |
 |---|---|---|
-| `/mrweirdo-onboard` | The main entry. Resume → intent → discovery → score → auto-apply. Run once per cycle. | v2 zero-touch |
+| `/mrweirdo-onboard` | The main entry. Resume → intent → discovery → score → guarded auto-apply. Run once per cycle. | v2 batch |
 | `/mrweirdo-cherry-pick` | Large-company opt-in flow. Lets you pick which 大公司 to invest quota slots in. **Preserves Submit gate.** | v1 manual-confirm |
 | `/mrweirdo-confirm` | Reads Gmail `applied-jobs` label, marks jobs.db rows as ✅ 已确认. Optional, run later. | background |
 | `/mrweirdo-greenhouse <url>` | Manual single-URL apply via Greenhouse, with Submit gate. | v1 manual |
@@ -114,16 +154,16 @@ You can also use TablePlus, DBeaver, DataGrip, or the `sqlite3` CLI — any SQLi
 
 ## v2.1 driver model (submit-error-driven)
 
-v2.1 introduces `shared/ashby_apply_driver.mjs` and `shared/greenhouse_apply_driver.mjs` — submit-error-driven drivers that fill what they can, hit Submit, parse the form's own validation errors, then loop. Compared to the v2.0 pre-emptive `fillForm` approach this is more resilient to per-tenant form variance. In field testing on 2026-05-26 the Ashby driver landed 23 of 29 attempted URLs (~80%) in a single session.
+v2.1 introduces `shared/ashby_apply_driver.mjs` and `shared/greenhouse_apply_driver.mjs` — submit-error-driven drivers that fill what they can, hit Submit, parse the form's own validation errors, then loop. Compared to the v2.0 pre-emptive `fillForm` approach this is more resilient to per-tenant form variance. In field testing on 2026-05-26 the local database reached 38 submitted rows, with the most reliable path being Greenhouse + Ashby.
 
 Architecture:
 
 1. Open URL via CDP. Upload resume + dispatch React `change` event.
 2. Fill standard fields (`_systemfield_name`, `_systemfield_email`, any visible `tel`).
-3. Pre-fill Country (US) and Location (Boston, MA) via `reactSelect()` (handles Google Places autocomplete).
+3. Pre-fill Country (US) and profile-derived location via `reactSelect()` where needed.
 4. Click Submit. Parse validation errors. Match each missing field to an answer in `shared/answer_bank.json`.
-5. Up to 4 retry rounds; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
-6. On `outcome: essay_pending`, surface the questions to main Claude (next session) for human-in-the-loop essay writing.
+5. Up to 5 attempts; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
+6. On `outcome: essay_pending`, surface the questions to the main agent for human-in-the-loop essay writing.
 
 Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
 
@@ -131,16 +171,16 @@ Tabs are auto-closed on submit/skip. Background batches are deprecated in favor 
 
 ## How the AI work happens — and what you don't need
 
-Everything that requires AI reasoning in v2 runs through the main Claude session that you already started when you ran the slash command. **There is no separate Anthropic API key requirement.** v1 used a fetch-based scorer that required `ANTHROPIC_API_KEY`; v2 does not. Your Claude Code subscription covers the cost.
+Everything that requires AI reasoning in v2 runs through the active Claude Code or Codex session that you already started when you ran the slash command. **There is no separate Anthropic API key requirement for interactive runs.** v1 used a fetch-based scorer that required `ANTHROPIC_API_KEY`; v2 does not.
 
 Concretely:
 
 | Stage | LLM source |
 |---|---|
-| Resume PDF parse → profile + search_intent | Main Claude session (uses the Read tool's PDF support) |
-| Cross-platform job filtering (semantic) | Main Claude session |
-| 6-dimension scoring (50 jobs / turn) | Main Claude session |
-| Per-form field reasoning during auto-apply | Main Claude session |
+| Resume PDF parse → profile + search_intent | Main agent session |
+| Cross-platform job filtering (semantic) | Main agent session |
+| 6-dimension scoring (50 jobs / turn) | Main agent session |
+| Per-form field reasoning during auto-apply | Main agent session |
 | Discovery API fetches (RemoteOK etc.) | No LLM, plain HTTP |
 
 The exception: if you want background scheduled runs (future v2.4 cron mode), you would need an API key. But for one-shot interactive use, no key.
@@ -157,12 +197,14 @@ The exception: if you want background scheduled runs (future v2.4 cron mode), yo
 ├── jobs.db                             # SQLite — every discovered + scored + applied job
 ├── feedback.jsonl                      # per-apply outcome log (audit)
 ├── quota.jsonl                         # large-company submit counter (for cherry-pick)
-├── daily_count.jsonl                   # daily cap enforcement
+├── daily_count.jsonl                   # historical submission counter (informational; no blanket daily cap)
 ├── company_list.user.json              # (optional) your custom companies overlay
 ├── log/                                # per-skill logs + screenshots
 └── chrome-profile/                     # CDP isolated Chrome (your real Chrome is untouched)
 
-~/.claude/skills/                       # symlinks → repo/.claude/skills/*
+~/.claude/skills/                       # Claude Code symlinks → repo/.claude/skills/*
+~/.codex/skills/                        # Codex user-skill symlinks → repo/.claude/skills/*
+repo/.agents/skills/                    # Codex workspace-local symlinks, generated by setup.sh
 ├── mrweirdo-onboard/                   # v2 main entry
 ├── mrweirdo-greenhouse-auto/           # v2 auto-submit helper (called by onboard)
 ├── mrweirdo-ashby-auto/                # v2 auto-submit helper
@@ -189,7 +231,7 @@ examples/
 - macOS (the Chrome launcher uses `open -na`; Linux symlinks work but the launcher needs editing)
 - Node 24+ (for built-in `node:sqlite`, `fetch`, and `WebSocket`)
 - Google Chrome (default install location, or edit `shared/chrome-cdp-launcher.sh`)
-- [Claude Code](https://docs.claude.com/en/docs/claude-code) installed
+- Claude Code or Codex installed
 - A US-based resume PDF
 - (Optional) `pip install datasette` for the audit UI
 - (Optional) Gmail filter for `/mrweirdo-confirm` (one-time, ~30 seconds setup)
@@ -209,8 +251,8 @@ Or re-run the install command — `setup.sh` is idempotent.
 ## Privacy and where your data goes
 
 - All your data lives on your local machine in `~/.mrweirdo-jobs/`. **Nothing leaves your machine except for**:
-  - HTTP requests to ATS platforms (Greenhouse / Ashby / Lever / RemoteOK) to fetch listings and submit your application
-  - Anthropic API calls via your Claude Code session (covered by your subscription)
+  - HTTP requests to ATS platforms (Greenhouse / Ashby / Lever / RemoteOK / YC / other public boards) to fetch listings and submit your application
+  - Model calls via your active Claude Code or Codex session
   - Gmail API calls via the Anthropic-bundled Gmail MCP, only for threads with the `applied-jobs` label
 - No cloud database. No "your data on our servers". This is self-host only.
 - No telemetry. The author does not see your applications, your resume, or your Gmail.

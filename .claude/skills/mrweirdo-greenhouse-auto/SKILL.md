@@ -11,7 +11,7 @@ description: v2 auto-submit version of mrweirdo-greenhouse. Fills a Greenhouse A
 
 ## When to trigger
 
-- **ONLY** when the main Claude session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'greenhouse'` to this skill.
+- **ONLY** when the main agent session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'greenhouse'` to this skill.
 - The invocation form is implicit (the onboard skill follows the steps below per row in its queue).
 
 ## When NOT to trigger
@@ -26,7 +26,7 @@ description: v2 auto-submit version of mrweirdo-greenhouse. Fills a Greenhouse A
 - `~/.mrweirdo-jobs/profile.json` exists with personal/education/work_authorization populated
 - Resume PDF exists at `profile.resume_path`
 - `ats_platform == 'greenhouse'` for the row being processed
-- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, NOT large-cap, daily cap not hit)
+- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, NOT large-cap, supported platform)
 
 If any pre-condition fails on entry, log skip + return — do NOT attempt to fill.
 
@@ -86,7 +86,7 @@ GAPS=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => JSON.string
 Parse `GAPS` (JSON array of `{id, label, type, required, options?}`). For each entry:
 
 1. **Read the field's label** (e.g. "Are you based in NYC and able to work in our Union Sq office Mon–Fri?").
-2. **You (the main Claude) infer the answer** from `profile.json` and `search_intent.json` — they're already in your context. Pick the most defensible answer; never invent facts (if the question asks for GPA and `profile.education.gpa === ''`, answer the closest honest equivalent like `"Not listed on resume"` — never fabricate a number).
+2. **You (the main agent) infer the answer** from `profile.json` and `search_intent.json` — they're already in your context. Pick the most defensible answer; never invent facts (if the question asks for GPA and `profile.education.gpa === ''`, answer the closest honest equivalent like `"Not listed on resume"` — never fabricate a number).
 3. **Dispatch the answer** with the right helper for the field type:
 
 ```bash
@@ -220,5 +220,4 @@ This skill itself doesn't sleep; the calling onboard dispatch loop applies a 30�
 
 - `shared/greenhouse_helpers.js` — `fillForm` / `findSubmit` / `checkSuccess` / `findEmptyRequired`
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
-- v2 PRD: `/Users/lee/.claude/plans/smooth-orbiting-bentley.md`
-- v1 manual-submit equivalent: `.claude/skills/mrweirdo-greenhouse/SKILL.md`
+- v1 manual-submit equivalent: `mrweirdo-greenhouse`

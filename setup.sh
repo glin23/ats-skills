@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# mrweirdo-jobs (v2.0) bootstrap
+# mrweirdo-jobs (v2.1.2) bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
 # What it does:
 #   1. Verify Node 24+, Chrome installed, git available
 #   2. Clone (or update) the repo to ~/.mrweirdo-jobs/repo
-#   3. Symlink .claude/skills/* into ~/.claude/skills/ so Claude Code picks them up
+#   3. Symlink .claude/skills/* into Claude Code and Codex skill locations
 #   4. Create ~/.mrweirdo-jobs/ layout (log/, empty .env with chmod 600)
-#   5. Print next-step: "open Claude Code, run /mrweirdo-onboard"
+#   5. Print next-step: "open Claude Code or Codex, run /mrweirdo-onboard"
 #
 # Re-runnable. Idempotent.
 
@@ -19,6 +19,7 @@ REPO_BRANCH="${MRWEIRDO_BRANCH:-main}"
 MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 CLAUDE_SKILLS_DIR="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+CODEX_SKILLS_DIR="${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
 CHROME_APP="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 red()    { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -26,7 +27,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "mrweirdo-jobs (v2.0) bootstrap"
+blue "mrweirdo-jobs (v2.1.2) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -76,29 +77,53 @@ else
   fi
 fi
 
-# ---------- 5. Symlink Claude Code skills ----------
-mkdir -p "$CLAUDE_SKILLS_DIR"
-for skill_dir in "$MRWEIRDO_REPO_ROOT/.claude/skills"/*/; do
-  skill_name=$(basename "$skill_dir")
-  target="$CLAUDE_SKILLS_DIR/$skill_name"
-  if [ -L "$target" ]; then
-    existing=$(readlink "$target")
-    if [ "$existing" = "$skill_dir" ] || [ "$existing" = "${skill_dir%/}" ]; then
-      green "  ${skill_name} ✓ (already linked)"
-      continue
+# ---------- 5. Symlink skills for Claude Code + Codex ----------
+link_skill_tree() {
+  local dest_dir="$1"
+  local label="$2"
+  mkdir -p "$dest_dir"
+  blue "Linking skills for $label → $dest_dir"
+
+  for skill_dir in "$MRWEIRDO_REPO_ROOT/.claude/skills"/*/; do
+    [ -d "$skill_dir" ] || continue
+    skill_name=$(basename "$skill_dir")
+    target="$dest_dir/$skill_name"
+    if [ -L "$target" ]; then
+      existing=$(readlink "$target")
+      if [ "$existing" = "$skill_dir" ] || [ "$existing" = "${skill_dir%/}" ]; then
+        green "  ${skill_name} ✓ (already linked)"
+        continue
+      fi
+      if [ "${MRWEIRDO_FORCE_LINK:-0}" = "1" ]; then
+        yellow "  ${skill_name} ← replacing existing symlink ($existing)."
+        rm "$target"
+      else
+        yellow "  ${skill_name} ← existing symlink points elsewhere ($existing). Skipping. Set MRWEIRDO_FORCE_LINK=1 to replace."
+        continue
+      fi
+    elif [ -e "$target" ]; then
+      if [ "${MRWEIRDO_FORCE_LINK:-0}" = "1" ] && [[ "$target" == "$MRWEIRDO_REPO_ROOT/.agents/skills/"* ]]; then
+        yellow "  ${skill_name} ← replacing generated workspace copy at $target."
+        rm -rf "$target"
+      else
+        yellow "  ${skill_name} ← existing non-symlink at $target. Skipping (move it aside manually, or set MRWEIRDO_FORCE_LINK=1 for generated .agents links)."
+        continue
+      fi
     fi
-    yellow "  ${skill_name} ← existing symlink points elsewhere ($existing). Removing + relinking."
-    rm "$target"
-  elif [ -e "$target" ]; then
-    yellow "  ${skill_name} ← existing non-symlink at $target. Skipping (move it aside manually if you want the symlink)."
-    continue
-  fi
-  ln -s "${skill_dir%/}" "$target"
-  green "  ${skill_name} ✓ linked"
-done
+    ln -s "${skill_dir%/}" "$target"
+    green "  ${skill_name} ✓ linked"
+  done
+}
+
+link_skill_tree "$CLAUDE_SKILLS_DIR" "Claude Code"
+link_skill_tree "$CODEX_SKILLS_DIR" "Codex user skills"
+
+# Codex desktop also discovers workspace-local skills under .agents/skills.
+# Treat this as a generated compatibility mirror; it is intentionally gitignored.
+link_skill_tree "$MRWEIRDO_REPO_ROOT/.agents/skills" "Codex workspace skills"
 
 # ---------- 6. ~/.mrweirdo-jobs/ layout ----------
-mkdir -p "$MRWEIRDO_HOME"/log
+mkdir -p "$MRWEIRDO_HOME"/log "$MRWEIRDO_HOME"/chrome-profile
 [ -f "$MRWEIRDO_HOME/.env" ] || (touch "$MRWEIRDO_HOME/.env" && chmod 600 "$MRWEIRDO_HOME/.env")
 green "  ~/.mrweirdo-jobs/ layout ✓"
 
@@ -107,8 +132,9 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 # not installing for the first time). Otherwise write the sentinel so the
 # onboard skill knows to surface its Welcome banner proactively.
 if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
+  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.2")"
   cat > "$MRWEIRDO_HOME/.first_run" <<EOF
-{"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"v2.0"}
+{"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"$SETUP_VERSION"}
 EOF
   chmod 600 "$MRWEIRDO_HOME/.first_run"
   IS_FIRST_RUN=1
@@ -123,15 +149,15 @@ if [ "$IS_FIRST_RUN" = "1" ]; then
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs  (v2.0)                  ║
+║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.2)                ║
 ║                                                                  ║
-║   Your zero-touch internship / new-grad application agent.       ║
+║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
 ║   Three steps to start applying:                                 ║
 ║                                                                  ║
 ║     1️⃣   Drop your resume (PDF)                                  ║
 ║     2️⃣   Answer 7 quick questions (work auth · target roles)    ║
-║     3️⃣   Sit back — auto-apply up to 50 jobs/day                ║
+║     3️⃣   Review progress — supported ATS rows can auto-submit   ║
 ║                                                                  ║
 ║   ──────────────────────────────────────────────────────────     ║
 ║                                                                  ║
@@ -155,9 +181,9 @@ fi
 cat <<'REF'
   Reference (advanced):
     /mrweirdo-cherry-pick              hand-pick from scored queue, gated apply
-    /mrweirdo-greenhouse-auto <url>    zero-touch single Greenhouse URL
-    /mrweirdo-ashby-auto      <url>    zero-touch single Ashby URL
-    /mrweirdo-lever-auto      <url>    zero-touch single Lever URL
+    /mrweirdo-greenhouse-auto <url>    internal auto-submit Greenhouse URL
+    /mrweirdo-ashby-auto      <url>    internal auto-submit Ashby URL
+    /mrweirdo-lever-auto      <url>    internal experimental Lever URL
     /mrweirdo-greenhouse      <url>    gated (you click Submit) single GH
     /mrweirdo-ashby           <url>    gated single Ashby
     /mrweirdo-lever           <url>    gated single Lever
@@ -165,6 +191,7 @@ cat <<'REF'
     node ~/.mrweirdo-jobs/repo/scripts/dashboard.mjs    live申请记录
 
 REF
+echo "  Skills installed for Claude Code and Codex."
 echo "  Update later with:  git -C $MRWEIRDO_REPO_ROOT pull"
 echo ""
 green "Done."

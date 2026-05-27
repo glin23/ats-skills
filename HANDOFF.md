@@ -1,10 +1,10 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.1)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.2)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-26, after the v2.1.1 directive/GH/essay patch.
+Last updated: 2026-05-27, after the v2.1.2 Skill packaging/productization patch.
 
 ---
 
@@ -30,6 +30,12 @@ unblocked, Cloudflare Greenhouse row 247 submitted, and 6
 answer-bank workflow. Expected cadence going forward: one
 `/mrweirdo-onboard` run per week, ~30 applications per cycle.
 
+Packaging note (v2.1.2): the tracked canonical Skill source is still
+`.claude/skills/*`. `setup.sh` links that source into both
+`~/.claude/skills` and `~/.codex/skills`, then generates
+repo-local `.agents/skills` symlinks for Codex desktop. `.agents/` is
+gitignored on purpose; do not edit it as a second source of truth.
+
 ---
 
 ## 2. File-by-file map
@@ -40,7 +46,7 @@ The files a new maintainer must know about, in rough priority order:
 - `setup.sh` — install script. Clones the repo to
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   `~/.claude/skills/`, creates the user-state dir layout. Idempotent.
-- `VERSION` — current release tag, `v2.1.1` as of this write.
+- `VERSION` — current release tag, `v2.1.2` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 
@@ -104,7 +110,7 @@ The files a new maintainer must know about, in rough priority order:
    cross-platform discovery, AI scoring, hard filter, dedupe,
    quota check, **auto-apply loop**, summary.
 3. Step 10 (auto-apply) is the heart of the system. For each eligible
-   row, main Claude invokes one of `mrweirdo-{greenhouse,ashby,lever}-auto`
+   row, the main agent invokes one of `mrweirdo-{greenhouse,ashby,lever}-auto`
    which calls the matching `shared/<platform>_apply_driver.mjs`. The
    driver fills, submits, parses validation errors, and retries up to
    4 rounds before giving up.
@@ -184,9 +190,9 @@ upload if you want to take a swing at it; do not retry the same
 ## 6. Specifically what NOT to do
 
 - **Do not write a pure-bash batch dispatcher.** The v1-era lesson, paid
-  for in real submissions: bash loops without main-Claude-in-the-loop
+  for in real submissions: bash loops without main-agent-in-the-loop
   cannot reason about per-row form variance. They will always stall on
-  custom Q's. Always keep main Claude in the loop for ATS forms.
+  custom Q's. Always keep the main agent in the loop for ATS forms.
 - **Do not mark a row "submitted" without verifying the success page text.**
   Ashby's "Success!" upload-status toast is NOT a submission
   confirmation. Look for the post-submit URL change or the explicit

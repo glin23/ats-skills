@@ -11,7 +11,7 @@ description: v2 auto-submit version of mrweirdo-ashby. Fills an Ashby ATS applic
 
 ## When to trigger
 
-- **ONLY** when the main Claude session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'ashby'` to this skill.
+- **ONLY** when the main agent session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'ashby'` to this skill.
 
 ## When NOT to trigger
 
@@ -24,7 +24,7 @@ description: v2 auto-submit version of mrweirdo-ashby. Fills an Ashby ATS applic
 - `~/.mrweirdo-jobs/profile.json` exists with personal/education/work_authorization populated
 - Resume PDF exists at `profile.resume_path`
 - `ats_platform == 'ashby'` for the row being processed
-- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, NOT large-cap, daily cap not hit)
+- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, NOT large-cap, supported platform)
 
 If any pre-condition fails on entry, log skip + return — do NOT attempt to fill.
 
@@ -93,7 +93,7 @@ The executor dispatches each action via the right driver:
 
 Plan entries with `value: null` (the planner couldn't derive an answer from profile, see BUGS#6) are skipped and reported in `result.skipped[]` for manual handling. Plan entries that fail at dispatch end up in `result.errors[]`.
 
-After execution, run `Ashby.findEmptyRequired()` to confirm zero gaps. If gaps remain → main Claude (you) reasons over `profile.json` to fill them semantically (one pass via the same action types above). Still incomplete → skip + log `reason=incomplete_form, remaining=[...]`.
+After execution, run `Ashby.findEmptyRequired()` to confirm zero gaps. If gaps remain → main agent (you) reasons over `profile.json` to fill them semantically (one pass via the same action types above). Still incomplete → skip + log `reason=incomplete_form, remaining=[...]`.
 
 ### 6. Upload resume
 
@@ -183,5 +183,4 @@ Parse `$SUCCESS`:
 
 - `shared/ashby_helpers.js` — `fillForm` (plan-returning) / `findSubmit` / `checkSuccess` / `findEmptyRequired` / `pickSelect` / `setSelectedLocation`
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
-- v2 PRD: `/Users/lee/.claude/plans/smooth-orbiting-bentley.md`
-- v1 manual-submit equivalent: `.claude/skills/mrweirdo-ashby/SKILL.md`
+- v1 manual-submit equivalent: `mrweirdo-ashby`

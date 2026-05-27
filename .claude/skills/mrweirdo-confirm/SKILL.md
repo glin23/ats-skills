@@ -171,4 +171,4 @@ Gmail 拉到 N 个 label:applied-jobs thread (近 7 天)
 
 - `shared/local_db.mjs.markConfirmed()` / `queryRecentlyApplied()` — SQLite primary store (v1.1+)
 - `mcp__claude_ai_Gmail__search_threads` / `mcp__claude_ai_Gmail__get_thread` — official Anthropic Gmail MCP
-- Step 2 (AI extraction) is done inline by the main Claude session — no separate Anthropic API key needed (v2 LLM strategy)
+- Step 2 (AI extraction) is done inline by the main agent session — no separate Anthropic API key needed for interactive runs (v2 LLM strategy)

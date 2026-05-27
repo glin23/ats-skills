@@ -9,7 +9,7 @@ description: v2 auto-submit version of mrweirdo-lever. Fills a Lever ATS applica
 
 ## When to trigger
 
-- **ONLY** when the main Claude session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'lever'` to this skill.
+- **ONLY** when the main agent session is executing `/mrweirdo-onboard` Step 10 dispatch and routes a row whose `ats_platform == 'lever'` to this skill.
 
 ## When NOT to trigger
 
@@ -163,6 +163,6 @@ Parse `$SUCCESS`:
 
 - `shared/lever_helpers.js` — `fillForm` (async) / `findSubmit` / `checkSuccess` / `findEmptyRequired` / `waitForResumeStorageId` / `isErrorMessageVisible` / `setSelectedLocation`
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
-- v2 PRD: `/Users/lee/.claude/plans/smooth-orbiting-bentley.md`
+- v2 design: auto helpers are internal-only and invoked from `mrweirdo-onboard`
 - 用户's Palantir gotchas: memory `devlog-2026-05-23-ats-skills-mega.md`
-- v1 manual-submit equivalent: `.claude/skills/mrweirdo-lever/SKILL.md`
+- v1 manual-submit equivalent: `mrweirdo-lever`
