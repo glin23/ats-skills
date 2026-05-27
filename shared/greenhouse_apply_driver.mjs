@@ -146,6 +146,25 @@ function degreeSelectValue() {
   return profileDegree || 'Bachelor';
 }
 
+function monthYear(value) {
+  const raw = String(value || '').trim();
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  let m = raw.match(/^(\d{1,2})[/-](\d{4})$/);
+  if (m) {
+    const month = Number(m[1]);
+    if (month >= 1 && month <= 12) return `${months[month - 1]} ${m[2]}`;
+  }
+  m = raw.match(/^(\d{4})[/-](\d{1,2})$/);
+  if (m) {
+    const month = Number(m[2]);
+    if (month >= 1 && month <= 12) return `${months[month - 1]} ${m[1]}`;
+  }
+  return raw || 'May 2027';
+}
+
 function preferredLocationAliases() {
   const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
   const metros = Array.isArray(geo.preferred_metros) ? geo.preferred_metros : [];
@@ -285,7 +304,7 @@ async function reactSelectAsync(tab, fieldId, optionText, opts = {}) {
   // 1. Click + focus the control with real MouseEvent
   const openRes = await evalInTab(tab, `
     (() => {
-      const input = document.querySelector('#' + ${JSON.stringify(fieldId)});
+      const input = document.getElementById(${JSON.stringify(fieldId)});
       if (!input) return { ok:false, note:'no_input' };
       const ctl = input.closest('.select__control');
       if (!ctl) return { ok:false, note:'no_control' };
@@ -347,7 +366,7 @@ async function reactSelectSync(tab, fieldId, optionText, opts = {}) {
   // 1. Try opening via chevron button OR keydown ArrowDown
   const openRes = await evalInTab(tab, `
     (() => {
-      const input = document.querySelector('#' + ${JSON.stringify(fieldId)});
+      const input = document.getElementById(${JSON.stringify(fieldId)});
       if (!input) return { ok:false, note:'no_input' };
       const ctl = input.closest('.select__control');
       if (!ctl) return { ok:false, note:'no_control' };
@@ -387,7 +406,7 @@ async function reactSelectSync(tab, fieldId, optionText, opts = {}) {
     (() => {
       const target = ${JSON.stringify(optionText.toLowerCase())};
       const fullKeywords = ${JSON.stringify(fullMatchKeywords.map(s => s.toLowerCase()))};
-      const input = document.querySelector('#' + ${JSON.stringify(fieldId)});
+      const input = document.getElementById(${JSON.stringify(fieldId)});
       if (!input) return { ok:false, note:'no_input' };
       const container = input.closest('.select__container') || input.closest('.select-shell') || input.closest('.select') || document.body;
       // Restrict to options visible inside this field's container/menu.
@@ -521,7 +540,10 @@ async function findFieldByLabel(tab, labelText) {
       // Sibling input
       const wrap = lbl.closest('div, fieldset');
       const inp = wrap?.querySelector('input, textarea, select');
-      if (inp) return { ok:true, id: inp.id, type: inp.type, is_react_select: !!inp.closest('.select__control') };
+      if (inp) {
+        if (!inp.id) inp.id = 'mrw_field_' + Math.random().toString(36).slice(2, 8);
+        return { ok:true, id: inp.id, type: inp.type || inp.tagName.toLowerCase(), is_react_select: !!inp.closest('.select__control') };
+      }
       return { ok:false, note:'no_input_for_label' };
     })()
   `);
@@ -599,13 +621,13 @@ async function answerMissing(tab, labelText) {
     else if (/degree/i.test(lt)) { value = degreeSelectValue(); mode = 'sync'; }
     else if (/discipline|major|field of study/i.test(lt)) { value = profileMajor; mode = 'sync'; }
     else if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
-    else if (/relocate|willing.*location|currently live|located in|on-?site|office|commute/i.test(lt)) {
+    else if (/relocate|willing.*location|currently live|resident|residency|based (?:in|there)|confirmed plans|located in|on-?site|office|commute/i.test(lt)) {
       const loc = locationDecisionForLabel(labelText);
       if (!loc.ok) return { ok: false, note: 'location_not_in_profile_preferences', detail: loc, needs_user_answer: true };
       value = "I am willing to relocate to this job's location.";
       mode = 'sync';
     }
-    else if (/expect(?:ed)? to graduate|graduation date|graduate.*program|when do you expect|complete your program/i.test(lt)) { value = profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027'; mode = 'sync'; }
+    else if (/expect(?:ed)? to graduate|graduation date|graduation year|graduate.*program|when do you expect|complete your program/i.test(lt)) { value = monthYear(profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027'); mode = 'sync'; }
     else if (/location|city/i.test(lt)) value = BANK.location_preferences?.city || 'Boston';
     else if (/sponsor|work auth|visa/i.test(lt)) value = sponsorVal;
     else if (/enrolled in.*university|currently enrolled/i.test(lt)) {
@@ -637,7 +659,7 @@ async function answerMissing(tab, labelText) {
     else if (/degree/i.test(lt)) value = profileDegree;
     else if (/discipline|major|field of study/i.test(lt)) value = profileMajor;
     else if (/how did you hear/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
-    else if (/expect(?:ed)? to graduate|graduation date|when do you expect|complete your program/i.test(lt)) value = profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027';
+    else if (/expect(?:ed)? to graduate|graduation date|graduation year|when do you expect|complete your program/i.test(lt)) value = monthYear(profileGraduationDate || BANK.fallback_text?.graduation_date || 'May 2027');
     else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) value = BANK.fallback_text?.start_date_summer_2026 || 'May 2026';
     else if (/salary|compensation/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || 'Negotiable';
     else if (/most recent employer|current employer|latest employer/i.test(lt)) value = latestExperience?.company || '';

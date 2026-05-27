@@ -1,11 +1,10 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.4)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.5)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-27, after the v2.1.4 duplicate-guard /
-Greenhouse postmortem patch.
+Last updated: 2026-05-27, after the v2.1.5 controlled-test follow-up.
 
 ---
 
@@ -31,7 +30,13 @@ postmortem: most misses were unsupported custom questions, non-standard
 Greenhouse landing pages with no file input, and location/profile
 requirements, not generic CDP failure. v2.1.4 adds
 `shared/dedupe_jobs.mjs` and wires it into Step 10 so duplicate
-company/title rows cannot repeatedly consume apply attempts.
+company/title rows cannot repeatedly consume apply attempts. The
+follow-up 3-row test did not produce a new submission; it showed
+Cloudflare's remaining blockers are Austin residency/confirmed plans
+and graduation-date select matching, while Alpine needs GPA, essay,
+Austin relocation, and EEO/source checkboxes. v2.1.5 fixes the technical
+parts of that finding; the profile-specific questions remain user/input
+blockers.
 Expected cadence going forward: start external users with
 `/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped at 10
 auto-submits. Lee can raise `MRWEIRDO_MAX_AUTO_APPLY` only after the
@@ -54,7 +59,7 @@ The files a new maintainer must know about, in rough priority order:
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   Claude Code + Codex skill locations, creates the user-state dir
   layout, and runs the install doctor. Idempotent.
-- `VERSION` — current release tag, `v2.1.4` as of this write.
+- `VERSION` — current release tag, `v2.1.5` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 

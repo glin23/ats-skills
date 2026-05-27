@@ -68,7 +68,7 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.1.4)                 ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.5)                 ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║

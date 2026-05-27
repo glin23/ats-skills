@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.1.5] - 2026-05-27 — Controlled 3-row test follow-up
+
+### Field results
+- Controlled test attempted 3 rows after v2.1.4: Alpine row 477 and
+  Cloudflare rows 244/248. No new submission was verified, so the run
+  stopped before burning more Cloudflare attempts.
+- Alpine exposed GPA / sourcing essay / Austin relocation / EEO and
+  hear-about checkbox gaps.
+- Cloudflare rows showed v2.1.4 progress: hear-about, sponsorship,
+  privacy, university enrollment, degree, essay, and full-time timing
+  filled; remaining blockers were Austin residency/confirmed plans and
+  graduation-date select matching.
+
+### Fixed
+- Greenhouse graduation date answers now normalize `MM/YYYY` and
+  `YYYY-MM` profile values to `Month YYYY` for select controls.
+- Greenhouse location gating now recognizes `resident`, `based there`,
+  and `confirmed plans` wording, so city-specific questions are treated
+  as profile/user-answer blockers instead of being retried blindly.
+- Greenhouse react-select lookup now uses `document.getElementById`
+  and assigns synthetic IDs to unlabeled sibling inputs, avoiding
+  selector syntax errors on EEO/dropdown fields.
+
 ## [2.1.4] - 2026-05-27 — Duplicate guard and Greenhouse postmortem fixes
 
 This patch is a direct response to the first public-beta-style 10-row
