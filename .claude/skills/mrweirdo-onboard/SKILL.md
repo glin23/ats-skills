@@ -68,7 +68,7 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.1.5)                 ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.6)                 ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
@@ -165,6 +165,35 @@ echo "✅ Resume copied to $MRWEIRDO_HOME/resume.pdf"
 
 ---
 
+## Step 1.5 — Upfront intent questionnaire
+
+Ask these before generating `profile.json` / `search_intent.json`. Do
+not wait until discovery or apply; these answers define the user's hard
+search boundaries.
+
+Use AskUserQuestion in two calls if needed (max 4 questions per call).
+The user can pick A/B/C/D or use the auto-provided "Other" free-text
+option.
+
+| # | Question | Mode | Options | Why it matters |
+|---|---|---|---|---|
+| A1 | Intern cycle target | **multi-select** | `A) Summer 2026  B) Fall 2026  C) Spring 2027  D) Summer 2027` | Controls timely postings. Users often target 2+ cycles. |
+| A2 | Work authorization | **single-select** | `A) US Citizen / GC  B) F-1 (CPT/OPT 可)  C) F-1 + FT 需 sponsor  D) 其他` | Controls visa-compatible filtering and truthful ATS answers. |
+| A3 | Geographic / relocation policy | **single-select** | `A) 只看当前/学校城市附近  B) 只看我列出的 metro  C) 全美 anywhere，我愿意搬  D) 美国+中国/任何合法可工作地点，我愿意搬` | This is a hard boundary. Someone like Lee may be open to Austin/NYC/China; another student may only accept Boston. |
+| A4 | Intern hourly floor | **single-select** | `A) $20+/hr  B) $30+/hr  C) $40+/hr  D) 不限` | Soft scoring signal when comp is listed. |
+| A5 | Work mode preference | **single-select** | `A) 必须 Onsite  B) Onsite > Hybrid > Remote  C) 都行  D) 仅 Remote` | Separates relocation willingness from remote preference. |
+
+Parse A3 carefully:
+- A3-A → `relocation_policy="fixed_metros"`, `willing_to_relocate_for_internship=false`.
+- A3-B → `relocation_policy="selected_metros"`; ask/parse the named metros from the user's free text if they used Other, otherwise infer from school/current city plus resume city history.
+- A3-C → `relocation_policy="anywhere_primary_country"`, `countries_open_to=["US"]`, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US"]`.
+- A3-D → `relocation_policy="anywhere_legal_work"`, `countries_open_to=["US","CN"]` unless the user's text says otherwise, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US","China"]`.
+
+Keep these questionnaire answers in your working context as
+`UPFRONT_ANSWERS`. Step 2 uses them while drafting both JSON files.
+
+---
+
 ## Step 2 — Read resume + generate search_intent + profile (main agent vision)
 
 **This step is done by you (the main agent session)**, not by a subprocess. Use the Read tool on `$MRWEIRDO_HOME/resume.pdf` to ingest the PDF (Claude Code supports PDF vision via Read), then produce TWO JSON files inline.
@@ -189,9 +218,11 @@ You are analyzing a resume PDF to produce TWO JSON artifacts at once:
    - skills [string] — top 15 hard skills
    - languages [string]
    - resume_path: "<the path on disk>"
-   - standard_qa { ... } — leave EMPTY {} for v2; mrweirdo-onboard does not solicit Q&A; auto-apply
-       skills will derive answers per-form from resume + intent at fill time.
-   - target_filters — leave EMPTY {} for v2; search_intent supersedes this.
+   - standard_qa { ... } — seed from UPFRONT_ANSWERS when possible
+       (`willing_to_relocate`, `willing_to_relocate_scope`, `preferred_work_arrangement`,
+       `earliest_start_date`, etc.). Do not invent personal facts.
+   - target_filters — seed from UPFRONT_ANSWERS for legacy helpers
+       (`locations`, `countries_open_to`, `relocation_policy`, `min_fit_score`).
 
 2. search_intent.json — what jobs to look for (separate file, per shared/intelligence/intent_schema.json).
 
@@ -221,8 +252,12 @@ A business student's excludes: "software engineer", "ml engineer", "data enginee
 
 For search_intent.geographic_preference:
   primary_country = "US" unless resume strongly says otherwise.
-  preferred_metros = derived from school location + any explicit city mentions.
-  remote_acceptable = true unless resume is location-anchored.
+  preferred_metros = derived from UPFRONT_ANSWERS A3 + school location + any explicit city mentions.
+  countries_open_to = derived from A3 (e.g. ["US"] for full-US, ["US","CN"] for Lee-style US+China).
+  relocation_policy = one of "fixed_metros" | "selected_metros" | "anywhere_primary_country" | "anywhere_legal_work".
+  willing_to_relocate_for_internship = true iff the user says they will relocate for the internship.
+  remote_acceptable = true unless A5 says onsite-only.
+  work_mode_preference = from A5.
 
 For search_intent.seniority:
   intern         = currently mid-program (any year not graduating within 6 mo)
@@ -243,25 +278,15 @@ You read the PDF, you apply the prompt, you produce both JSON blobs in your resp
 
 ---
 
-## Step 2.5 — Generate adaptive ABCD questionnaire
+## Step 2.5 — Generate adaptive follow-up questionnaire
 
-After producing draft `profile.json` + `search_intent.json`, you (the main agent session) decide which questions to ask. The goal is to disambiguate things the resume cannot answer reliably, NOT to re-ask things the resume already says.
+After producing draft `profile.json` + `search_intent.json`, you (the main agent session) decide which follow-up questions to ask. The goal is to disambiguate things the resume cannot answer reliably, NOT to re-ask things the resume already says.
 
-### Always-ask 5 questions (every user, every run)
+The five A questions were already asked in Step 1.5. Do **not** ask
+them again unless the user's answer was unusable. This step is only for
+resume-specific ambiguity.
 
-These 5 cover info almost no resume states explicitly. Skip them only if the resume contains an unambiguous answer (rare).
-
-| # | Question | Mode | Options | Default heuristic |
-|---|---|---|---|---|
-| A1 | Intern cycle target | **multi-select** | `A) Summer 2026  B) Fall 2026  C) Spring 2027  D) Summer 2027` | Pre-tick the cycle(s) most aligned with `graduation_target`. Users often target 2+ cycles. |
-| A2 | Work authorization | **single-select** | `A) US Citizen / GC  B) F-1 (CPT/OPT 可)  C) F-1 + FT 需 sponsor  D) 其他` | Infer from resume signals (Chinese name + Beijing internship → default C). |
-| A3 | Geographic flexibility | **single-select** | `A) 仅 [school city] 附近  B) [school city] + 1-2 个主 metro  C) 全美 anywhere  D) 仅 Remote` | Default B; expand to C if resume shows multi-metro history. |
-| A4 | Intern hourly floor | **single-select** | `A) $20+/hr  B) $30+/hr  C) $40+/hr  D) 不限` | Default A; bump to C if caliber_signals show top-tier. |
-| A5 | Onsite preference | **single-select** | `A) 必须 Onsite  B) Onsite > Hybrid > Remote  C) 都行  D) 仅 Remote` | Default B. |
-
-Single-select reasoning: A2 / A3 / A4 / A5 are semantically exclusive choices — you have ONE work-auth status, ONE current relocate floor, ONE salary floor, ONE work-mode policy.
-
-Multi-select reasoning: A1 — users often pursue Summer 2026 AND Fall 2026 simultaneously.
+Single-select reasoning: A2 / A3 / A4 / A5 are semantically exclusive choices — you have ONE work-auth status, ONE relocation policy, ONE salary floor, ONE work-mode policy.
 
 ### Conditional (ask only if resume signals ambiguity)
 
@@ -275,19 +300,19 @@ For each, decide AT INSPECTION TIME based on the resume you just read. If the tr
 | B4 | Senior + mentions both intern + new-grad | intern 还是 FT (可多选) | **multi-select** | `A) 仅 intern  B) 仅 new grad FT  C) 都看` — multi-select lets user pick "intern + new grad" without "都看" framing |
 | B5 | No strong caliber signals | target 公司 tier (可多选) | **multi-select** | `A) 早期 startup  B) 中型 (Series B-C)  C) 大公司/上市` — multi-select lets user pick "startup + 大公司" while skipping mid (a common "barbell" pattern) |
 
-### Hard cap on question count
+### Hard cap on follow-up question count
 
-- Always-ask: 5
-- Conditional: 0-5 depending on resume
-- **Cap: 10 questions total**. If your conditional logic would fire ≥6, pick the 5 highest-impact and skip the rest.
+- Upfront A questions: already asked in Step 1.5
+- Conditional B questions: 0-5 depending on resume
+- **Cap: 5 follow-up questions total**. If your conditional logic would fire ≥6, pick the 5 highest-impact and skip the rest.
 
 ### How to ask
 
 `AskUserQuestion` accepts **max 4 questions per call** (tool constraint).
 
-- If total questions ≤ 4 → one call.
-- If total > 4 (e.g. 5 always + 2 conditional = 7) → **two calls back-to-back**, first call = the 4 highest-decision-impact questions, second = the remainder.
-- Hard cap: **2 calls total / 8 questions max**. If your logic would require more, drop the lowest-impact conditional ones.
+- If total follow-up questions ≤ 4 → one call.
+- If total follow-up questions = 5 → two calls back-to-back.
+- Hard cap: **2 calls total / 5 follow-up questions max**. If your logic would require more, drop the lowest-impact conditional ones.
 
 Each question's options array has 4 entries (A/B/C/D). The user can pick any A/B/C/D OR use the auto-provided "Other" to type a free-text custom answer (Claude Code adds Other automatically — do NOT manually add an "E" option, it would be redundant + take a slot from real options).
 
@@ -324,13 +349,13 @@ If user did not answer (e.g. timed out, AskUserQuestion returned no answers): tr
 
 ## Step 2.7 — Refine search_intent + profile with answers
 
-Now you have the questionnaire results. Update your draft JSONs:
+Now you have the upfront questionnaire results plus any adaptive follow-up answers. Update your draft JSONs:
 
 - **A1 → `search_intent.seniority`** + a new `target_cycle` field (`Summer 2026` etc.) → write into `search_intent.search_intent.seniority` and add `target_cycle` as a sibling field for the discovery layer.
 - **A2 → `user_summary.work_authorization`** + `user_summary.needs_sponsorship`.
-- **A3 → `geographic_preference.preferred_metros`** (expand based on choice) and `remote_acceptable`.
+- **A3 → `geographic_preference.preferred_metros`, `countries_open_to`, `relocation_policy`, `willing_to_relocate_for_internship`, and `remote_acceptable`**. Also mirror to `profile.standard_qa.willing_to_relocate`, `profile.standard_qa.willing_to_relocate_scope`, `profile.target_filters.locations`, `profile.target_filters.countries_open_to`, and `profile.target_filters.relocation_policy`.
 - **A4 → `salary_floor_hourly`** added to `search_intent.search_intent` as a new field — the AI scorer (Step 7) will consider it when JD lists comp.
-- **A5 → `geographic_preference.work_mode_preference`** = `"onsite" | "onsite_pref" | "any" | "remote_only"`.
+- **A5 → `geographic_preference.work_mode_preference`** = `"onsite_required" | "onsite_pref" | "any" | "remote_only"` and mirror a human-readable value to `profile.standard_qa.preferred_work_arrangement`.
 - **B1 (multi-select) → `function_area`** = **array** of selected functions (e.g. `["Product", "Operations", "Investment"]`). Re-derive `role_categories` to put HIGH-priority titles for EACH selected function, not just one.
 - **B2 (multi-select) → `industry_targets`** = re-ranked list with selected industries first.
 - **B3 (multi-select) → re-derive `role_categories`**: if user picked multiple paths, generate HIGH-priority entries for each path. Old single-track high entries become medium/low.
@@ -372,8 +397,9 @@ Display the summary in your assistant message:
    工签:     <profile.work_authorization.status> (sponsor=<needs_sponsor>)
    求职方向: <search_intent.search_intent.role_categories[0..3].title_pattern>
    行业:     <search_intent.search_intent.industry_targets[0..3]>
-   地理:     <search_intent.geographic_preference.preferred_metros>
-   排除:     <search_intent.exclude_role_keywords[0..5]>
+   地理:     <search_intent.search_intent.geographic_preference.preferred_metros>
+   Relocate: <search_intent.search_intent.geographic_preference.relocation_policy> · countries=<countries_open_to>
+   排除:     <search_intent.search_intent.exclude_role_keywords[0..5]>
 ```
 
 Then ask once via AskUserQuestion (single-select, 2 options, "继续" is the default-recommended first option):
@@ -484,9 +510,13 @@ const intent = JSON.parse(fs.readFileSync('$MRWEIRDO_HOME/search_intent.json'));
 const jobs  = JSON.parse(fs.readFileSync('/tmp/mrweirdo-onboard/discovered.json'));
 
 const excludes = (intent.search_intent.exclude_role_keywords || []).map(s => s.toLowerCase());
-const allowedCountry = (intent.search_intent.geographic_preference?.primary_country || 'US').toLowerCase();
-const remoteOK = intent.search_intent.geographic_preference?.remote_acceptable !== false;
-const preferredMetros = (intent.search_intent.geographic_preference?.preferred_metros || []).map(s => s.toLowerCase());
+const geo = intent.search_intent.geographic_preference || {};
+const allowedCountry = (geo.primary_country || 'US').toLowerCase();
+const countriesOpenTo = new Set((geo.countries_open_to || [geo.primary_country || 'US']).map(s => String(s).toUpperCase()));
+const relocationPolicy = geo.relocation_policy || 'selected_metros';
+const broadRelocation = relocationPolicy === 'anywhere_primary_country' || relocationPolicy === 'anywhere_legal_work';
+const remoteOK = geo.remote_acceptable !== false;
+const preferredMetros = (geo.preferred_metros || []).map(s => s.toLowerCase());
 const seniority = intent.search_intent.seniority || 'both';
 
 function passesExclude(title) {
@@ -502,8 +532,14 @@ function passesLocation(loc) {
   const l = loc.toLowerCase();
   if (remoteOK && (l.includes('remote') || l.includes('anywhere') || l.includes('worldwide'))) return true;
   if (preferredMetros.some(m => l.includes(m.toLowerCase()))) return true;
-  // accept any US mention (US-focused MVP)
-  if (allowedCountry === 'us' && (l.includes('united states') || l.includes('usa') || /\\bu\\.s\\.?\\b/.test(l))) return true;
+  const usLocation = l.includes('united states') || l.includes('usa') || /\\bu\\.s\\.?\\b/.test(l) ||
+    ['austin','new york','nyc','san francisco','bay area','boston','cambridge','seattle','chicago','los angeles','denver','menlo park','palo alto','cincinnati'].some(c => l.includes(c));
+  const chinaLocation = l.includes('china') || ['beijing','shanghai','shenzhen','hong kong','guangzhou','hangzhou'].some(c => l.includes(c));
+  // Broad relocation means "keep any location in countries the user said they can legally work in".
+  if (broadRelocation && countriesOpenTo.has('US') && usLocation) return true;
+  if (broadRelocation && countriesOpenTo.has('CN') && chinaLocation) return true;
+  // accept any US mention for the US-focused default
+  if (allowedCountry === 'us' && countriesOpenTo.has('US') && (l.includes('united states') || l.includes('usa') || /\\bu\\.s\\.?\\b/.test(l))) return true;
   // reject clear non-US (expanded after T13 dogfood — RemoteOK leaked many foreign locales)
   const foreign = [
     // Europe
@@ -528,7 +564,10 @@ function passesLocation(loc) {
     // Africa
     'lagos', 'nairobi', 'cairo', 'cape town', 'johannesburg',
   ];
-  if (foreign.some(f => l.includes(f))) return false;
+  if (foreign.some(f => l.includes(f))) {
+    if (countriesOpenTo.has('CN') && chinaLocation) return true;
+    return false;
+  }
   // country-name catch-all (covers locations rendered as just country)
   const foreignCountries = [' uae', 'united arab emirates', 'india', 'germany', 'france',
     'spain', 'italy', 'netherlands', 'sweden', 'norway', 'denmark', 'finland', 'poland',
@@ -537,7 +576,10 @@ function passesLocation(loc) {
     'south africa', 'kenya', 'nigeria', 'egypt', 'saudi arabia', 'qatar', 'turkey', 'israel',
     'canada', 'australia', 'new zealand', 'austria', 'ireland', 'belgium', 'switzerland',
     'portugal', 'czechia', 'czech republic', 'hungary', 'greece', 'romania'];
-  if (foreignCountries.some(c => l.includes(c))) return false;
+  if (foreignCountries.some(c => l.includes(c))) {
+    if (countriesOpenTo.has('CN') && chinaLocation) return true;
+    return false;
+  }
   return true; // unknown → keep, scorer will judge
 }
 

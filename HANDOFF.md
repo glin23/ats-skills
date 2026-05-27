@@ -1,10 +1,11 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.5)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.6)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-27, after the v2.1.5 controlled-test follow-up.
+Last updated: 2026-05-27, after the v2.1.6 upfront relocation
+questionnaire patch.
 
 ---
 
@@ -36,7 +37,12 @@ Cloudflare's remaining blockers are Austin residency/confirmed plans
 and graduation-date select matching, while Alpine needs GPA, essay,
 Austin relocation, and EEO/source checkboxes. v2.1.5 fixes the technical
 parts of that finding; the profile-specific questions remain user/input
-blockers.
+blockers. v2.1.6 promotes relocation into the upfront questionnaire:
+users can now explicitly choose fixed metros, named metros, anywhere in
+the US, or any legally workable location (e.g. US + China). The answer
+is stored as `relocation_policy`, `countries_open_to`, and
+`willing_to_relocate_for_internship` so discovery, scoring, and ATS
+answers share one source of truth.
 Expected cadence going forward: start external users with
 `/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped at 10
 auto-submits. Lee can raise `MRWEIRDO_MAX_AUTO_APPLY` only after the
@@ -59,7 +65,7 @@ The files a new maintainer must know about, in rough priority order:
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   Claude Code + Codex skill locations, creates the user-state dir
   layout, and runs the install doctor. Idempotent.
-- `VERSION` — current release tag, `v2.1.5` as of this write.
+- `VERSION` — current release tag, `v2.1.6` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 

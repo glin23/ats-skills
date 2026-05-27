@@ -168,8 +168,11 @@ function monthYear(value) {
 function preferredLocationAliases() {
   const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
   const metros = Array.isArray(geo.preferred_metros) ? geo.preferred_metros : [];
+  const policy = geo.relocation_policy || PROFILE.target_filters?.relocation_policy || '';
+  const countries = countriesOpenTo();
   const raw = [
     ...metros,
+    PROFILE.standard_qa?.willing_to_relocate_scope,
     PROFILE.personal?.address?.city,
     PROFILE.personal?.address?.state,
     SEARCH_INTENT.user_summary?.school_location?.city,
@@ -181,23 +184,50 @@ function preferredLocationAliases() {
     if (/new york|nyc/.test(item)) aliases.add('nyc'), aliases.add('new york'), aliases.add('ny');
     if (/san francisco|bay area|sf/.test(item)) aliases.add('san francisco'), aliases.add('bay area'), aliases.add('sf');
     if (/boston|massachusetts|\bma\b/.test(item)) aliases.add('boston'), aliases.add('massachusetts'), aliases.add('ma');
+    if (/china|beijing|shanghai|shenzhen|hong kong|guangzhou/.test(item)) aliases.add('anywhere_china');
     if (/anywhere|nationwide|all\s+(?:over\s+)?(?:the\s+)?(?:us|usa|united states)|open to.*(?:us|usa|united states)/.test(item)) aliases.add('anywhere_us');
   }
+  if (/anywhere_primary_country|anywhere_legal_work/.test(policy) && countries.has('US')) aliases.add('anywhere_us');
+  if (policy === 'anywhere_legal_work' && countries.has('CN')) aliases.add('anywhere_china');
   return aliases;
+}
+
+function countriesOpenTo() {
+  const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
+  const raw = geo.countries_open_to ||
+    PROFILE.standard_qa?.countries_open_to ||
+    PROFILE.target_filters?.countries_open_to ||
+    [geo.primary_country || 'US'];
+  const vals = Array.isArray(raw) ? raw : [raw];
+  const out = new Set();
+  for (const v of vals) {
+    const s = String(v || '').trim().toLowerCase();
+    if (!s) continue;
+    if (/^(us|usa|united states|u\.s\.)$/.test(s)) out.add('US');
+    else if (/^(cn|china|prc|中国)$/.test(s)) out.add('CN');
+    else out.add(s.toUpperCase());
+  }
+  return out.size ? out : new Set(['US']);
 }
 
 function locationDecisionForLabel(labelText) {
   const lt = String(labelText || '').toLowerCase();
   const aliases = preferredLocationAliases();
-  if (aliases.has('anywhere_us')) return { ok: true, note: 'anywhere_us' };
 
-  const commonLocationWords = [
+  const usLocationWords = [
     'austin', 'texas', 'tx', 'new york', 'nyc', 'ny', 'cincinnati', 'ohio', 'oh',
     'menlo park', 'palo alto', 'san francisco', 'bay area', 'california', 'ca',
     'boston', 'cambridge', 'massachusetts', 'ma', 'seattle', 'washington', 'wa',
     'chicago', 'illinois', 'il', 'los angeles', 'la', 'denver', 'colorado', 'co',
   ];
+  const chinaLocationWords = ['china', 'beijing', 'shanghai', 'shenzhen', 'hong kong', 'guangzhou', 'hangzhou'];
+  const commonLocationWords = [...usLocationWords, ...chinaLocationWords];
   const mentioned = commonLocationWords.filter((w) => new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lt));
+  const mentionsUs = mentioned.some((w) => usLocationWords.includes(w)) || /\b(us|usa|u\.s\.|united states)\b/.test(lt);
+  const mentionsChina = mentioned.some((w) => chinaLocationWords.includes(w)) || /\b(cn|china|prc)\b|中国/.test(lt);
+
+  if (aliases.has('anywhere_us') && mentionsUs) return { ok: true, note: 'anywhere_us', mentioned };
+  if (aliases.has('anywhere_china') && mentionsChina) return { ok: true, note: 'anywhere_china', mentioned };
   if (mentioned.length === 0) return { ok: true, note: 'no_specific_location_in_label' };
   const preferred = mentioned.some((w) => aliases.has(w));
   return preferred

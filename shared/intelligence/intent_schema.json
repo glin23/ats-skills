@@ -119,7 +119,21 @@
             "preferred_metros": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Derived from school location (commute radius) + any city mentions on the resume + A3 questionnaire answer (e.g. '全美 anywhere' expands to comprehensive list)."
+              "description": "Derived from school location (commute radius) + any city mentions on the resume + A3 questionnaire answer. For broad relocation, use sentinel values like 'Anywhere US' and/or 'China'."
+            },
+            "countries_open_to": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Country codes the user is willing and legally able to consider for internships, e.g. ['US'] or ['US','CN']."
+            },
+            "relocation_policy": {
+              "type": "string",
+              "enum": ["fixed_metros", "selected_metros", "anywhere_primary_country", "anywhere_legal_work"],
+              "description": "From upfront A3. Determines whether location-specific ATS questions can be answered yes or must be treated as user-answer blockers."
+            },
+            "willing_to_relocate_for_internship": {
+              "type": "boolean",
+              "description": "True only when the user explicitly says they will relocate for an internship."
             },
             "remote_acceptable": { "type": "boolean" },
             "work_mode_preference": {

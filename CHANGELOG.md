@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.1.6] - 2026-05-27 — Upfront relocation questionnaire
+
+### Changed
+- `/mrweirdo-onboard` now asks the core intent questions before
+  generating `profile.json` / `search_intent.json`, instead of waiting
+  until after resume parsing. Location and relocation constraints become
+  first-class input, not late-stage apply blockers.
+- A3 is now a structured geographic / relocation policy question with
+  options for fixed local search, named metros, anywhere in the US, or
+  any legally workable location such as US + China.
+- `profile.json` and `search_intent.json` now carry
+  `relocation_policy`, `countries_open_to`, and
+  `willing_to_relocate_for_internship` so discovery, scoring, and ATS
+  form answers use the same boundary.
+
+### Fixed
+- Greenhouse location-specific questions now read the structured
+  relocation policy. A user who explicitly says "anywhere in the US"
+  or "US + China" can truthfully answer yes to Austin-style internship
+  relocation questions, while location-restricted users still block.
+
 ## [2.1.5] - 2026-05-27 — Controlled 3-row test follow-up
 
 ### Field results

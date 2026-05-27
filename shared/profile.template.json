@@ -66,6 +66,8 @@
     "favorite_project": "",
     "earliest_start_date": "MM/DD/YYYY",
     "willing_to_relocate": true,
+    "willing_to_relocate_scope": "Anywhere US",
+    "countries_open_to": ["US"],
     "preferred_work_arrangement": "Open to onsite, hybrid, or remote"
   },
 
@@ -77,6 +79,8 @@
     ],
     "role_types": ["intern", "new_grad_FT"],
     "locations": ["US", "Remote-US", "United States"],
+    "countries_open_to": ["US"],
+    "relocation_policy": "anywhere_primary_country",
     "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
     "min_fit_score": 6,
     "visa_must_sponsor": false,

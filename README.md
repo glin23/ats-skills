@@ -1,6 +1,6 @@
 # mrweirdo-jobs
 
-> **v2.1.5 — resume-driven job search agent for US college students.**
+> **v2.1.6 — resume-driven job search agent for US college students.**
 > A Claude Code + Codex Skill collection with a Node 24/CDP backend:
 > resume intake → job discovery → fit scoring → ATS form filling →
 > submission audit → Gmail confirmation loop.
