@@ -1,10 +1,10 @@
-# mrweirdo-jobs — Maintainer Handoff (v2.1.0)
+# mrweirdo-jobs — Maintainer Handoff (v2.1.1)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-26, after the v2.1 release.
+Last updated: 2026-05-26, after the v2.1.1 directive/GH/essay patch.
 
 ---
 
@@ -23,10 +23,12 @@ Lever, with per-company quota guards and a Gmail-driven confirmation
 loop. The user's only mandatory action is uploading the resume; their
 feedback channel is their Gmail inbox.
 
-Latest field data (2026-05-26 session): 23 successful Ashby
-submissions in one session via the new v2.1 driver, plus 1 Greenhouse
-submission. Expected cadence going forward: one `/mrweirdo-onboard`
-run per week, ~30 applications per cycle.
+Latest field data (2026-05-26 session): local DB now has 38 submitted
+rows. This includes the v2.1.1 follow-up wins: 8 Directive Ashby rows
+unblocked, Cloudflare Greenhouse row 247 submitted, and 6
+`essay_pending` Ashby rows submitted through the main-Claude-in-loop
+answer-bank workflow. Expected cadence going forward: one
+`/mrweirdo-onboard` run per week, ~30 applications per cycle.
 
 ---
 
@@ -38,7 +40,7 @@ The files a new maintainer must know about, in rough priority order:
 - `setup.sh` — install script. Clones the repo to
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   `~/.claude/skills/`, creates the user-state dir layout. Idempotent.
-- `VERSION` — current release tag, `v2.1.0` as of this write.
+- `VERSION` — current release tag, `v2.1.1` as of this write.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 
@@ -64,8 +66,8 @@ The files a new maintainer must know about, in rough priority order:
   less battle-tested.
 - `shared/ashby_helpers.js` / `shared/greenhouse_helpers.js` —
   page-injected DOM helpers. The drivers eval these into the page.
-- `shared/answer_bank.json` — v2.1 externalized answer templates.
-  7 essay patterns, Yes/No defaults, multichoice prefs. Edit here,
+- `shared/answer_bank.json` — v2.1 externalized answer templates,
+  Yes/No defaults, multichoice prefs. Edit here,
   not in driver code.
 - `shared/lever_helpers.js` — Lever DOM helpers. See §4 for dragons.
 - `shared/quota.mjs` — per-company submission quota tracking.
@@ -116,7 +118,7 @@ The files a new maintainer must know about, in rough priority order:
 
 ## 4. Where the dragons are
 
-The 5 things a new maintainer will trip over within the first hour.
+The 6 things a new maintainer will trip over within the first hour.
 Internalize these.
 
 **1. CSS selectors with leading-digit ids fail.** Ashby uses uuid
@@ -136,14 +138,27 @@ The working pattern is `MouseEvent("mousedown", {button: 0, buttons: 1, clientX,
 followed by typing and option click. Reference impl: `reactSelect()`
 in `shared/greenhouse_apply_driver.mjs`. Use it.
 
-**4. Ashby Yes/No widgets sometimes ignore clicks.** `Ashby.clickAckWidget`
-in `shared/ashby_helpers.js` runs a 5-strategy fallback. Strategy 4
-(find the hidden `<input type="checkbox">`, call the React-native
-value setter, dispatch `change`) is the most reliable. If you
-encounter a new widget that defeats all 5 strategies, Strategy 4 is
-the right place to extend.
+**4. Ashby Yes/No widgets sometimes ignore clicks, and directive's
+ack is not a Yes/No widget.** `Ashby.clickAckWidget` in
+`shared/ashby_helpers.js` runs a 5-strategy fallback for hidden-checkbox
+Yes/No controls. The 2026-05-26 directive blocker looked similar, but
+field testing showed the real "Please confirm that you acknowledge..."
+control is a single-option radio (`I can confirm...`). Calling
+`clickAckWidget(/Please confirm/)` is a false-positive trap because it
+can climb to a large parent container and target an earlier Yes/No
+checkbox. The working fix lives in `shared/ashby_apply_driver.mjs`:
+detect the ack label, click the single radio/label, and treat
+Directive's "already applied ... application will be reviewed" limiter
+as confirmation.
 
-**5. Lever rejects CDP uploads with a bogus "File exceeds 100MB" error.**
+**5. Native Ashby radio/checkbox clicks can report success without
+updating React state.** Chai and Julius both exposed this. A plain
+`input.click()` can leave the form still reporting the same missing
+field. The working pattern is: click the input/label, call the native
+`HTMLInputElement.prototype.checked` setter, then dispatch both `input`
+and `change`. Keep that in `shared/ashby_apply_driver.mjs`.
+
+**6. Lever rejects CDP uploads with a bogus "File exceeds 100MB" error.**
 On a resume that is visibly 200 KB. No fix yet. The current code
 skips Lever rows on this error rather than retrying. Try drag-drop
 upload if you want to take a swing at it; do not retry the same
@@ -204,24 +219,25 @@ upload if you want to take a swing at it; do not retry the same
 
 In rough priority order:
 
-1. **Crack the directive ack widget.** 8 rows in last session got
-   stuck on the same ack widget. `Ashby.clickAckWidget` Strategy 4
-   is the closest near-miss; extend from there.
-2. **Solve Lever anti-CDP file upload.** Today it is effectively
+1. **Fix Base Power date-picker + auth-combobox edge case.** Row 122
+   still stalls on earliest start date + work authorization. The auth
+   options include "U.S. citizen or permanent resident" as the first
+   "Yes" match; do not choose it for Lee. Correct choices are CPT/OPT
+   depending on the wording.
+2. **Formalize the essay consumer.** The main-Claude-in-loop workflow is
+   proven: rows 166, 235, 345, 682, 716, and 719 were submitted after
+   answer-bank templates were added and the driver was rerun. Still
+   worth packaging as a standalone CLI/skill that reads
+   `essay_pending.jsonl`, drafts/records answers, reruns, and writes DB
+   outcomes.
+3. **Solve Lever anti-CDP file upload.** Today it is effectively
    broken. Either find the detection signal and bypass it, or
    replace `setFileInputFiles` with a drag-drop emulation.
-3. **Build the main-Claude essay consumer.** The Ashby driver already
-   emits `outcome: essay_pending` and `--list-pending-essays` outputs
-   the unique questions. The read side — a skill that takes that list,
-   asks main Claude to draft answers, writes them back to
-   `answer_bank.json`, and re-runs the stuck rows — is not built.
 4. **Better discovery.** Today's pool was 813 jobs of which only ~30
    were actionable. Sources skew remote-tech-heavy. v2.2 should add
    YC Work-At-A-Startup, Wellfound, and at least one industry-specific
    board (healthcare, education).
-5. **GH Country sync-select bug.** Greenhouse's Country field uses
-   a different open-trigger than Location. A separate agent is on it.
-6. **Profile asset gaps.** GPA, SAT/ACT, 1-minute intro video, official
+5. **Profile asset gaps.** GPA, SAT/ACT, 1-minute intro video, official
    transcript — roughly 3 high-fit jobs per session require these and
    are skipped. Either prompt the user to provide them at onboard time
    or add a "supplemental_assets" section to `profile.json`.

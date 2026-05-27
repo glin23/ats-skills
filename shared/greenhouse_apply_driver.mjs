@@ -132,13 +132,28 @@ async function uploadResume(tab) {
   // and shows "resume.pdf attached" in place. So we don't try to re-access #resume.
   // Instead: dispatch change in the SAME eval as the upload check (to catch the
   // pre-unmount moment), then verify success by checking body text or upload widget.
-  const u = cdp('upload', tab, '#resume', RESUME);
-  if (!u.stdout.includes('"ok":true')) return { ok: false, note: 'cdp_upload_failed', detail: u.stdout };
+  const selectors = ['#resume', '#resume_input', 'input[type=file][name=resume]', 'input[type=file]'];
+  let usedSelector = null;
+  let lastUpload = null;
+  for (const sel of selectors) {
+    const u = cdp('upload', tab, sel, RESUME);
+    lastUpload = u;
+    if (u.stdout.includes('"ok":true')) {
+      usedSelector = sel;
+      break;
+    }
+  }
+  if (!usedSelector) return { ok: false, note: 'cdp_upload_failed', detail: lastUpload?.stdout || lastUpload?.stderr || '' };
   // Try to dispatch change but don't fail if element is already gone
-  await evalInTab(tab, `
+  const immediate = await evalInTab(tab, `
     (() => {
-      const r = document.querySelector('#resume');
-      if (r) { r.dispatchEvent(new Event('change', { bubbles: true })); return { dispatched: true }; }
+      const r = document.querySelector(${JSON.stringify(usedSelector)});
+      if (r) {
+        const files = r.files ? r.files.length : 0;
+        const name = r.files?.[0]?.name || '';
+        r.dispatchEvent(new Event('change', { bubbles: true }));
+        return { dispatched: true, files, name };
+      }
       return { dispatched: false, note: 'element_already_unmounted' };
     })()
   `);
@@ -154,7 +169,12 @@ async function uploadResume(tab) {
       };
     })()
   `);
-  return { ok: verify.has_resume_text || verify.has_replace_btn, ...verify };
+  return {
+    ok: immediate.files > 0 || immediate.note === 'element_already_unmounted' || verify.has_resume_text || verify.has_replace_btn,
+    selector: usedSelector,
+    immediate,
+    ...verify,
+  };
 }
 
 // ---------- fill basic text fields ----------
@@ -250,7 +270,7 @@ async function reactSelectSync(tab, fieldId, optionText, opts = {}) {
       if (!input) return { ok:false, note:'no_input' };
       const ctl = input.closest('.select__control');
       if (!ctl) return { ok:false, note:'no_control' };
-      const container = input.closest('.select__container, .select-shell, [class*=select]');
+      const container = input.closest('.select__container') || input.closest('.select-shell') || input.closest('.select');
       ctl.scrollIntoView({block:'center'});
       input.focus();
 
@@ -288,7 +308,7 @@ async function reactSelectSync(tab, fieldId, optionText, opts = {}) {
       const fullKeywords = ${JSON.stringify(fullMatchKeywords.map(s => s.toLowerCase()))};
       const input = document.querySelector('#' + ${JSON.stringify(fieldId)});
       if (!input) return { ok:false, note:'no_input' };
-      const container = input.closest('.select__container, .select-shell, [class*=select]') || document.body;
+      const container = input.closest('.select__container') || input.closest('.select-shell') || input.closest('.select') || document.body;
       // Restrict to options visible inside this field's container/menu.
       const menu = container.querySelector('.select__menu') || container;
       let opts = [...menu.querySelectorAll('.select__option, [role=option]')].filter(o => o.offsetParent !== null);
@@ -388,6 +408,13 @@ async function submitAndCheck(tab) {
           if (!seen.has(t)) { seen.add(t); missing.push(t); }
         }
       }
+      const invalids = [...document.querySelectorAll('[aria-invalid="true"][aria-required="true"], input[required][aria-invalid="true"]')];
+      for (const el of invalids) {
+        if (!el.id) continue;
+        const lbl = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
+        const t = (lbl?.innerText || '').replace(/\\*+$/, '').trim();
+        if (t && !seen.has(t) && t.length < 180) { seen.add(t); missing.push(t); }
+      }
       return { success, missing, url: location.href, body_snippet: body.slice(0, 250) };
     })()
   `);
@@ -417,6 +444,31 @@ async function findFieldByLabel(tab, labelText) {
 
 async function answerMissing(tab, labelText) {
   const lt = labelText.toLowerCase();
+
+  if (/privacy policy|candidate privacy/i.test(lt)) {
+    return await evalInTab(tab, `
+      (() => {
+        const target = ${JSON.stringify(lt.slice(0, 60))};
+        const cbs = [...document.querySelectorAll('input[type=checkbox]')];
+        for (const cb of cbs) {
+          let wrap = cb.parentElement;
+          let txt = '';
+          for (let i = 0; i < 8 && wrap; i++, wrap = wrap.parentElement) {
+            txt = (wrap.innerText || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+            if (txt.includes(target) || /privacy policy|candidate privacy/.test(txt)) break;
+          }
+          if (txt.includes(target) || /privacy policy|candidate privacy/.test(txt)) {
+            try { cb.scrollIntoView({ block:'center', behavior:'instant' }); } catch (_) { cb.scrollIntoView({ block:'center' }); }
+            if (!cb.checked) cb.click();
+            cb.dispatchEvent(new Event('input', { bubbles:true }));
+            cb.dispatchEvent(new Event('change', { bubbles:true }));
+            return { ok: cb.checked, mode:'privacy_checkbox' };
+          }
+        }
+        return { ok:false, note:'privacy_checkbox_not_found' };
+      })()
+    `);
+  }
 
   // PHASE 0: essay templates (long-text Qs) — try first
   if (essayAnswerFor(labelText)) {
@@ -454,12 +506,12 @@ async function answerMissing(tab, labelText) {
     let value;
     let mode = 'async';
     if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
+    else if (/relocate|willing.*location|currently live/i.test(lt)) { value = "I am willing to relocate to this job's location."; mode = 'sync'; }
+    else if (/expect to graduate|graduate.*program|when do you expect|complete your program/i.test(lt)) { value = 'June 2027'; mode = 'sync'; }
     else if (/location|city/i.test(lt)) value = BANK.location_preferences?.city || 'Boston';
     else if (/sponsor|work auth|visa/i.test(lt)) value = sponsorVal;
-    else if (/enrolled in.*university|currently enrolled/i.test(lt)) value = BANK.yes_no_defaults?.enrolled_in_university || 'Yes';
-    else if (/expect to graduate|graduate.*program|when do you expect/i.test(lt)) value = BANK.fallback_text?.graduation_date || 'May 2027';
-    else if (/relocate|willing.*location/i.test(lt)) value = BANK.yes_no_defaults?.willing_to_relocate || 'Yes';
-    else if (/full.time|consider.*ft|consideration for/i.test(lt)) value = 'Yes';
+    else if (/enrolled in.*university|currently enrolled/i.test(lt)) { value = BANK.yes_no_defaults?.enrolled_in_university || 'Yes'; mode = 'sync'; }
+    else if (/full.?time|consider.*ft|consideration for|full.?time offer|available to start/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
     else if (/gender/i.test(lt)) value = BANK.yes_no_defaults?.gender || "Don't want to answer";
     else if (/race|ethnic/i.test(lt)) value = BANK.yes_no_defaults?.race || "Don't want to answer";
     else if (/veteran/i.test(lt)) value = BANK.yes_no_defaults?.veteran || 'I am not a protected veteran';
@@ -569,9 +621,8 @@ async function main() {
     res.missing = [...new Set(res.missing)];
     log('  missing:', res.missing.join(' | ').slice(0, 200));
     if (res.missing.length === 0) {
-      if (attempt === 1) { await sleep(2500); continue; }
-      console.log(JSON.stringify({ outcome: 'skip', reason: 'no_errors_no_success', snippet: res.body_snippet, job_id: JOB_ID }));
-      await closeTab(tab);
+      if (attempt < 5) { await sleep(3000); continue; }
+      console.log(JSON.stringify({ outcome: 'skip', reason: 'no_errors_no_success', snippet: res.body_snippet, tab_id: tab, job_id: JOB_ID }));
       return;
     }
     if (JSON.stringify(res.missing) === JSON.stringify(lastMissing)) {

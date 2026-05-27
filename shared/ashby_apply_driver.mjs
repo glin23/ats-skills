@@ -13,7 +13,7 @@
 //   5. Read validation errors. For each "Missing entry for required field: X",
 //      match a keyword bucket (work-auth, RTO, gender, race, veteran, disability,
 //      sponsorship, location combobox, LinkedIn) → answer from profile.
-//   6. Click Submit again. Up to 4 retries.
+//   6. Click Submit again. Up to 5 attempts.
 //   7. On success page → return {outcome:'submitted', screenshot}, close tab.
 //   8. On unresolved errors → return {outcome:'skip', reason, remaining}, close tab.
 //   9. On essay-pending → return {outcome:'essay_pending'}, KEEP tab open.
@@ -153,6 +153,63 @@ function essayAnswerFor(questionText) {
   return null;
 }
 
+async function pickComboboxInQuestion(tab, questionText, value) {
+  const searchTerms = Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+  const found = await evalInTab(tab, `
+    (() => {
+      const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const targetQ = ${JSON.stringify(questionText.toLowerCase().replace(/\s+/g, ' ').slice(0, 60))};
+      const containers = [...document.querySelectorAll("fieldset, div")].filter(c => {
+        const t = norm(c.innerText);
+        if (!t.includes(targetQ)) return false;
+        return !!c.querySelector("input[role=combobox], input[aria-autocomplete=list]");
+      });
+      if (containers.length === 0) return { ok:false, note:'no_combobox_in_question', target: targetQ };
+      containers.sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
+      const inp = containers[0].querySelector("input[role=combobox], input[aria-autocomplete=list]");
+      if (!inp) return { ok:false, note:'combobox_disappeared' };
+      if (!inp.id) inp.id = 'mrw_combo_' + Math.random().toString(36).slice(2,8);
+      inp.focus();
+      const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+      return { ok:true, sel };
+    })()
+  `);
+  if (!found.ok) return found;
+  let last = { ok: false, note: 'no_search_terms' };
+  for (const term of searchTerms) {
+    await evalInTab(tab, `
+      (() => {
+        const inp = document.querySelector(${JSON.stringify(found.sel)});
+        if (!inp) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        if (setter) setter.call(inp, '');
+        else inp.value = '';
+        inp.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: null }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+        inp.focus();
+        return true;
+      })()
+    `);
+    cdp('typetext', tab, found.sel, term);
+    await sleep(1000);
+    last = await evalInTab(tab, `
+      (() => {
+        const wanted = ${JSON.stringify(term.toLowerCase())};
+        const opts = [...document.querySelectorAll("[role=option]")];
+        const match = opts.find(o => (o.innerText || '').trim().toLowerCase() === wanted)
+          || opts.find(o => (o.innerText || '').toLowerCase().includes(wanted));
+        if (match) {
+          ['mousedown', 'mouseup', 'click'].forEach(t => match.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window, button: 0 })));
+          return { ok:true, picked: (match.innerText || '').trim().slice(0,120), mode:'combobox_in_question', term: wanted };
+        }
+        return { ok:false, note:'no_option_match', wanted, sample: opts.slice(0,6).map(o => (o.innerText || '').trim()) };
+      })()
+    `);
+    if (last.ok) return last;
+  }
+  return last;
+}
+
 // ---------- step: navigate + ensure tab ----------
 async function open() {
   const r = cdp('goto', APPLY_URL);
@@ -217,11 +274,11 @@ async function submitAndCheck(tab) {
       return !!btn;
     })()
   `);
-  await sleep(4500);
+  await sleep(7000);
   return await evalInTab(tab, `
     (() => {
       const bodyText = document.body.innerText;
-      const success = /successfully submitted|application[\\s\\S]{0,30}(received|success)|thanks? for (applying|submitting)|thank you for submitting/i.test(bodyText);
+      const success = /successfully submitted|application[\\s\\S]{0,30}(received|success)|thanks? for (applying|submitting)|thank you for submitting|already applied[\\s\\S]{0,160}(reviewed|application)/i.test(bodyText);
       const errors = [...document.querySelectorAll(".error, [class*=error i], [role=alert], [aria-live]")]
         .map(e => (e.innerText||'').trim())
         .filter(s => s.length > 0 && s.length < 400);
@@ -250,7 +307,9 @@ async function answerMissing(tab, missingLabel) {
   const authorizedAns = PROFILE.work_authorization?.authorized_to_work_us
     ? 'Yes'
     : (BANK.yes_no_defaults?.work_authorization || 'Yes');
-  const cityFull = `${PROFILE.personal.address_city || PROFILE.personal.city || BANK.location_preferences?.city || 'Boston'}, ${PROFILE.personal.address_state || 'MA'}, USA`;
+  const locationCity = BANK.location_preferences?.city || PROFILE.personal.address_city || PROFILE.personal.city || 'Boston';
+  const locationState = PROFILE.personal.address_state || 'MA';
+  const cityFull = `${locationCity}, ${locationState}, USA`;
   const linkedin = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin || '';
   const genderAns = BANK.yes_no_defaults?.gender || PNA;
   const raceAns = BANK.yes_no_defaults?.race || PNA;
@@ -258,23 +317,44 @@ async function answerMissing(tab, missingLabel) {
   const disabilityAns = BANK.yes_no_defaults?.disability || 'I do not want to answer';
   const rtoAns = BANK.yes_no_defaults?.rto_office_in_person || 'Yes';
 
-  // PHASE 0: Essay templates (long-form Qs) take priority
-  if (essayAnswerFor(missingLabel)) {
+  if (/authorized.{0,40}work.{0,20}u\.?s|legally authorized.{0,40}u\.?s/i.test(ml)) {
+    const authComboPrefs = /f-?1|opt|cpt/i.test(PROFILE.work_authorization?.visa_status || '')
+      ? ['CPT', 'OPT', authorizedAns]
+      : [authorizedAns];
+    const combo = await pickComboboxInQuestion(tab, missingLabel, authComboPrefs);
+    if (combo.ok || combo.note !== 'no_combobox_in_question') return combo;
+  }
+
+  // PHASE 0: Essay templates (long-form Qs) take priority. Short date fields
+  // also match availability templates, so let the normal field buckets handle them.
+  if (essayAnswerFor(missingLabel) && !/(start date|earliest start|availability|when can you start|when could you start)/i.test(ml)) {
     return await answerEssay(tab, missingLabel);
   }
 
   // PHASE 1: Multichoice radio (How did you hear / Years of experience)
-  if (/how did you hear|hear about|years?.{0,5}(of )?experience|seniority|level/i.test(ml)) {
+  if (/how did you hear|hear about|years?.{0,5}(of )?experience|seniority|level|work term|term availability/i.test(ml)) {
     return await answerRadioMultichoice(tab, missingLabel);
   }
 
   // Match keyword → call appropriate clicker
   const buckets = [
+    { match: /^phone|phone number|mobile/i, action: 'fill_phone' },
+    { match: /^resume$|upload.{0,10}resume/i, action: 'upload_resume' },
+    { match: /start date|earliest start|when can you start|when could you start/i, action: 'fill_text_in_question', q: missingLabel, value: '06/01/2026' },
+    { match: /marketing funnel|email marketing|a\/b testing|ab testing|heard of.{0,20}testing/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
+    { match: /freshman|sophomore/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
+    { match: /graduate.{0,15}2025|2025.{0,15}earlier/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
+    { match: /graduate.{0,15}2026|2026.{0,15}later/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
+    { match: /confirm.{0,20}acknowledge.{0,30}internship details|hours and pay align/i, action: 'click_single_radio_in_question', q: missingLabel },
+    { match: /authorized.{0,30}canada|legally.{0,15}work.{0,15}canada|reside.{0,20}canada|residency.{0,10}canada/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
     // Authorization separate from sponsorship: "Are you authorized to work" → Yes (F-1 OPT)
     { match: /authorized to work|legally.{0,5}work|eligible to work|right to work/i, action: 'click_radio_in_question', q: missingLabel, choice: authorizedAns, fallback: PNA },
+    { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No - I am authorized to work in the U.S. without employer sponsorship', fallback: 'No' },
     { match: /require.{0,5}sponsor|need.{0,5}sponsor|sponsorship/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: PNA },
     { match: /work auth|visa/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: PNA },
+    { match: /currently located.{0,40}(san francisco|sf bay|bay area)|sf bay area/i, action: 'click_radio_in_question', q: missingLabel, choice: "No, but I'm open to relocating to the Bay Area", fallback: 'No' },
     // RTO covers many phrasings
+    { match: /prepared to work.{0,25}\d\+?.{0,25}days.{0,40}office|san francisco office/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: PNA },
     { match: /rto|return to office|office.{0,5}\d+.{0,5}day|in[- ]office|in.{0,5}person|hybrid|on[- ]site|onsite|based in.{0,15}(office|nyc|sf)|relocate|willing.{0,15}move|currently.{0,5}reside/i, action: 'click_radio_in_question', q: missingLabel, choice: rtoAns, fallback: PNA },
     { match: /gender/i, action: 'click_radio_in_question', q: missingLabel, choice: genderAns, fallback: 'Decline to self-identify' },
     { match: /race|ethnic/i, action: 'click_radio_in_question', q: missingLabel, choice: raceAns, fallback: 'Decline to self-identify' },
@@ -282,7 +362,12 @@ async function answerMissing(tab, missingLabel) {
     { match: /veteran/i, action: 'click_radio_in_question', q: missingLabel, choice: veteranAns, fallback: PNA },
     { match: /disab/i, action: 'click_radio_in_question', q: missingLabel, choice: disabilityAns, fallback: PNA },
     { match: /current location|^location$/i, action: 'fill_location_combobox', value: cityFull },
+    { match: /where are you located/i, action: 'fill_text_in_question', q: missingLabel, value: cityFull },
     { match: /linkedin/i, action: 'fill_text_in_question', q: missingLabel, value: linkedin },
+    { match: /portfolio|website/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.portfolio || linkedin },
+    { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.education?.school || 'Babson College' },
+    { match: /^degree|degree$/i, action: 'fill_text_in_question', q: missingLabel, value: `${PROFILE.education?.degree || 'Bachelor of Science'} in ${PROFILE.education?.major || 'Business'}` },
+    { match: /graduation date|when do you expect to graduate/i, action: 'fill_text_in_question', q: missingLabel, value: BANK.fallback_text?.graduation_date || 'May 2027' },
   ];
 
   const bucket = buckets.find((b) => b.match.test(ml));
@@ -291,10 +376,80 @@ async function answerMissing(tab, missingLabel) {
     return { ok: false, note: 'no_bucket_for:' + missingLabel.slice(0, 60), pending_for_main_claude: true, question: missingLabel };
   }
 
+  if (bucket.action === 'upload_resume') {
+    return await uploadResume(tab);
+  }
+
+  if (bucket.action === 'fill_phone') {
+    const phoneRes = await evalInTab(tab, `
+      (() => {
+        const inp = [...document.querySelectorAll("input[type=tel]")].find(el => el.offsetParent !== null);
+        if (!inp) return { ok:false, note:'phone_input_not_found' };
+        if (!inp.id) inp.id = 'mrw_phone_retry';
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        if (setter) {
+          setter.call(inp, '');
+          inp.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: null }));
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        inp.focus();
+        const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+        return { ok:true, sel };
+      })()
+    `);
+    if (!phoneRes.ok) return phoneRes;
+    const digits = (PROFILE.personal.phone || '').replace(/\D/g, '').replace(/^1/, '');
+    if (!digits) return { ok: false, note: 'profile_phone_missing' };
+    cdp('typetext', tab, phoneRes.sel, digits);
+    return { ok: true, mode: 'phone_retry' };
+  }
+
+  if (bucket.action === 'click_single_radio_in_question') {
+    return await evalInTab(tab, `
+      (async () => {
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 56))};
+        const containers = [...document.querySelectorAll("fieldset, div, label")].filter(c => {
+          const t = norm(c.innerText);
+          if (!t.includes(targetQ)) return false;
+          return c.querySelectorAll("input[type=radio]").length >= 1;
+        });
+        if (containers.length === 0) return { ok:false, note:'no_single_radio_container', target: targetQ };
+        containers.sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
+        const c = containers[0];
+        const radio = c.querySelector("input[type=radio]");
+        if (!radio) return { ok:false, note:'radio_not_found' };
+        try { radio.scrollIntoView({ block: 'center', behavior: 'instant' }); } catch (_) { radio.scrollIntoView({ block: 'center' }); }
+        const label = radio.id ? document.querySelector('label[for="' + CSS.escape(radio.id) + '"]') : null;
+        if (label) label.click();
+        else radio.click();
+        await sleep(150);
+        if (!radio.checked) radio.click();
+        await sleep(150);
+        if (!radio.checked) {
+          const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+          if (desc && typeof desc.set === 'function') desc.set.call(radio, true);
+        }
+        radio.dispatchEvent(new Event('input', { bubbles: true }));
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(150);
+        return {
+          ok: radio.checked,
+          picked: label?.innerText?.trim() || radio.id,
+          mode: 'single_radio',
+          container_size: norm(c.innerText).length
+        };
+      })()
+    `);
+  }
+
   if (bucket.action === 'click_radio_in_question' || bucket.action === 'click_checkbox_in_question') {
     const r = await evalInTab(tab, `
-      (() => {
-        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().slice(0, 40))};
+      (async () => {
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 56))};
         const targetChoice = ${JSON.stringify(bucket.choice)};
         const fallbackChoice = ${JSON.stringify(bucket.fallback || '')};
         const choices = [targetChoice, fallbackChoice].filter(Boolean).map(c => c.toLowerCase());
@@ -302,7 +457,7 @@ async function answerMissing(tab, missingLabel) {
         // Find SMALLEST container with question text + has 2-12 selectable inputs OR buttons.
         const all = [...document.querySelectorAll("fieldset, div")];
         const candidates = all.filter(c => {
-          const t = (c.innerText || '').toLowerCase();
+          const t = norm(c.innerText);
           if (!t.includes(targetQ)) return false;
           const inputs = c.querySelectorAll("input[type=radio], input[type=checkbox]");
           const btns = [...c.querySelectorAll("button")].filter(b => /^(Yes|No|I prefer.*|Decline.*|Not a protected|I do not want|Male|Female)$/i.test(b.innerText.trim()));
@@ -318,8 +473,24 @@ async function answerMissing(tab, missingLabel) {
           for (const choice of choices) {
             const btn = yesNoBtns.find(b => b.innerText.trim().toLowerCase() === choice);
             if (btn) {
+              const isActive = () => /(^|\\s)_active_/.test(btn.className);
+              if (isActive()) return { ok:true, picked: btn.innerText.trim(), mode:'btn_widget_already_active', container_size: c.innerText.length };
               btn.click();
-              return { ok:true, picked: btn.innerText.trim(), mode:'btn_widget', container_size: c.innerText.length };
+              await sleep(250);
+              if (!isActive()) {
+                btn.click();
+                await sleep(300);
+              }
+              const cb = c.querySelector("input[type=checkbox]");
+              if (cb) {
+                const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+                if (desc && typeof desc.set === 'function') desc.set.call(cb, choice === 'yes');
+                cb.dispatchEvent(new Event('input', { bubbles: true }));
+                cb.dispatchEvent(new Event('change', { bubbles: true }));
+                await sleep(120);
+              }
+              const active = isActive() || (c.querySelector("input[type=checkbox]")?.checked === (choice === 'yes'));
+              return { ok:active, picked: btn.innerText.trim(), mode:'btn_widget', active, container_size: c.innerText.length };
             }
           }
         }
@@ -338,8 +509,12 @@ async function answerMissing(tab, missingLabel) {
             if (!txt && inp.nextElementSibling) txt = (inp.nextElementSibling.innerText || '').trim();
             if (txt.toLowerCase() === choice) {
               inp.click();
+              const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+              if (desc && typeof desc.set === 'function') desc.set.call(inp, true);
+              inp.dispatchEvent(new Event('input', { bubbles: true }));
               inp.dispatchEvent(new Event('change', { bubbles: true }));
-              return { ok:true, picked: txt, mode:'radio_checkbox', container_size: c.innerText.length };
+              await sleep(120);
+              return { ok:inp.checked, picked: txt, mode:'radio_checkbox', container_size: c.innerText.length };
             }
           }
         }
@@ -360,7 +535,7 @@ async function answerMissing(tab, missingLabel) {
     // Find combobox, focus, typetext, pick option
     const found = await evalInTab(tab, `
       (() => {
-        const inp = document.querySelector("input[role=combobox][placeholder*='ype' i], input[role=combobox][placeholder*='ocation' i]");
+        const inp = document.querySelector("input[role=combobox][placeholder*='typ' i], input[role=combobox][placeholder*='type' i], input[role=combobox][placeholder*='ocation' i]");
         if (!inp) return { ok:false, note:'no_combobox' };
         if (!inp.id) inp.id = 'mrw_loc_temp';
         inp.focus();
@@ -370,17 +545,25 @@ async function answerMissing(tab, missingLabel) {
     `);
     if (!found.ok) return found;
     cdp('typetext', tab, found.sel, bucket.value.split(',')[0]); // type just city portion
-    await sleep(1200);
+    await sleep(1600);
     return await evalInTab(tab, `
       (() => {
         const v = ${JSON.stringify(bucket.value.toLowerCase())};
         const opts = [...document.querySelectorAll("[role=option]")];
         const cityOnly = v.split(',')[0].trim();
-        // Try exact match first (city + state)
-        let match = opts.find(o => o.innerText.toLowerCase().includes(cityOnly) && /usa|united states|, ma|massachusetts/i.test(o.innerText));
-        if (!match) match = opts.find(o => o.innerText.toLowerCase().includes(cityOnly));
-        if (match) { match.click(); return { ok:true, picked: match.innerText.slice(0,80) }; }
-        return { ok:false, note: 'no_city_option', sample: opts.slice(0,5).map(o=>o.innerText.slice(0,40)) };
+        const state = (v.split(',')[1] || '').trim();
+        const stateOk = (txt) => {
+          const t = txt.toLowerCase();
+          if (!state) return /usa|united states/i.test(txt);
+          if (state === 'ma') return /\\bma\\b|massachusetts/.test(t);
+          return t.includes(state);
+        };
+        const match = opts.find(o => o.innerText.toLowerCase().includes(cityOnly) && stateOk(o.innerText));
+        if (match) {
+          ['mousedown', 'mouseup', 'click'].forEach(t => match.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window, button: 0 })));
+          return { ok:true, picked: match.innerText.slice(0,80) };
+        }
+        return { ok:false, note: 'no_city_state_option', sample: opts.slice(0,5).map(o=>o.innerText.slice(0,80)) };
       })()
     `);
   }
@@ -388,15 +571,33 @@ async function answerMissing(tab, missingLabel) {
   if (bucket.action === 'fill_text_in_question') {
     const r = await evalInTab(tab, `
       (() => {
-        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().slice(0, 60))};
-        const inputs = [...document.querySelectorAll("input[type=text], input[type=url], textarea")];
-        for (const inp of inputs) {
-          const wrap = inp.closest("fieldset, div");
-          if (wrap && (wrap.innerText || '').toLowerCase().includes(targetQ)) {
-            if (!inp.id) inp.id = 'mrw_txt_' + Math.random().toString(36).slice(2,8);
+        const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 60))};
+        const selector = "input[type=text], input[type=url], input[type=email], textarea";
+
+        // First prefer explicit label[for=id] matches.
+        for (const inp of [...document.querySelectorAll(selector)]) {
+          const lbl = inp.id ? document.querySelector('label[for="' + CSS.escape(inp.id) + '"]') : null;
+          if (lbl && norm(lbl.innerText).includes(targetQ)) {
             const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
-            return { ok:true, sel };
+            return { ok:true, sel, via:'label_for' };
           }
+        }
+
+        // Then find the smallest non-body container that contains the question
+        // and exactly the field belonging to that question.
+        const containers = [...document.querySelectorAll("fieldset, div")].filter(c => {
+          const t = norm(c.innerText);
+          if (!t.includes(targetQ)) return false;
+          return !![...c.querySelectorAll(selector)].find(inp => inp.offsetParent !== null);
+        });
+        containers.sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
+        for (const c of containers.slice(0, 8)) {
+          const inp = [...c.querySelectorAll(selector)].find(el => el.offsetParent !== null);
+          if (!inp) continue;
+          if (!inp.id) inp.id = 'mrw_txt_' + Math.random().toString(36).slice(2,8);
+          const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+          return { ok:true, sel, via:'smallest_container', container_size: norm(c.innerText).length };
         }
         return { ok:false };
       })()
@@ -420,6 +621,8 @@ async function answerRadioMultichoice(tab, questionText) {
     preferred = BANK.multichoice_preferences?.years_of_experience || ['< 1', '<1', '0-1', '1', '0', 'Less than 1'];
   } else if (/(seniority|level)/i.test(qLower)) {
     preferred = BANK.multichoice_preferences?.seniority_level || ['Intern', 'Student', 'Entry', 'Junior'];
+  } else if (/work term|term availability/i.test(qLower)) {
+    preferred = BANK.multichoice_preferences?.work_term_availability || ['Summer 2026', 'Fall 2026', 'Spring 2027', 'Summer', 'Fall', 'Spring'];
   } else {
     return { ok: false, note: 'no_multichoice_rule_for:' + questionText.slice(0, 50) };
   }
@@ -430,31 +633,36 @@ async function answerRadioMultichoice(tab, questionText) {
       const containers = [...document.querySelectorAll("fieldset, div")].filter(c => {
         const t = (c.innerText || '').toLowerCase();
         if (!t.includes(targetQ)) return false;
-        return c.querySelectorAll("input[type=radio]").length >= 2;
+        return c.querySelectorAll("input[type=radio], input[type=checkbox]").length >= 2;
       });
       containers.sort((a, b) => a.innerText.length - b.innerText.length);
       const c = containers[0];
-      if (!c) return { ok:false, note:'no_radio_container' };
-      const radios = [...c.querySelectorAll("input[type=radio]")];
+      if (!c) return { ok:false, note:'no_choice_container' };
+      const radios = [...c.querySelectorAll("input[type=radio], input[type=checkbox]")];
       for (const choice of preferred) {
         const cl = choice.toLowerCase();
         for (const r of radios) {
           let txt = '';
           const wrap = r.closest('label');
           if (wrap) txt = wrap.innerText.trim();
+          if (!txt && r.name) txt = r.name.trim();
           if (!txt && r.id) {
             const lbl = c.querySelector('label[for="' + CSS.escape(r.id) + '"]');
             if (lbl) txt = lbl.innerText.trim();
           }
           if (!txt && r.nextElementSibling) txt = (r.nextElementSibling.innerText || '').trim();
-          if (txt.toLowerCase() === cl) {
+          const tl = txt.toLowerCase();
+          if (tl === cl || tl.includes(cl)) {
             r.click();
+            const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+            if (desc && typeof desc.set === 'function') desc.set.call(r, true);
+            r.dispatchEvent(new Event('input', { bubbles: true }));
             r.dispatchEvent(new Event('change', { bubbles: true }));
-            return { ok:true, picked: txt, mode:'multichoice' };
+            return { ok:true, picked: txt, mode:r.type === 'checkbox' ? 'checkbox_multichoice' : 'multichoice' };
           }
         }
       }
-      return { ok:false, note:'no_preferred_match', tried: preferred, available: radios.map(r => r.closest('label')?.innerText?.trim().slice(0,30) || r.value) };
+      return { ok:false, note:'no_preferred_match', tried: preferred, available: radios.map(r => (r.closest('label')?.innerText || r.name || r.value || '').trim().slice(0,80)) };
     })()
   `);
 }
@@ -583,7 +791,7 @@ async function main() {
 
   let lastMissing = [];
   let pendingForMainClaude = [];
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     log(`Submit attempt ${attempt}…`);
     const res = await submitAndCheck(tab);
     if (res.success) {
@@ -596,9 +804,8 @@ async function main() {
     res.missing = [...new Set(res.missing)];
     log('  missing fields:', res.missing.join(' | ').slice(0, 200));
     if (res.missing.length === 0) {
-      if (attempt === 1) { await sleep(2000); continue; }
-      console.log(JSON.stringify({ outcome: 'skip', reason: 'unknown_state_no_errors_no_success', snippet: res.snippet, job_id: JOB_ID }));
-      await closeTab(tab);
+      if (attempt < 5) { await sleep(2500); continue; }
+      console.log(JSON.stringify({ outcome: 'skip', reason: 'unknown_state_no_errors_no_success', snippet: res.snippet, tab_id: tab, job_id: JOB_ID }));
       return;
     }
     if (JSON.stringify(res.missing) === JSON.stringify(lastMissing)) {

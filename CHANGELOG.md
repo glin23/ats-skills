@@ -1,5 +1,51 @@
 # Changelog
 
+## [2.1.1] - 2026-05-26 — Directive ack cracked, GH Country verified, essay loop proved
+
+Field follow-up to v2.1.0. This release turns the highest-leverage
+unknowns from the handoff into verified behavior: Directive's ack widget
+is no longer blocking, Cloudflare's Greenhouse Country select submitted
+successfully, and the main-Claude-in-loop essay path processed real
+pending rows to submission.
+
+### Field results
+- Directive Ashby rows `304-311` moved from
+  `directive_still_blocked_after_essay_fill` to `✅ 已投`.
+- Cloudflare Greenhouse row `247` submitted successfully; the Country
+  sync-select path is verified in the field.
+- Six Ashby `essay_pending` rows submitted after main-Claude-authored
+  answers were added to the answer bank: `166`, `235`, `345`, `682`,
+  `716`, `719`.
+
+### Added
+- New answer-bank templates for Base Power-style "good fit", N1, Ready,
+  Julius, Blumen GIS, and Chai essay prompts.
+- Work-term availability preferences in `shared/answer_bank.json`.
+
+### Fixed
+- Directive's "Please confirm..." ack is handled as a single-option
+  radio, not as an Ashby Yes/No hidden-checkbox widget.
+- Ashby native radio/checkbox choices now use the browser's native
+  `checked` setter plus `input`/`change` events, which fixed Chai and
+  Julius radio state not sticking in React.
+- Ashby location, LinkedIn, portfolio/website, university, degree,
+  graduation date, and start-date text fields use the smallest matching
+  question container instead of accidentally climbing to the whole form.
+- Ashby sponsorship wording is split: current internship work
+  authorization can answer "no employer sponsorship" while explicit
+  "now or in the future" sponsorship questions still answer truthfully.
+- Greenhouse Cloudflare custom fields now cover Country sync-select,
+  relocation wording, graduation date, full-time offer timing, and the
+  privacy checkbox.
+
+### Known limitations
+- Base Power row `122` still needs a specific date-picker/auth-combobox
+  fix. The correct auth choice is CPT/OPT, not the first option containing
+  "Yes" ("U.S. citizen or permanent resident").
+- The essay consumer is proven as a main-Claude-in-loop workflow via
+  `answer_bank.json` + driver reruns, but not yet packaged as its own
+  standalone CLI/skill.
+
 ## [2.1.0] - 2026-05-26 — Submit-error-driven drivers, 80% Ashby success in field
 
 The big shift in v2.1 is architectural: instead of pre-emptively filling

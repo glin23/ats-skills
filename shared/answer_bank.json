@@ -3,6 +3,51 @@
 
   "essay_templates": [
     {
+      "match": "tell us why.{0,30}good fit|why.{0,20}good fit|good fit for this position",
+      "answer_template": "I'm a strong fit because I sit at the intersection of operations, product, and growth. At Babson I have built hands-on business judgment, and outside class I have shipped real AI products: Semori (semantic search/RAG) and Resume2Web (AI resume-to-site MVP). I have also worked on B2B GTM at Kolect AI and early-stage diligence at Scale Partners, so I am comfortable turning messy problems into research, workflows, experiments, and measurable next steps. For {{COMPANY_PRETTY}}, I would bring the intern energy that matters most: fast learning, clean execution, and a bias toward useful work rather than vague analysis.",
+      "tags": ["fit", "operations", "growth"]
+    },
+    {
+      "match": "^why\\s+n1\\??$|why n1",
+      "answer_template": "N1 interests me because it looks like the kind of early team where growth work is close to product, customers, and execution instead of being just campaign support. That is where I have done my best work: building Semori and Resume2Web from zero, testing positioning with real users, and using AI tools to compress research and iteration cycles. I would be excited to help with customer discovery, funnel experiments, partner/user research, and whatever operational work helps the team learn faster.",
+      "tags": ["n1", "why_us", "growth"]
+    },
+    {
+      "match": "what interests you about working at ready|interests you about working at ready",
+      "answer_template": "Ready interests me because a data internship is a good match for the way I like to work: start with a real operational or product question, turn messy inputs into a clean view, and use the result to make a faster decision. In my own projects, especially Semori and Resume2Web, I have had to instrument funnels, read user behavior, and decide what to change next. I would bring that same bias toward practical analysis at Ready: useful dashboards, careful data cleaning, and clear recommendations that help the team move.",
+      "tags": ["ready", "data", "why_us"]
+    },
+    {
+      "match": "favorite thing you.{0,25}built|favorite thing.*work on",
+      "answer_template": "My favorite thing I've built is Semori (https://semori.online), an AI semantic-search product using embeddings and a RAG-style retrieval pipeline. I liked it because it forced me to own the whole loop: define the user problem, build the prototype, test search quality, redesign the UX, and keep improving based on what people actually tried to search for. It also changed how I work: I now use AI tools less as shortcuts and more as a way to iterate through product decisions faster while still keeping judgment on the human side.",
+      "tags": ["built", "portfolio", "ai_product"]
+    },
+    {
+      "match": "describe your experience with gis",
+      "answer_template": "I have not had a dedicated GIS title, but I have worked with structured location-heavy data in research and operations contexts, including market/company diligence at Scale Partners and workflow/data cleanup projects where accuracy, source tracking, and clear mapping of entities mattered. I am comfortable learning new data tools quickly, working carefully with messy datasets, and documenting assumptions. For a GIS/permit data role, I would be strongest on the analysis, data QA, research, and process side while ramping quickly on the specific GIS stack the team uses.",
+      "tags": ["gis", "data", "truthful_limited_experience"]
+    },
+    {
+      "match": "what would make joining chai a win.?win",
+      "answer_template": "A win for Chai would be getting an intern who can operate across product, research, growth, and execution without needing a perfectly scoped lane. I have shipped AI products myself (Semori and Resume2Web), used AI tools daily in real workflows, and worked in both GTM and early-stage diligence contexts, so I can help turn fuzzy ideas into shipped experiments, clear research, and useful operating leverage. A win for me would be learning inside a team pushing on frontier AI products while contributing real work quickly.",
+      "tags": ["chai", "win_win", "ai_product"]
+    },
+    {
+      "match": "contrarian position|big bet",
+      "answer_template": "My biggest bet has been that small, AI-native builders will increasingly beat larger teams when the work depends on taste, speed, and distribution rather than raw engineering volume. I acted on that by building Semori and Resume2Web myself instead of waiting for a larger team or formal permission. The contrarian part is that I do not think AI makes product judgment less important; I think it makes judgment more visible because build time compresses and weak ideas get tested faster.",
+      "tags": ["chai", "contrarian", "ai_thesis"]
+    },
+    {
+      "match": "highlight of your career|something you built.*meaningful|something you accomplished",
+      "answer_template": "The highlight so far is building Semori, an AI semantic-search product, from a vague frustration into a working product people can actually try. It was meaningful because I owned every uncomfortable part: choosing the retrieval approach, designing the UX, debugging quality issues, explaining the product, and learning from early users. It also gave me a clearer operating style: ship a real version, measure where reality disagrees with the story, and iterate quickly instead of hiding behind planning.",
+      "tags": ["chai", "career_highlight", "semori"]
+    },
+    {
+      "match": "most interesting thing you.{0,20}(read|found)",
+      "answer_template": "The most interesting thing I have been digging into recently is practical evaluation for RAG and agentic workflows: not just whether a model gives a plausible answer, but how you design retrieval, error checks, and feedback loops so the system gets more reliable over time. It connects directly to Semori and to how I use Claude Code: the hard part is no longer generating output, it is building loops where the output can be tested, corrected, and trusted.",
+      "tags": ["chai", "reading", "ai_eval"]
+    },
+    {
       "match": "why.{0,20}(apply|join|interested|choose|us|company|want|decided to apply)",
       "answer_template": "I'm a Babson junior who has spent the last year shipping product end-to-end — Semori (AI-driven semantic search MVP) and Resume2Web (AI résumé-to-site builder) — while interning at growth + VC contexts (Kolect AI on B2B GTM, Scale Partners on early-stage diligence). What draws me to {{COMPANY_PRETTY}} is that the work seems to sit exactly where I get the most reps: live-product decisions with real users, fast iteration, and an AI-first stance. I'd rather be the intern who unblocks five small things a week than the one who writes a deck nobody reads.",
       "tags": ["why_us", "motivation"]
@@ -16,6 +61,31 @@
       "match": "(how.{0,10}use.{0,5}ai|ai.{0,15}(automate|tools?|workflow)|describe.{0,15}ai)",
       "answer_template": "Daily: Claude Code is my main IDE for shipping Semori — the entire RAG pipeline, embedding strategy, and most of the front-end were built in main-Claude-in-loop sessions with my eyes on the diff. I treat models as design partners, not autocomplete; the best velocity comes from giving them a sharp spec + the right code context. Beyond code: Cursor for one-off scripts, ChatGPT for brainstorming user-research synthesis, and custom n8n + Claude workflows for B2B sales outreach (Kolect AI). I'm also experimenting with agents that draft job-application forms (this very pipeline!), which is what got me hooked on the \"AI at the seam between intent and execution\" thesis.",
       "tags": ["ai_usage", "tools"]
+    },
+    {
+      "match": "which areas of marketing are you most interested",
+      "answer_template": "Demand generation/lead generation, content marketing, and analytics/reporting. I like the part of marketing where messaging, audience insight, channel experiments, and funnel metrics meet, because you can quickly see whether the work is creating qualified pipeline.",
+      "tags": ["directive", "marketing_interest"]
+    },
+    {
+      "match": "when you think about .{0,10}good marketing",
+      "answer_template": "Good marketing makes the right customer understand the problem, trust the solution, and take the next useful step. I know it is working when it improves measurable behavior: qualified traffic, conversion between funnel stages, CAC/payback, retention, or sales feedback quality.",
+      "tags": ["directive", "marketing_thinking"]
+    },
+    {
+      "match": "when joining a marketing team",
+      "answer_template": "I would first want to understand the ICP, the funnel model, current goals, what channels are already working, what data the team trusts, and where handoffs with sales or client teams break down. Then I would look for small experiments I can help ship quickly.",
+      "tags": ["directive", "team_onboarding"]
+    },
+    {
+      "match": "if yes, please briefly describe.*email marketing|context in which you used it",
+      "answer_template": "I used email in Kolect AI growth work and for student/community projects: drafting outbound sequences, segmenting audiences, testing subject lines and CTAs, and tracking replies/conversions. Tools included HubSpot/Google Sheets, n8n automations, and AI-assisted copy variants. Key takeaway: email works when it is specific to the audience and tied to a clear next action.",
+      "tags": ["directive", "email_marketing"]
+    },
+    {
+      "match": "what experience.*demand generation internship|what experience.*help you succeed",
+      "answer_template": "My strongest relevant experience is combining product, growth, and data. At Kolect AI I worked on B2B GTM material, outreach scripts, and automated workflows; with Semori and Resume2Web I built products and then tested positioning with real users. I am comfortable turning a fuzzy audience/problem into a hypothesis, a message, a channel test, and a simple metric to learn from.",
+      "tags": ["directive", "demand_generation"]
     },
     {
       "match": "(when.{0,10}(can|could).{0,5}you.{0,5}start|start date|earliest start|hire.{0,10}as soon|availability|when.{0,10}available)",
@@ -54,7 +124,8 @@
   "multichoice_preferences": {
     "how_did_you_hear": ["LinkedIn", "Online", "Other", "Google"],
     "years_of_experience": ["< 1", "<1", "0-1", "1", "0", "Less than 1"],
-    "seniority_level": ["Intern", "Student", "Entry", "Junior"]
+    "seniority_level": ["Intern", "Student", "Entry", "Junior"],
+    "work_term_availability": ["Summer 2026", "Fall 2026", "Spring 2027", "Summer", "Fall", "Spring"]
   },
 
   "location_preferences": {
