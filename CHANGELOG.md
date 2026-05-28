@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+- Regression test harness using Node's built-in `node --test` (zero deps):
+  `test/*.test.mjs` locks the role-type gate (full-time-leak prevention +
+  `roleTypeConflict`), dedup normalization (double-submit guard),
+  answer-template rendering (incl. honest F-1 future-sponsorship), and
+  `answer_bank`/`essay_profile.template` JSON shape + regex validity. Added a
+  GitHub Actions CI workflow (`.github/workflows/ci.yml`) that runs the suite,
+  the role-guard smoke test, and a `node --check` of every shared module on
+  push/PR. Run locally with `npm test` / `npm run test:smoke`.
+
 ## [2.2.0] - 2026-05-28 — Supervisor stack, discovery, role-type targeting, and safety hardening
 
 ### Added
