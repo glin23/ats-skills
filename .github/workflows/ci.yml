@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Unit tests (node --test)
+        run: node --test test/*.test.mjs
+      - name: Role-guard smoke test
+        run: node scripts/role_guard_smoke.mjs
+      - name: Syntax-check all shared modules
+        run: |
+          set -e
+          for f in $(find shared scripts -name '*.mjs'); do node --check "$f"; done

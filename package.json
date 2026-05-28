@@ -1,0 +1,13 @@
+{
+  "name": "mrweirdo-jobs",
+  "version": "2.2.0",
+  "private": true,
+  "description": "Resume-driven job search automation for US college students (Claude Code + Codex skill collection with a Node 24/CDP backend).",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:smoke": "node scripts/role_guard_smoke.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
