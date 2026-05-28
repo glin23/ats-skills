@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+- `shared/apply_report.mjs` now renders a screenshot-ready **funnel
+  battle-report card** at the top of the report — built for honest
+  build-in-public sharing on 小红书 / Twitter. It frames a run as a funnel
+  (jobs scored → matched internships → auto-applied & verified → skipped
+  honestly) instead of a vanity submit count, with proportional bars, a
+  surfaced sample of real skip reasons, a "0 fabricated answers" honesty
+  badge, and a compact recent-verified-submissions list. Self-contained
+  HTML, inline CSS, system fonts, zero external assets. New CLI flags:
+  `--window all` (default, cumulative) / `--window today`, and an optional
+  `--elapsed-min N` pill. The detailed per-row maintainer table is preserved
+  below the card. Backward compatible with `apply_batch.mjs`'s
+  `--since <date>` invocation (treated as a per-run "today" window).
+
 ### Changed
 - Extracted the safety-critical answer-routing decisions
   (`shared/answer_routing.mjs`) and the auto-apply eligibility gate
