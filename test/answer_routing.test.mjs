@@ -1,0 +1,55 @@
+// Locks the driver's safety-critical answer-routing decisions (extracted from
+// ashby_apply_driver.mjs). Includes the REAL question labels seen on live Ashby
+// forms so a regression would fail here.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  isSpecificCityLogisticsFact,
+  relocationPolicyOpen,
+  confirmedCitiesFrom,
+  mentionsConfirmedCity,
+  deriveWorkAuthAnswers,
+} from '../shared/answer_routing.mjs';
+
+test('isSpecificCityLogisticsFact: residence/transport FACTS, not willingness', () => {
+  // real abby-care label (conflates residence fact + willingness) -> treated as FACT
+  assert.equal(isSpecificCityLogisticsFact('Are you currently located in the SF Bay Area? Or, if not located in the Bay Area, are you open to relocation?'), true);
+  assert.equal(isSpecificCityLogisticsFact('Do you have reliable transportation to our Cincinnati office?'), true);
+  assert.equal(isSpecificCityLogisticsFact('Do you currently reside in Boston?'), true);
+  // real fuel-cycle label (pure willingness) -> NOT a fact
+  assert.equal(isSpecificCityLogisticsFact('Are you willing and able to work in-office three days per week as required for this role?'), false);
+  assert.equal(isSpecificCityLogisticsFact('Are you open to relocation for this role?'), false);
+});
+
+test('relocationPolicyOpen reads geographic_preference (whole-intent or inner shape)', () => {
+  const openWhole = { search_intent: { geographic_preference: { relocation_policy: 'anywhere_legal_work', willing_to_relocate_for_internship: true } } };
+  assert.equal(relocationPolicyOpen(openWhole), true);
+  assert.equal(relocationPolicyOpen({ geographic_preference: { relocation_policy: 'anywhere_legal_work', willing_to_relocate_for_internship: true } }), true);
+  assert.equal(relocationPolicyOpen({ search_intent: { geographic_preference: { relocation_policy: 'fixed_metros', willing_to_relocate_for_internship: true } } }), false);
+  assert.equal(relocationPolicyOpen({}), false);
+});
+
+test('confirmedCities lowercases; mentionsConfirmedCity matches case-insensitively', () => {
+  const profile = { factual_gap_fields: { onsite_location_logistics: { confirmed_cities: ['Cincinnati'] } } };
+  const cc = confirmedCitiesFrom(profile);
+  assert.deepEqual(cc, ['cincinnati']);
+  assert.equal(mentionsConfirmedCity('Do you currently reside in Cincinnati?', cc), true);
+  assert.equal(mentionsConfirmedCity('Do you currently reside in Boston?', cc), false);
+  assert.deepEqual(confirmedCitiesFrom({}), []);
+});
+
+test('deriveWorkAuthAnswers: F-1 OPT answers Yes/Yes (never a false no-sponsorship)', () => {
+  const f1 = deriveWorkAuthAnswers(
+    { work_authorization: { visa_status: 'F-1 OPT eligible', authorized_to_work_us: true, requires_sponsorship_future: true } },
+    {},
+  );
+  assert.equal(f1.sponsorAns, 'Yes');
+  assert.equal(f1.authorizedAns, 'Yes');
+  // a user who needs no future sponsorship falls back to the bank default
+  const noSpon = deriveWorkAuthAnswers(
+    { work_authorization: { authorized_to_work_us: true, requires_sponsorship_future: false } },
+    { yes_no_defaults: { sponsorship_future: 'No' } },
+  );
+  assert.equal(noSpon.sponsorAns, 'No');
+  assert.equal(noSpon.authorizedAns, 'Yes');
+});

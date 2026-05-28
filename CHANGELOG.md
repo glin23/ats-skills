@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+- Extracted the safety-critical answer-routing decisions
+  (`shared/answer_routing.mjs`) and the auto-apply eligibility gate
+  (`shared/eligibility.mjs`) into pure, importable modules — **verbatim** with
+  the prior inline logic — so they can be unit-tested without a browser tab or
+  a SQLite database. `ashby_apply_driver.mjs` and
+  `recompute_auto_apply_eligibility.mjs` now import them; `recompute --json`
+  produces an identical `by_reason` breakdown (behavior parity verified).
+  Added `test/answer_routing.test.mjs` (real abby-care / fuel-cycle labels +
+  F-1 work-auth honesty: an OPT user answers Yes/Yes, never a false
+  "no sponsorship") and `test/eligibility.test.mjs` (full-time-leak gate,
+  role-type-checked-before-fit ordering, double-submit guard). Suite: 18 → 31.
+
 ## [2.2.0] - 2026-05-28 — Supervisor stack, discovery, role-type targeting, safety hardening, and the first regression harness
 
 ### Added
