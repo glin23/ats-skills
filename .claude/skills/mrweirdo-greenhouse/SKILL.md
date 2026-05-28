@@ -18,7 +18,7 @@ description: Automate Greenhouse ATS application form filling using CDP via shar
 
 ## 前置要求
 
-1. **Chrome with CDP 9222 已启动**，使用隔离 profile（user uses lily Profile 7）：
+1. **Chrome with CDP 9222 已启动**，使用隔离 Chrome profile：
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
@@ -84,7 +84,7 @@ sleep 3
 node shared/cdp.mjs eval "$TAB" "GH.checkSuccess()"
 node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.png"
 ```
-`checkSuccess()` 返回 `{ok: true, urlMatch: true}` 表示 URL 含 `/confirmation`，是 Greenhouse 标准成功标志（the user's NICE 投递 5/18 已验证）。
+`checkSuccess()` 返回 `{ok: true, urlMatch: true}` 表示 URL 含 `/confirmation`，是 Greenhouse 标准成功标志。
 
 成功后 append 一行 JSON 到 `log/submitted.jsonl`：
 ```json

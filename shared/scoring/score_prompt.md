@@ -16,7 +16,8 @@ You are scoring how well a specific job listing matches the user's **search_inte
    - `search_intent.function_area` (may be null)
    - `search_intent.exclude_role_keywords[]` — titles that should kill the score
    - `search_intent.geographic_preference` (`primary_country`, `preferred_metros`, `remote_acceptable`)
-   - `search_intent.seniority` (`intern` / `new_grad_FT` / `both`)
+   - `search_intent.seniority` (`intern` / `part_time` / `new_grad_FT` / `intern_or_part_time` / `both`)
+   - `search_intent.role_type_targets` when present, e.g. `["intern", "part_time"]`
    - `search_intent.caliber_signals.competitive_strengths[]` and `growth_areas[]` — calibrate which-tier-of-company is realistic for this user
 
 2. **Recent skip feedback** (last 20 entries from `~/.mrweirdo-jobs/feedback.jsonl`) — patterns the user has already rejected. **Don't recommend more of the same.** Inject the gist of these into your reasoning.
@@ -57,14 +58,14 @@ Return the whole batch as a JSON array `[ {...}, {...}, ... ]`.
 
 - `apply_url` — copy verbatim from input. Used to join scores back to the DB row.
 - `fit_score` — integer 0–10.
-- `role_type_match` — one of `"intern"`, `"new_grad_FT"`, `"other"`. Derive from job title + description versus `search_intent.seniority`.
-- `recommended` — boolean. **True iff every `dim_scores` value is ≥ 5 AND `fit_score` ≥ 6.** (Conservative.)
+- `role_type_match` — one of `"intern"`, `"part_time"`, `"new_grad_FT"`, `"other"`. Derive from job title + description versus `search_intent.role_type_targets` / `search_intent.seniority`.
+- `recommended` — boolean. **True iff every `dim_scores` value is ≥ 5 AND `fit_score` ≥ 5.** (Recall-first calibration; downstream dedupe/quota/platform guards still apply.)
 - `dim_scores` — all six keys required, each integer 0–10:
   - **role_fit**: does the role description match the user's `search_intent.role_categories` + `industry_targets` + `function_area`? High if the role is in one of the user's high-priority categories; medium if adjacent; low if unrelated to the user's resume trajectory.
   - **skills_match**: overlap between user resume's skills/projects and the JD's stated requirements.
   - **location_fit**: 10 if remote and `geographic_preference.remote_acceptable`; 8–10 if location matches a `preferred_metros` entry; 5–7 if same country (`primary_country`) but unfamiliar metro; 0–3 if outside `primary_country`.
   - **visa_compatible**: 10 if explicitly says "no sponsorship needed" matches user (`needs_sponsorship == false`) OR "sponsors visa" matches user (`needs_sponsorship == true`); 5 if not mentioned (default unknown); 0–2 if JD says "no sponsorship" and user needs it.
-  - **seniority_match**: 10 if `role_type_match == search_intent.seniority` OR `search_intent.seniority == "both"`; 4–6 if adjacent (e.g. user wants intern, role is new-grad); 0–2 if clearly mid-senior FT and user is intern.
+  - **seniority_match**: 10 if `role_type_match` is in `search_intent.role_type_targets`; if that array is absent, 10 when `role_type_match == search_intent.seniority` OR `search_intent.seniority == "both"`, 4–6 if adjacent, 0–2 if clearly outside the user's target type.
   - **exclude_check**: 10 if title contains NO `search_intent.exclude_role_keywords[]` (case-insensitive whole-word match); 0 if any exclude keyword matched. **Binary.**
 - `key_alignment` — 1–3 concrete short strings: specific reasons the user is well-matched. Reference actual things from resume/intent. ❌ "good fit"  ✅ "Marketing concentration + 2 prior brand internships align with brand-marketing intern title".
 - `key_gaps` — 1–3 concrete short strings: specific reasons it might not be a fit. ❌ "some skills missing"  ✅ "JD requires SQL + Tableau; user resume only mentions Excel".
@@ -77,6 +78,7 @@ Return the whole batch as a JSON array `[ {...}, {...}, ... ]`.
 These override scoring rubrics:
 
 - **Exclude keyword match**: any of `search_intent.exclude_role_keywords` appears as a whole word in the job title → set `exclude_check = 0`, subtract 5 from `fit_score`, set `recommended = false`. **This is a hard block.** Example: a marketing student's intent has `"software engineer"` in excludes; if title is "Software Engineer Intern", drop the score.
+- **Requested role-type mismatch**: if `search_intent.role_type_targets` exists and `role_type_match` is not in it, this is a hard role-type miss. Set `seniority_match ≤ 2` (NOT 10 — a full-time role is not a seniority match for an intern-only seeker, even if the work is relevant), set `fit_score ≤ 4`, and set `recommended = false`. If `role_type_targets` is absent, use `search_intent.seniority` with the same rule, except `"both"` allows intern + new-grad. Keep the score honest but low for manual review — never let a mismatched role type read as a strong fit. Worked example of the bug this prevents: a `new_grad_FT` "Associate Project Manager" for a `role_type_targets: ["intern","part_time"]` user must score `seniority_match ≤ 2` and `fit_score ≤ 4`, NOT `seniority_match: 10` / `fit_score: 7`. (A deterministic eligibility gate also blocks these from auto-apply, but the displayed score must still be honest.)
 - **Wrong role type**: user wants intern but job is clearly senior FT (e.g. title "Senior Manager"); user wants new_grad_FT but job is internship → `seniority_match ≤ 3`, fit_score reduced accordingly.
 - **Recruiter-FOR-students role**: job title is "University Recruiter" / "Campus Recruiter" / "Talent Acquisition Specialist" — this is recruiting people LIKE the user, not a role FOR the user. `fit_score ≤ 2`.
 - **Location hard miss**: location explicitly outside `primary_country` (e.g. "Berlin, Germany" when user wants US) AND not remote → `location_fit ≤ 2`, fit_score reduced.

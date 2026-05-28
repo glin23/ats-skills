@@ -1,9 +1,9 @@
 ---
 name: mrweirdo-onboard
-description: Main entry skill for mrweirdo-jobs after install. Trigger for first-run setup, resume intake, student job/internship discovery, scoring, and guarded auto-apply. Collects resume + short questionnaire + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
+description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, essay/cover-letter material drafting, and guarded auto-apply. Collects resume + a lightweight self-introduction + three hard-boundary questions + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
 ---
 
-# mrweirdo-onboard — v2 main entry
+# Mr. Weirdo Jobs Onboard — v2 main entry
 
 > **CRITICAL v2 BEHAVIOR — read the PRD red-line table before running this skill**:
 > v2 retracted the v1 red line "Submit 永远人工". This skill auto-submits supported applications without per-app user confirmation after resume intake, short questionnaire, and explicit parse confirmation. Several v1 docs say "用户 手点 Submit" — that was v1 truth, NOT v2.
@@ -12,8 +12,8 @@ description: Main entry skill for mrweirdo-jobs after install. Trigger for first
 
 This is the **only** skill a user should need to invoke after install. It runs:
 
-1. Resume → `search_intent.json` + `profile.json` (main agent vision over PDF)
-2. explicit resume parse confirmation gate
+1. Resume + self-introduction → `profile.json` + `search_intent.json` + `essay_profile.json` (main agent vision/reasoning)
+2. three hard-boundary questions + explicit parse confirmation gate
 3. Init / migrate `~/.mrweirdo-jobs/jobs.db` (v2 schema)
 4. Discovery — multi-source dispatcher (Greenhouse, Ashby, Lever, YC, RemoteOK, and other board APIs)
 5. Hard filter (rule-based: location, role, exclude) — drops ≥80%
@@ -50,7 +50,7 @@ These are the safety-net knobs. Hard-coded for v2.1; users can edit `~/.mrweirdo
 
 | Knob | Default | Meaning |
 |---|---|---|
-| `fit_score_threshold` | 7 | Only auto-apply when `fit_score >= 7` (out of 10) |
+| `fit_score_threshold` | 5 | Auto-apply when `fit_score >= 5` (out of 10), per user's recall-first calibration. |
 | `quota_guard_enabled` | true | Skip the ~25 large companies marked `apply_quota.enabled = true` (per-company quota, not daily blanket — protects against ATS bot-flag) |
 | `score_batch_size` | 50 | Jobs per main-agent scoring turn |
 | `max_auto_apply_per_run` | 10 | Public beta default. Override with `MRWEIRDO_MAX_AUTO_APPLY=50` only after the user explicitly asks for a larger batch. |
@@ -68,16 +68,16 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs (v2.1.6)                 ║
+║          👋  Welcome to Mr. Weirdo Jobs (v2.1.7)                 ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
 ║   Here's what happens next:                                      ║
 ║                                                                  ║
-║     1️⃣   You drop one resume (PDF, absolute path)                ║
-║     2️⃣   I read it + ask ~7 short questions to lock your        ║
-║          search intent (work auth, target roles, location)       ║
-║     3️⃣   I discover jobs across public ATS boards, score them,  ║
+║     1️⃣   You drop one resume + a short self-introduction         ║
+║     2️⃣   I ask 3 hard-boundary questions                         ║
+║          (work auth, location, legal/attestation policy)          ║
+║     3️⃣   I discover jobs, score them, draft essays when needed, ║
 ║          and auto-submit supported Greenhouse/Ashby matches.     ║
 ║                                                                  ║
 ║   You'll watch progress in your terminal. Afterwards, inspect    ║
@@ -88,7 +88,7 @@ If `~/.mrweirdo-jobs/.first_run` exists, this is genuinely their first run — b
 ║       Jobs database: ~/.mrweirdo-jobs/jobs.db (inspect with      ║
 ║       sqlite3 or `datasette serve <path> --open`)                ║
 ║                                                                  ║
-║   👉  Ready? Drop your resume path on the next prompt.           ║
+║   👉  Ready? Drop your resume path + short intro next.           ║
 ║                                                                  ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
@@ -98,7 +98,7 @@ Then immediately segue: "First let me do a 10-second pre-flight check, then I'll
 ### Returning-user preamble (compact, when no sentinel)
 
 ```
-mrweirdo onboard — resume → score → auto-apply (fit≥7, no daily blanket cap; per-company quota still on).
+mrweirdo onboard — resume + self-intro → score → auto-apply (fit≥5, no daily blanket cap; per-company quota still on).
 Running pre-flight checks…
 ```
 
@@ -151,9 +151,11 @@ echo "✅ Pre-flight OK. CDP $CDP_HOST alive, Node $NODE_MAJOR."
 
 Say to the user (Chinese-first since the project is bilingual but 用户 speaks Chinese):
 
-> 把你的简历 PDF 完整路径贴给我（绝对路径，例如 `/Users/you/Desktop/resume.pdf`）。我会读一遍 → 问几个关键问题 → 让你确认解析结果 → 跨平台找岗位 → 评分 → 小批量自动投递。确认解析前不会提交任何申请。
+> 把你的简历 PDF 完整路径贴给我（绝对路径，例如 `/Users/you/Desktop/resume.pdf`）。然后用 5-10 句话介绍一下你自己：你是谁、想找什么类型的实习/工作、最想强调的经历、喜欢的行业/方向、为什么想做这些职位、有什么特别想让公司知道的点。写得像跟朋友介绍自己一样就行，不用正式。确认解析前不会提交任何申请。
 
-Wait for user to give a path. Validate via Bash:
+Wait for the user to give both a resume path and a short self-introduction. If they only provide the resume path, validate/copy it first, then ask once for the self-introduction before proceeding. Store the self-introduction in working context as `SELF_INTRO_TEXT` and later write it into `essay_profile.json`.
+
+Validate the resume via Bash:
 
 ```bash
 RESUME_PATH="<path from user>"
@@ -165,47 +167,61 @@ echo "✅ Resume copied to $MRWEIRDO_HOME/resume.pdf"
 
 ---
 
-## Step 1.5 — Upfront intent questionnaire
+## Step 1.5 — Three hard-boundary questions
 
-Ask these before generating `profile.json` / `search_intent.json`. Do
-not wait until discovery or apply; these answers define the user's hard
-search boundaries.
+The self-introduction is the main narrative intake. Do **not** front-load a long questionnaire. Ask only the hard-boundary questions that must never be guessed from prose:
 
-Use AskUserQuestion in two calls if needed (max 4 questions per call).
-The user can pick A/B/C/D or use the auto-provided "Other" free-text
-option.
+Use AskUserQuestion once (3 questions). The user can pick A/B/C/D or use the auto-provided "Other" free-text option.
 
 | # | Question | Mode | Options | Why it matters |
 |---|---|---|---|---|
-| A1 | Intern cycle target | **multi-select** | `A) Summer 2026  B) Fall 2026  C) Spring 2027  D) Summer 2027` | Controls timely postings. Users often target 2+ cycles. |
-| A2 | Work authorization | **single-select** | `A) US Citizen / GC  B) F-1 (CPT/OPT 可)  C) F-1 + FT 需 sponsor  D) 其他` | Controls visa-compatible filtering and truthful ATS answers. |
-| A3 | Geographic / relocation policy | **single-select** | `A) 只看当前/学校城市附近  B) 只看我列出的 metro  C) 全美 anywhere，我愿意搬  D) 美国+中国/任何合法可工作地点，我愿意搬` | This is a hard boundary. Someone like Lee may be open to Austin/NYC/China; another student may only accept Boston. |
-| A4 | Intern hourly floor | **single-select** | `A) $20+/hr  B) $30+/hr  C) $40+/hr  D) 不限` | Soft scoring signal when comp is listed. |
-| A5 | Work mode preference | **single-select** | `A) 必须 Onsite  B) Onsite > Hybrid > Remote  C) 都行  D) 仅 Remote` | Separates relocation willingness from remote preference. |
+| A0 | Work authorization | **single-select** | `A) US Citizen / GC  B) F-1 (CPT/OPT 可)  C) F-1 + FT 需 sponsor  D) 其他` | Controls visa-compatible filtering and truthful ATS answers. |
+| A1 | Geographic / relocation policy | **single-select** | `A) 只看当前/学校城市附近  B) 只看我列出的 metro  C) 全美 anywhere，我愿意搬  D) 我列出的多个国家/地区都可以，我愿意搬` | Hard location boundary. Some students are local-only; others will relocate anywhere. |
+| A2 | Legal / regulated-role attestations | **single-select** | `A) 不保存默认回答，遇到法律/出口管制/亲属/背景调查题就跳过让我确认  B) 我明确确认：没有会影响入职的合同义务，也没有 prohibited-possessor 类法律限制  C) 其他/不确定` | Never guess legal, background, relatives-at-company, export-control, or regulated-role answers. |
 
-Parse A3 carefully:
-- A3-A → `relocation_policy="fixed_metros"`, `willing_to_relocate_for_internship=false`.
-- A3-B → `relocation_policy="selected_metros"`; ask/parse the named metros from the user's free text if they used Other, otherwise infer from school/current city plus resume city history.
-- A3-C → `relocation_policy="anywhere_primary_country"`, `countries_open_to=["US"]`, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US"]`.
-- A3-D → `relocation_policy="anywhere_legal_work"`, `countries_open_to=["US","CN"]` unless the user's text says otherwise, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US","China"]`.
+Infer softer fields from the resume + self-introduction when possible:
+- role type target (`intern`, `part_time`, `new_grad_FT`)
+- target cycle / earliest start
+- function and industry preferences
+- work mode preference
+- compensation floor
+- writing voice / cover-letter themes
+
+If a soft field is ambiguous, ask it later only when it blocks discovery, scoring, or a concrete application.
+
+Parse A1 carefully:
+- A1-A → `relocation_policy="fixed_metros"`, `willing_to_relocate_for_internship=false`.
+- A1-B → `relocation_policy="selected_metros"`; ask/parse the named metros from the user's free text if they used Other, otherwise infer from school/current city plus resume city history.
+- A1-C → `relocation_policy="anywhere_primary_country"`, `countries_open_to=["US"]`, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US"]`.
+- A1-D → `relocation_policy="anywhere_legal_work"`, `countries_open_to=["US","CN"]` unless the user's text says otherwise, `willing_to_relocate_for_internship=true`, `preferred_metros=["Anywhere US","China"]`.
 
 Keep these questionnaire answers in your working context as
-`UPFRONT_ANSWERS`. Step 2 uses them while drafting both JSON files.
+`HARD_BOUNDARY_ANSWERS`. Step 2 uses them while drafting all JSON files.
+For A2, write `profile.legal_attestations.conflicting_obligations=false`
+and `profile.legal_attestations.no_prohibited_possessor_status=true`
+only when the user explicitly selects/answers that confirmation. Otherwise
+leave both as `null`; the driver will skip those applications with a specific
+profile-specific blocker.
 
 ---
 
-## Step 2 — Read resume + generate search_intent + profile (main agent vision)
+## Step 2 — Read resume + generate profile, search_intent, essay_profile
 
-**This step is done by you (the main agent session)**, not by a subprocess. Use the Read tool on `$MRWEIRDO_HOME/resume.pdf` to ingest the PDF (Claude Code supports PDF vision via Read), then produce TWO JSON files inline.
+**This step is done by you (the main agent session)**, not by a subprocess. Use the Read tool on `$MRWEIRDO_HOME/resume.pdf` to ingest the PDF (Claude Code supports PDF vision via Read), then produce three JSON files inline.
 
 Read the schema from `shared/intelligence/intent_schema.json` for the `search_intent.json` shape.
 
 For `profile.json`, follow `shared/profile.template.json` shape (personal / education / work_authorization / demographics / experience_summary / skills / languages / target_filters).
 
+For `essay_profile.json`, follow `shared/essay_profile.template.json` shape if present. This file is private user state and is the reusable narrative source for cover letters and essay questions. It must contain only facts from the resume, self-introduction, and explicit user answers.
+
 ### Inline prompt — apply to the PDF you just read:
 
 ```
-You are analyzing a resume PDF to produce TWO JSON artifacts at once:
+You are analyzing a resume PDF plus a user self-introduction to produce THREE JSON artifacts at once.
+
+SELF_INTRO_TEXT:
+<paste the user's self-introduction verbatim here>
 
 1. profile.json — form-fill data the agent will paste into ATS applications. Keys:
    - personal { first_name, last_name, preferred_name?, email, phone, phone_country?,
@@ -213,18 +229,33 @@ You are analyzing a resume PDF to produce TWO JSON artifacts at once:
    - education { school, degree, major, minor?, graduation_date, gpa?, honors? }
    - work_authorization { status: "citizen"|"permanent_resident"|"f1_opt"|"f1_cpt"|"h1b"|"other"|null,
        needs_sponsor: boolean|null, sponsor_when?: string|null }
+   - legal_attestations { conflicting_obligations: boolean|null,
+       no_prohibited_possessor_status: boolean|null } — null unless explicitly confirmed in A2
    - demographics { gender?, race?, veteran?, disability? } — null unless explicit on resume
    - experience_summary [ { company, title, dates, key_skills [up to 5] } ] — top 5 recent
    - skills [string] — top 15 hard skills
    - languages [string]
    - resume_path: "<the path on disk>"
-   - standard_qa { ... } — seed from UPFRONT_ANSWERS when possible
+   - standard_qa { ... } — seed from HARD_BOUNDARY_ANSWERS + self-introduction when possible
        (`willing_to_relocate`, `willing_to_relocate_scope`, `preferred_work_arrangement`,
        `earliest_start_date`, etc.). Do not invent personal facts.
-   - target_filters — seed from UPFRONT_ANSWERS for legacy helpers
+   - target_filters — seed from HARD_BOUNDARY_ANSWERS for legacy helpers
        (`locations`, `countries_open_to`, `relocation_policy`, `min_fit_score`).
 
 2. search_intent.json — what jobs to look for (separate file, per shared/intelligence/intent_schema.json).
+
+3. essay_profile.json — reusable writing/materials memory for cover letters and essay questions. Keys:
+   - self_intro_raw: exact user self-introduction text
+   - voice { tone, formality, directness, avoid_claims }
+   - candidate_positioning { one_sentence_pitch, target_functions[], target_industries[], strongest_themes[] }
+   - proof_points[]: resume-backed stories with { label, context, actions, evidence, skills, use_for[] }
+   - project_stories[]: shipped projects, research, campus work, or job examples that can answer "tell us about a project"
+   - why_role_bank: reusable material for role families (PM, growth, ops, data, engineering, clinical, design, etc. derived from this user)
+   - why_industry_bank: reusable material for industries derived from resume/self-intro
+   - cover_letter_defaults { opening_angle, body_themes[], closing_angle, max_words, needs_user_review }
+   - hard_no_claims[]: things the system must not claim unless the user later confirms (clinical experience, security clearance, relatives at company, exact GPA if absent, etc.)
+   - dynamic_questions_to_ask_later[]: high-leverage questions to ask only if a batch has many matching essay/cover-letter blockers
+   - _meta { generated_at, source_resume_path, source_self_intro_present, schema_version }
 
 CRITICAL principles (do NOT skip):
 
@@ -252,27 +283,33 @@ A business student's excludes: "software engineer", "ml engineer", "data enginee
 
 For search_intent.geographic_preference:
   primary_country = "US" unless resume strongly says otherwise.
-  preferred_metros = derived from UPFRONT_ANSWERS A3 + school location + any explicit city mentions.
-  countries_open_to = derived from A3 (e.g. ["US"] for full-US, ["US","CN"] for Lee-style US+China).
+  preferred_metros = derived from HARD_BOUNDARY_ANSWERS A1 + school location + any explicit city mentions.
+  countries_open_to = derived from A1 (e.g. ["US"] for full-US, or the exact country list the user provided).
   relocation_policy = one of "fixed_metros" | "selected_metros" | "anywhere_primary_country" | "anywhere_legal_work".
   willing_to_relocate_for_internship = true iff the user says they will relocate for the internship.
-  remote_acceptable = true unless A5 says onsite-only.
-  work_mode_preference = from A5.
+  remote_acceptable = true unless self-introduction says remote is unacceptable.
+  work_mode_preference = inferred from self-introduction/resume, default "any" if unclear.
 
 For search_intent.seniority:
   intern         = currently mid-program (any year not graduating within 6 mo)
+  part_time      = explicitly wants part-time jobs only
+  intern_or_part_time = explicitly wants internship + part-time, but not FT
   new_grad_FT    = final year / graduating within 6 mo
   both           = ambiguous (graduating 6–12 mo out)
+Also set search_intent.role_type_targets from the self-introduction/resume, or
+from a follow-up question if ambiguous, as an array containing only `intern`,
+`part_time`, and/or `new_grad_FT`. This array is a hard auto-apply boundary and
+should be preferred over the legacy single `seniority` field.
 
 caliber_signals.competitive_strengths — be SPECIFIC. "Prior Stripe internship" not
 "strong background". caliber_signals.growth_areas — honest gaps. "First internship search,
 no industry experience yet" / "GPA below median for top-tier".
 
-Output ONLY two JSON code blocks back-to-back: first profile.json, then search_intent.json.
+Output ONLY three JSON code blocks back-to-back: first profile.json, then search_intent.json, then essay_profile.json.
 No prose between or around. The driver will parse them.
 ```
 
-You read the PDF, you apply the prompt, you produce both JSON blobs in your response.
+You read the PDF, you apply the prompt, you produce all three JSON blobs in your response.
 
 **Do NOT write these to disk yet** — Step 2.5 may refine them.
 
@@ -280,13 +317,13 @@ You read the PDF, you apply the prompt, you produce both JSON blobs in your resp
 
 ## Step 2.5 — Generate adaptive follow-up questionnaire
 
-After producing draft `profile.json` + `search_intent.json`, you (the main agent session) decide which follow-up questions to ask. The goal is to disambiguate things the resume cannot answer reliably, NOT to re-ask things the resume already says.
+After producing draft `profile.json` + `search_intent.json` + `essay_profile.json`, you (the main agent session) decide which follow-up questions to ask. The goal is to disambiguate things the resume/self-introduction cannot answer reliably, NOT to re-ask things the user already said.
 
-The five A questions were already asked in Step 1.5. Do **not** ask
+The three hard-boundary questions were already asked in Step 1.5. Do **not** ask
 them again unless the user's answer was unusable. This step is only for
-resume-specific ambiguity.
+resume/self-introduction-specific ambiguity.
 
-Single-select reasoning: A2 / A3 / A4 / A5 are semantically exclusive choices — you have ONE work-auth status, ONE relocation policy, ONE salary floor, ONE work-mode policy.
+Single-select reasoning: A0 / A1 / A2 are semantically exclusive hard boundaries — the user has one work-auth status, one relocation policy, and one legal-attestation policy. Soft preferences can be inferred from the self-introduction or asked later only when they matter.
 
 ### Conditional (ask only if resume signals ambiguity)
 
@@ -297,12 +334,12 @@ For each, decide AT INSPECTION TIME based on the resume you just read. If the tr
 | B1 | Resume spans 2+ distinct functions | 你想要的 function (可多选) | **multi-select** | **3 AI-derived options based on resume's top-3 best-fit functions** — e.g. for a business student with PM projects + VC analyst + growth-ops experience: `A) Product Manager  B) Operations / Growth  C) Investment / VC Analyst`. **Do NOT use the fixed PM/Growth/Eng/Strategy list** — generate per resume. Other (auto) lets user add custom (e.g. "Investment Banking") |
 | B2 | Resume spans 2+ industries | 行业偏好 (可多选) | **multi-select** | **3 AI-derived options based on resume's top-3 best-fit industries** — e.g. `A) AI / ML startups  B) B2B SaaS  C) Venture Capital`. Other for user-added (e.g. "EdTech", "Healthcare AI") |
 | B3 | Resume shows major-switch trajectory (e.g. business undergrad + recent CS bootcamp) | 你的主攻方向 (可多选) | **multi-select** | `A) 沿用原专业  B) 转型方向  C) 桥接位置 (e.g. Solutions Eng / AI PM)  D) 让我推荐` |
-| B4 | Senior + mentions both intern + new-grad | intern 还是 FT (可多选) | **multi-select** | `A) 仅 intern  B) 仅 new grad FT  C) 都看` — multi-select lets user pick "intern + new grad" without "都看" framing |
+| B4 | Senior + mentions multiple role types | intern / part-time / FT 目标 (可多选) | **multi-select** | `A) 仅 internship  B) internship + part-time  C) 仅 new grad FT  D) 都看` — maps to `role_type_targets`; never collapse part-time into FT |
 | B5 | No strong caliber signals | target 公司 tier (可多选) | **multi-select** | `A) 早期 startup  B) 中型 (Series B-C)  C) 大公司/上市` — multi-select lets user pick "startup + 大公司" while skipping mid (a common "barbell" pattern) |
 
 ### Hard cap on follow-up question count
 
-- Upfront A questions: already asked in Step 1.5
+- Hard-boundary questions: already asked in Step 1.5
 - Conditional B questions: 0-5 depending on resume
 - **Cap: 5 follow-up questions total**. If your conditional logic would fire ≥6, pick the 5 highest-impact and skip the rest.
 
@@ -321,16 +358,16 @@ Each question's first option should be the **AI-inferred default** based on the 
 ### Decision-impact ranking (for picking top 4 when needed)
 
 In rough order:
-1. A2 work authorization (controls visa-compatible filtering — affects what JDs are even visible)
-2. A1 intern cycle target (controls which postings are timely)
-3. A3 geographic flexibility (controls location filter)
+1. A0 work authorization (controls visa-compatible filtering — affects what JDs are even visible)
+2. A1 geographic flexibility (controls location filter)
+3. role type / target cycle ambiguity (controls which postings are timely)
 4. B1 function preference (controls role_categories ranking) — only if triggered
 5. B3 major-switch direction (controls whether to switch entire role_categories list) — only if triggered
 6. B4 intern vs FT (controls seniority filter) — only if triggered
 7. B2 industry preference (re-ranks industry_targets) — only if triggered
-8. A5 onsite preference (refines location scoring)
-9. A4 salary floor (refines scoring, soft signal)
-10. B5 company tier (refines caliber calibration) — only if triggered
+8. salary / compensation floor if it was explicit in self-introduction
+9. B5 company tier (refines caliber calibration) — only if triggered
+10. writing voice / cover-letter preference — only if unclear and many essay/cover-letter blockers exist
 
 ---
 
@@ -340,35 +377,42 @@ The user submits answers via the AskUserQuestion UI. You receive back the choice
 
 If user answered "Other" with free text:
 - Parse the text into the appropriate field.
-- Example: A2 "Other" with text "H-1B from current employer" → set `user_summary.work_authorization = "H-1B"`, `user_summary.needs_sponsorship = false`.
-- Example: A3 "Other" with text "Boston + LA + Austin" → set `geographic_preference.preferred_metros = ["Boston", "Los Angeles", "Austin"]`.
+- Example: A0 "Other" with text "H-1B from current employer" → set `user_summary.work_authorization = "H-1B"`, `user_summary.needs_sponsorship = false`.
+- Example: A1 "Other" with text "Boston + LA + Austin" → set `geographic_preference.preferred_metros = ["Boston", "Los Angeles", "Austin"]`.
 
 If user did not answer (e.g. timed out, AskUserQuestion returned no answers): treat as accept-all-defaults — use each question's recommended option.
 
 ---
 
-## Step 2.7 — Refine search_intent + profile with answers
+## Step 2.7 — Refine profile + search_intent + essay_profile with answers
 
-Now you have the upfront questionnaire results plus any adaptive follow-up answers. Update your draft JSONs:
+Now you have the self-introduction, hard-boundary answers, and any adaptive follow-up answers. Update your draft JSONs:
 
-- **A1 → `search_intent.seniority`** + a new `target_cycle` field (`Summer 2026` etc.) → write into `search_intent.search_intent.seniority` and add `target_cycle` as a sibling field for the discovery layer.
-- **A2 → `user_summary.work_authorization`** + `user_summary.needs_sponsorship`.
-- **A3 → `geographic_preference.preferred_metros`, `countries_open_to`, `relocation_policy`, `willing_to_relocate_for_internship`, and `remote_acceptable`**. Also mirror to `profile.standard_qa.willing_to_relocate`, `profile.standard_qa.willing_to_relocate_scope`, `profile.target_filters.locations`, `profile.target_filters.countries_open_to`, and `profile.target_filters.relocation_policy`.
-- **A4 → `salary_floor_hourly`** added to `search_intent.search_intent` as a new field — the AI scorer (Step 7) will consider it when JD lists comp.
-- **A5 → `geographic_preference.work_mode_preference`** = `"onsite_required" | "onsite_pref" | "any" | "remote_only"` and mirror a human-readable value to `profile.standard_qa.preferred_work_arrangement`.
+- **A0 → `user_summary.work_authorization`** + `user_summary.needs_sponsorship`, and mirror to `profile.work_authorization`. If sponsorship is unclear, use `null` and make the driver skip sponsorship-sensitive rows instead of guessing.
+- **A1 → `geographic_preference.preferred_metros`, `countries_open_to`, `relocation_policy`, `willing_to_relocate_for_internship`, and `remote_acceptable`**. Also mirror to `profile.standard_qa.willing_to_relocate`, `profile.standard_qa.willing_to_relocate_scope`, `profile.target_filters.locations`, `profile.target_filters.countries_open_to`, and `profile.target_filters.relocation_policy`.
+- **A2 → legal attestations**. Write `false` values only if the user explicitly confirmed the safe statement; otherwise leave null and add matching labels to `essay_profile.hard_no_claims`.
+- **Role type / target cycle** → infer from self-introduction + resume; ask a follow-up only if ambiguous. Then set `search_intent.role_type_targets` + legacy `search_intent.seniority`. Examples: internship only → `role_type_targets=["intern"]`, `seniority="intern"`; internship + part-time → `["intern","part_time"]`, `seniority="intern_or_part_time"`; new-grad only → `["new_grad_FT"]`, `seniority="new_grad_FT"`.
+- **Target cycle / earliest start** → infer from self-introduction, resume dates, graduation date, or follow-up. Write `target_cycle` and `profile.standard_qa.earliest_start_date` when known.
+- **Compensation floor** → infer only if explicit; otherwise leave null/blank. For internship/part-time targets, write `salary_floor_hourly`; for full-time targets, write `salary_floor_annual`.
+- **Work mode preference** → infer from self-introduction/location policy, default `"any"` if unclear; mirror a human-readable value to `profile.standard_qa.preferred_work_arrangement`.
 - **B1 (multi-select) → `function_area`** = **array** of selected functions (e.g. `["Product", "Operations", "Investment"]`). Re-derive `role_categories` to put HIGH-priority titles for EACH selected function, not just one.
 - **B2 (multi-select) → `industry_targets`** = re-ranked list with selected industries first.
 - **B3 (multi-select) → re-derive `role_categories`**: if user picked multiple paths, generate HIGH-priority entries for each path. Old single-track high entries become medium/low.
-- **B4 (multi-select) → `seniority`** = derived: 1 choice ("仅 intern" / "仅 new grad FT") sets explicit; 2+ choices sets `"both"`.
+- **B4 (multi-select) → `role_type_targets`** = derived from selected role types; keep `seniority` as the nearest legacy string (`intern`, `part_time`, `new_grad_FT`, `intern_or_part_time`, or `both`).
 - **B5 (multi-select) → `caliber_signals.target_company_tiers`** = array (e.g. `["early_startup", "large_public"]` for barbell pattern). Scorer uses this to weight which tier-of-companies to surface.
+- **Essay/Cover-letter writing memory** → update `essay_profile` so it can answer future essay batches without re-asking every job:
+  - put selected functions/industries into `candidate_positioning`
+  - convert self-introduction claims into resume-backed `proof_points`
+  - add reusable but truthful `why_role_bank` and `why_industry_bank`
+  - keep `hard_no_claims` for anything not proven or not explicitly authorized
 
-After refinement, your `profile.json` and `search_intent.json` are FINAL. Proceed to Step 3 (parse confirmation gate) with the refined versions.
+After refinement, your `profile.json`, `search_intent.json`, and `essay_profile.json` are FINAL. Proceed to Step 3 (parse confirmation gate) with the refined versions.
 
 ---
 
 ## Step 3 — Write JSON + informed confirmation
 
-Save both JSONs:
+Save all three JSONs:
 
 ```bash
 # Save what you produced (paste each JSON block to its file)
@@ -380,7 +424,11 @@ cat > "$MRWEIRDO_HOME/search_intent.json" << 'EOF'
 <search_intent.json content from Step 2>
 EOF
 
-chmod 600 "$MRWEIRDO_HOME"/{profile.json,search_intent.json}
+cat > "$MRWEIRDO_HOME/essay_profile.json" << 'EOF'
+<essay_profile.json content from Step 2>
+EOF
+
+chmod 600 "$MRWEIRDO_HOME"/{profile.json,search_intent.json,essay_profile.json}
 ```
 
 Then **show the user a parse summary and confirm via AskUserQuestion** — this is the only chance to spot a parse error before the agent starts spending applications. (The previous `sleep 5` opt-out window was unreachable from Bash since `sleep` cannot receive user input mid-execution.)
@@ -399,6 +447,8 @@ Display the summary in your assistant message:
    行业:     <search_intent.search_intent.industry_targets[0..3]>
    地理:     <search_intent.search_intent.geographic_preference.preferred_metros>
    Relocate: <search_intent.search_intent.geographic_preference.relocation_policy> · countries=<countries_open_to>
+   写作素材: <essay_profile.candidate_positioning.strongest_themes[0..3]>
+   禁止乱写: <essay_profile.hard_no_claims[0..3]>
    排除:     <search_intent.search_intent.exclude_role_keywords[0..5]>
 ```
 
@@ -406,8 +456,8 @@ Then ask once via AskUserQuestion (single-select, 2 options, "继续" is the def
 
 - **Question**: `上面的解析对吗？确认后立刻开始 discovery + AI scoring + 自动投递。`
 - **Header**: `Resume parse`
-- **Option A (default, first)**: label = `继续 — 解析正确`, description = `确认 profile/search_intent，进入 Step 4 init DB → discovery → 自动投递。`
-- **Option B**: label = `停 — 解析有错`, description = `Skill 立即终止。用户 自己编辑 ~/.mrweirdo-jobs/{profile,search_intent}.json 后再次运行 /mrweirdo-onboard。`
+- **Option A (default, first)**: label = `继续 — 解析正确`, description = `确认 profile/search_intent/essay_profile，进入 Step 4 init DB → discovery → 自动投递。`
+- **Option B**: label = `停 — 解析有错`, description = `Skill 立即终止。用户 自己编辑 ~/.mrweirdo-jobs/{profile,search_intent,essay_profile}.json 后再次运行 /mrweirdo-onboard。`
 
 If user picks B (or supplies "Other" custom text indicating disagreement): print which files to edit, then halt — do NOT proceed to Step 4. If user picks A: proceed to Step 4.
 
@@ -435,6 +485,18 @@ echo "Run ID: $RUN_ID"
 
 v2 fans out the user's keyword intent to ALL discovery sources in parallel via `shared/sourcing/dispatcher.mjs`. The platform list is fixed-broad regardless of major. The user's `search_intent.search_intent.role_categories[].title_pattern` is what scopes the search; LinkedIn and Indeed are permanently excluded (red line).
 
+Preferred path: use the checked CLI wrapper. `--plan` is a no-network sanity
+check; `--run` performs discovery, hard-filtering, and writes
+`/tmp/mrweirdo-onboard/{discovered,filtered,to_score}.json`.
+
+```bash
+node "$MRWEIRDO_REPO_ROOT/shared/discover_candidates.mjs" --plan
+node "$MRWEIRDO_REPO_ROOT/shared/discover_candidates.mjs" --run
+```
+
+The expanded flow below documents what the CLI does internally and remains the
+reference if the main agent needs to debug discovery source behavior.
+
 ```bash
 mkdir -p /tmp/mrweirdo-onboard
 
@@ -446,16 +508,24 @@ mkdir -p /tmp/mrweirdo-onboard
 # / etc. all evade word-boundary literal match). Broader tokens like "Intern" surface
 # 50-100x more candidates, with the AI scorer applying real relevance downstream.
 #
-# Derive seniority-keyword set from the user's A1 questionnaire answer:
-#   - "intern" cycles → ["Intern", "Internship", "Co-op", "Coop", "Summer", "APM"]
+# Derive seniority-keyword set from role_type_targets inferred during onboarding:
+#   - "intern" cycles → ["Intern", "Internship", "Co-op", "Coop", "Summer", "APM Intern"]
+#   - "part_time"     → ["Part-time", "Part time", "Working Student", "Student Assistant"]
 #   - "new_grad_FT"   → ["New Grad", "New Graduate", "Early Career", "Associate", "Graduate"]
 #   - "both"          → union of above
 KEYWORDS_JSON=$(node -e "
 const intent = JSON.parse(require('fs').readFileSync('$MRWEIRDO_HOME/search_intent.json'));
 const s = intent.search_intent.seniority || 'intern';
-const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM', 'Summer'];
+const explicit = intent.search_intent.role_type_targets || intent.search_intent.target_role_types || [];
+const targets = explicit.length ? explicit : (s === 'both' ? ['intern', 'new_grad_FT'] : s === 'intern_or_part_time' ? ['intern', 'part_time'] : [s]);
+const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM Intern', 'Summer'];
+const partTimeKws = ['Part-time', 'Part time', 'Working Student', 'Student Assistant'];
 const ftKws = ['New Grad', 'New Graduate', 'Early Career', 'Associate', 'Graduate'];
-const kws = s === 'intern' ? internKws : s === 'new_grad_FT' ? ftKws : [...internKws, ...ftKws];
+const kws = [
+  ...(targets.includes('intern') ? internKws : []),
+  ...(targets.includes('part_time') ? partTimeKws : []),
+  ...(targets.includes('new_grad_FT') ? ftKws : []),
+];
 console.log(JSON.stringify(kws));
 ")
 
@@ -505,7 +575,9 @@ Drop ≥80% noise via pure rules from `search_intent`. Cheap before scoring.
 
 ```bash
 node -e "
+(async () => {
 const fs = require('fs');
+const { roleTypesFromSearchIntent, passesAllowedRoleType } = await import('$MRWEIRDO_REPO_ROOT/shared/role_types.mjs');
 const intent = JSON.parse(fs.readFileSync('$MRWEIRDO_HOME/search_intent.json'));
 const jobs  = JSON.parse(fs.readFileSync('/tmp/mrweirdo-onboard/discovered.json'));
 
@@ -517,7 +589,7 @@ const relocationPolicy = geo.relocation_policy || 'selected_metros';
 const broadRelocation = relocationPolicy === 'anywhere_primary_country' || relocationPolicy === 'anywhere_legal_work';
 const remoteOK = geo.remote_acceptable !== false;
 const preferredMetros = (geo.preferred_metros || []).map(s => s.toLowerCase());
-const seniority = intent.search_intent.seniority || 'both';
+const roleTypeTargets = roleTypesFromSearchIntent(intent.search_intent || {});
 
 function passesExclude(title) {
   const t = (title || '').toLowerCase();
@@ -583,22 +655,10 @@ function passesLocation(loc) {
   return true; // unknown → keep, scorer will judge
 }
 
-function passesSeniority(title, seniority) {
-  const t = (title || '').toLowerCase();
-  // hard reject senior / staff / principal / director / VP regardless of intent
-  if (/\\b(senior|staff|principal|director|vp |head of |chief )\\b/.test(t)) return false;
-  // intern-only mode: require explicit intern signal AND reject explicit FT signal
-  if (seniority === 'intern') {
-    const internSignal = /\\b(intern|internship|co-?op|summer|apm|fellowship)\\b/.test(t);
-    const ftSignal     = /\\b(full[\\s-]?time|associate|new grad|new graduate|early career)\\b/.test(t);
-    if (!internSignal || ftSignal) return false;
-  }
-  return true;
-}
-
-const kept = jobs.filter(j => passesExclude(j.title) && passesLocation(j.location) && passesSeniority(j.title, seniority));
+const kept = jobs.filter(j => passesExclude(j.title) && passesLocation(j.location) && passesAllowedRoleType(j, roleTypeTargets));
 process.stderr.write('[hard-filter] ' + jobs.length + ' → ' + kept.length + '\n');
 process.stdout.write(JSON.stringify(kept));
+})().catch((e) => { console.error(e); process.exit(1); });
 " > /tmp/mrweirdo-onboard/filtered.json 2>>"$MRWEIRDO_HOME/log/onboard.log"
 
 FILTERED_COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('/tmp/mrweirdo-onboard/filtered.json')).length)")
@@ -607,7 +667,7 @@ echo "[hard-filter] $FILTERED_COUNT jobs after rule-based filter"
 
 If `FILTERED_COUNT == 0`: report "no matches across all sources for your profile — likely needs v2.1 (Computer-Use Handshake / school portals / industry boards) for non-tech majors" and stop the run.
 
-If `FILTERED_COUNT > 300`: cap to top 300 (sort by description length as quality proxy — longer JDs are more legit). Raised from 100 to give the AI scorer enough candidates that ~50–100 actually clear the fit≥7 gate.
+If `FILTERED_COUNT > 300`: cap to top 300 (sort by description length as quality proxy — longer JDs are more legit). Raised from 100 to give the AI scorer enough candidates that ~50–100 actually clear the fit≥5 gate.
 
 ```bash
 node -e "
@@ -671,16 +731,15 @@ const path = require('path');
 const repo = process.env.MRWEIRDO_REPO_ROOT;
 const home = process.env.MRWEIRDO_HOME;
 const RUN_ID = process.env.RUN_ID;
-const THRESHOLD = 7;
+const THRESHOLD = 5;
 
 (async () => {
   const db = await import(repo + '/shared/local_db.mjs');
-  // v2 quota guard: examples/lee_company_list.json provides the baseline of large-capped companies
-  // (用户's curated list; users can override with ~/.mrweirdo-jobs/company_list.user.json).
-  // Best-effort: missing file → no quota guard active.
+  const { classifyRoleType, roleTypesFromSearchIntent } = await import(repo + '/shared/role_types.mjs');
+  // v2 quota guard: user-owned company_list.user.json can mark large-capped companies.
+  // Best-effort: missing file → no quota guard active. Do not use author-specific examples as defaults.
   const candidatePaths = [
     process.env.MRWEIRDO_HOME + '/company_list.user.json',
-    repo + '/examples/lee_company_list.json',
   ];
   let companies = { companies: [] };
   for (const p of candidatePaths) {
@@ -716,6 +775,8 @@ const THRESHOLD = 7;
   // Public beta stable auto-submit path. Lever is discoverable/scored but
   // excluded from batch auto-submit until the CDP upload "100MB" issue is fixed.
   const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+  const intent = JSON.parse(fs.readFileSync(path.join(home, 'search_intent.json'), 'utf8'));
+  const wantedRoleTypes = new Set(roleTypesFromSearchIntent(intent.search_intent || {}));
 
   let eligible = 0;
   let stored  = 0;
@@ -724,7 +785,12 @@ const THRESHOLD = 7;
     const platform = platformFromUrl(j.apply_url);
     const capped = cappedNames.has((j.company || '').toLowerCase());
     const passThreshold = (s.fit_score ?? 0) >= THRESHOLD;
-    const ok = passThreshold && !capped && SUPPORTED_AUTO.has(platform);
+    const storedRoleType = s.role_type_match || j.role_type || 'other';
+    const recheckedRoleType = classifyRoleType(j);
+    const roleType = wantedRoleTypes.has(recheckedRoleType) ? recheckedRoleType : storedRoleType;
+    const roleOk = wantedRoleTypes.has(storedRoleType) && wantedRoleTypes.has(recheckedRoleType);
+    const recommended = s.recommended === true;
+    const ok = passThreshold && recommended && roleOk && !capped && SUPPORTED_AUTO.has(platform);
 
     const row = {
       company: j.company || '(unknown)',
@@ -735,7 +801,7 @@ const THRESHOLD = 7;
       status: '🤖 AI sourced',
       fit_score: s.fit_score ?? null,
       key_gaps: Array.isArray(s.key_gaps) ? s.key_gaps.join(' / ') : null,
-      role_type_match: s.role_type_match || null,
+      role_type_match: roleType,
       dim_scores: s.dim_scores || null,
       ats_platform: platform,
       apply_quota_limit: capped ? 1 : null,
@@ -774,7 +840,33 @@ Daily blanket cap was removed by user decision (2026-05-26). Per-company quota (
 
 ## Step 10 — Auto-apply dispatch loop
 
-For each eligible row in `v_auto_apply_eligible`, dispatch to the platform's `-auto` skill. Public beta default: process at most 10 rows per run unless the user explicitly asks for a bigger batch. Lee/maintainers can override with `MRWEIRDO_MAX_AUTO_APPLY=50`.
+For each eligible row, dispatch to the platform's `-auto` skill. Public beta default: process at most 10 rows per run unless the user explicitly asks for a bigger batch. Maintainers can override with `MRWEIRDO_MAX_AUTO_APPLY=50` after a small run looks sane.
+
+For supervisor/dogfood runs, prefer the checked supervisor entrypoint. It
+verifies or launches Chrome CDP, then delegates to the batch runner for dedupe,
+eligibility recompute, preflight, queue build, per-row validation, driver
+execution, evidence-bound recorder call, pacing, and final report. Real runs
+require `--real`; use `--dry-run` for no-submit validation.
+
+Run this command in the foreground. Do not use Claude Code background command
+mode for real apply batches, even when pacing means the run takes several
+minutes. The user expects visible per-row progress, and foreground output is
+part of the safety contract for a real application run.
+
+```bash
+MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
+    --real \
+    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+```
+
+`apply_supervisor.mjs` derives role targets from
+`~/.mrweirdo-jobs/search_intent.json` by default. Use
+`MRWEIRDO_ROLE_TYPE_TARGETS` or `--role-targets` only as an explicit user or
+maintainer override; do not default every user to internship/part-time.
+
+The expanded flow below documents what the runner enforces and is still the
+reference if the main agent needs to take over a row manually.
 
 ```bash
 MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}"
@@ -783,65 +875,74 @@ MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}"
 # This marks duplicate pending rows as skipped before queue selection.
 node "$MRWEIRDO_REPO_ROOT/shared/dedupe_jobs.mjs" --apply >>"$MRWEIRDO_HOME/log/onboard.log" 2>&1
 
-MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" node -e "
-import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
-  const { DatabaseSync } = await import('node:sqlite');
-  const db = new DatabaseSync(m.dbPath());
-  const maxRows = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
-  const rows = db.prepare(\`
-    WITH ranked AS (
-      SELECT id, company, title, apply_url, ats_platform, fit_score, updated_at,
-             ROW_NUMBER() OVER (
-               PARTITION BY lower(trim(company)), lower(trim(title))
-               ORDER BY fit_score DESC,
-                        CASE
-                          WHEN lower(apply_url) LIKE '%job-boards.greenhouse.io%' THEN 0
-                          WHEN lower(apply_url) LIKE '%boards.greenhouse.io%' THEN 1
-                          WHEN lower(apply_url) LIKE '%ashbyhq.com%' THEN 2
-                          ELSE 9
-                        END,
-                        updated_at DESC,
-                        id ASC
-             ) AS rn
-        FROM v_auto_apply_eligible
-       WHERE fit_score >= 7
-    )
-    SELECT id, company, title, apply_url, ats_platform, fit_score
-      FROM ranked
-     WHERE rn = 1
-     ORDER BY fit_score DESC, updated_at DESC
-     LIMIT ?
-  \`).all(maxRows);
-  for (const r of rows) console.log(JSON.stringify(r));
-});
-" > /tmp/mrweirdo-onboard/queue.jsonl
+# Recompute eligibility from the current target role types + fit threshold.
+# This keeps older DBs honest after threshold/role-type calibration changes.
+node "$MRWEIRDO_REPO_ROOT/shared/recompute_auto_apply_eligibility.mjs" --apply >>"$MRWEIRDO_HOME/log/onboard.log" 2>&1
+
+# Supervisor gate: fail closed before touching ATS pages if profile assets,
+# role targets, queue validation, smoke checks, or CDP are not ready.
+MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" \
+  node "$MRWEIRDO_REPO_ROOT/shared/supervisor_preflight.mjs" --json \
+  > /tmp/mrweirdo-onboard/supervisor-preflight.json
+
+MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" \
+  node "$MRWEIRDO_REPO_ROOT/shared/auto_apply_queue.mjs" --summary \
+  > /tmp/mrweirdo-onboard/queue.jsonl
 
 QUEUE_SIZE=$(wc -l < /tmp/mrweirdo-onboard/queue.jsonl)
 echo "[apply] dispatching $QUEUE_SIZE rows (cap=$MAX_AUTO_APPLY)"
+if [ "$QUEUE_SIZE" -lt "$MAX_AUTO_APPLY" ]; then
+  MRWEIRDO_MAX_AUTO_APPLY="$MAX_AUTO_APPLY" \
+    node "$MRWEIRDO_REPO_ROOT/shared/queue_diagnostics.mjs" --json \
+    > /tmp/mrweirdo-onboard/queue-diagnostics.json
+  echo "[apply] queue shortfall; see /tmp/mrweirdo-onboard/queue-diagnostics.json"
+
+  QUEUE_REVIEW_PATH=$(node "$MRWEIRDO_REPO_ROOT/shared/queue_review_report.mjs")
+  echo "[apply] queue review HTML: $QUEUE_REVIEW_PATH"
+fi
 ```
+
+**Pre-submit queue visibility (real runs only)**: before dispatching the first row of a `--real` batch, the main agent MUST surface the queued candidates to the user so no application goes out under their identity to a company they never saw. Print the queue as a compact table — one line per row with `company`, `title`, `fit_score`, `ats_platform`, and `location` (read these straight from `queue.jsonl`). Lead with the count and the per-run cap, e.g. `[apply] 7 rows queued (cap=10) — review before submit`. The HTML at `$QUEUE_REVIEW_PATH` (already generated above) is the richer view; mention its path.
+
+Keep this lightweight — it is visibility, not a heavy gate:
+- If the user is present/interactive, ask once for a quick go-ahead (a single confirm prompt covering the whole batch, not per-row), and let them name any rows to drop. Honor drops by marking those rows skipped with `skip_reason='user_excluded_pre_submit'` before the loop.
+- If the run is unattended, still print the full table first so the user can interrupt before submits begin; the pacing sleep between rows (see Pacing) preserves a real interrupt window.
+Do not re-confirm individual rows once the batch is approved, and do not add this surface to `--dry-run` runs (nothing is submitted there).
 
 **Per row in the queue**: invoke the matching platform skill **inline** (you, the main agent, follow each sub-skill's instructions per row):
 
+- Before invoking any `-auto` helper, set `ROW_ID` from the JSONL row and run:
+  ```bash
+  node "$MRWEIRDO_REPO_ROOT/shared/validate_auto_row.mjs" --row-id "$ROW_ID"
+  ```
+  If this fails, mark the row skipped with that exact reason and do not open
+  the ATS page. This is the final guard against direct helper misuse or stale DB
+  eligibility.
 - `ats_platform == 'greenhouse'` → follow `.claude/skills/mrweirdo-greenhouse-auto/SKILL.md` for that URL. After `GH.fillForm` and the gap-fill pass (Step 5.5 in that skill), upload the resume and submit.
 - `ats_platform == 'ashby'`      → follow `.claude/skills/mrweirdo-ashby-auto/SKILL.md`. Ashby's `fillForm` returns a `plan` array that MUST be dispatched via `shared/sourcing/_executors/ashby_plan_executor.mjs` (the skill walks you through the call). Don't try to dispatch typetext from in-page JS — Ashby's react-hook-form requires CDP `Input.insertText` (`isTrusted=true`).
 - `ats_platform == 'lever'`      → do not auto-submit in public beta. Mark skipped with `skip_reason='lever_upload_unstable_public_beta'` unless the user explicitly chose a manual Lever single-URL flow.
 
-After EACH successful auto-submit, append to `daily_count.jsonl`:
+**Fill impactful OPTIONAL essays — don't leave them blank.** The auto-skills' inferred-fill pass (Step 5.5 in `mrweirdo-greenhouse-auto` / `mrweirdo-ashby-auto`) only targets `findEmptyRequired()`, so optional free-text essays slip through unfilled. After the required-field gap-fill, also scan the form for OPTIONAL free-text / textarea fields whose label is a "why do you want to work here / why this company / why this role / what interests you about us" or cover-letter prompt. These SHOULD be filled — especially for rows with `fit_score >= 7` — using the same answer-dispatch mechanism the auto-skill already documents (`GH.setText` / the Ashby plan executor), sourced from `essay_profile.json` (`proof_points`, `why_role_bank`, `why_industry_bank`, `cover_letter_defaults`) rather than skipped. Tailor lightly to the company/role from the JD; respect `cover_letter_defaults.max_words`. Keep the existing honesty guardrails: never invent facts, and if a strong-fit essay needs a fact not present in `essay_profile.json` (or `profile.json`), do not fabricate — leave that field blank and surface the gap in the per-row outcome instead of forcing a submit on a fabrication. Truly low-value optional fields (e.g. "anything else?", referral codes) may still be left blank.
+
+After EACH driver run, capture the complete driver output to a per-row file and
+let the recorder update `jobs.db`. **Do not hand-write a DB status update.**
+The recorder only writes `✅ 已投` when the final structured driver outcome is
+`{"outcome":"submitted", ...}`; every other outcome becomes a specific
+`⚠️ 跳过未投` skip reason.
+
+```bash
+RESULT_FILE="/tmp/mrweirdo-onboard/apply-result-${ROW_ID}.jsonl"
+# The platform helper/driver stdout+stderr for this row must be tee'd here.
+node "$MRWEIRDO_REPO_ROOT/shared/record_apply_outcome.mjs" \
+  --row-id "$ROW_ID" \
+  --result-file "$RESULT_FILE"
+```
+
+Only after the recorder returns `{"action":"submitted", ...}` append to
+`daily_count.jsonl`:
 
 ```bash
 echo "{\"date\":\"$TODAY\",\"company\":\"$COMPANY\",\"apply_url\":\"$URL\",\"submitted_at\":\"$(date -u -Iseconds)\"}" >> "$MRWEIRDO_HOME/daily_count.jsonl"
-```
-
-And mark the DB row:
-
-```bash
-node -e "
-import('$MRWEIRDO_REPO_ROOT/shared/local_db.mjs').then(async (m) => {
-  const { DatabaseSync } = await import('node:sqlite');
-  const db = new DatabaseSync(m.dbPath());
-  db.prepare(\"UPDATE jobs SET status='✅ 已投', auto_submitted_at=datetime('now'), bot_note='mrweirdo-onboard v2 auto-apply' WHERE id = ?\").run($ROW_ID);
-});
-"
 ```
 
 Failure handling per row (PRD §Verification §4):
@@ -855,8 +956,13 @@ Failure handling per row (PRD §Verification §4):
 
 After the dispatch loop finishes:
 
-1. **Print the report** (template below).
-2. **Then delete the first-run sentinel** so subsequent runs use the compact preamble:
+1. **Generate the local HTML report**:
+   ```bash
+   REPORT_PATH=$(node "$MRWEIRDO_REPO_ROOT/shared/apply_report.mjs" --since "$(date -u +%Y-%m-%d)")
+   echo "📄 Mr. Weirdo Jobs report: $REPORT_PATH"
+   ```
+2. **Print the report summary** (template below).
+3. **Then delete the first-run sentinel** so subsequent runs use the compact preamble:
    ```bash
    [ -f "$MRWEIRDO_HOME/.first_run" ] && rm -f "$MRWEIRDO_HOME/.first_run"
    ```
@@ -879,11 +985,12 @@ Auto-applied: $N_SUBMITTED 家
 Skipped (rule):
   - large-company quota guard:  $N_CAPPED 家 (Google/Meta/... — use /mrweirdo-cherry-pick)
   - other-platform unsupported: $N_OTHER 家 (SmartRecruiters/iCIMS/JobVite/Handshake — v2.4+)
-  - fit_score < 7:              $N_LOW 家
+  - fit_score < 5:              $N_LOW 家
 
 Failures (auto-apply error):    $N_FAIL 家 (logged to ~/.mrweirdo-jobs/log/onboard.log)
 
 📂 Your local database: ~/.mrweirdo-jobs/jobs.db
+📄 HTML report: $REPORT_PATH
   Everything from this run is here. You can inspect it any time:
 
   • Browse in browser:
@@ -913,18 +1020,19 @@ Next steps:
 
 ## What this skill explicitly DOES NOT do
 
-- Does not ask for per-application approval after resume, questionnaire, and parse confirmation
+- Does not ask for per-application approval after resume, self-introduction, hard-boundary questions, and parse confirmation
 - Does not preview every application before submitting (parse confirmation gate is in Step 3)
 - Does not touch LinkedIn / Indeed / Glassdoor (permanent red line)
 - Does not auto-submit to large-quota companies (use `/mrweirdo-cherry-pick`)
 - Does not auto-submit to SmartRecruiters / iCIMS / JobVite / Handshake / Workday (current stable batch scope — those use v1 half-auto helpers manually)
-- Does not invent personal info / answer JD questions creatively (verbatim only)
+- Does not invent personal info. Essay/cover-letter answers may be phrased creatively, but claims must be grounded in resume, self-introduction, or explicit user answers.
 - Does not retry a failed apply (one shot per row)
 
 ## Critical do-nots
 
 - ❌ Do NOT pause to ask user "OK to submit?" — that breaks v2 design
 - ❌ Do NOT skip the explicit parse confirmation gate in Step 3 — that is the safety net against bad resume parses
+- ❌ Do NOT run real apply batches in Claude Code background mode. Use foreground execution so the user can see each row, blocker, and verified submit.
 - ❌ Do NOT batch-submit at >1/15s aggregate cadence (looks like a bot to ATS) — Step 10 should pace 30-90s between submits with jitter
 - ❌ Do NOT commit `~/.mrweirdo-jobs/` contents to git (all is user-private state)
 - ❌ Do NOT use the v1 `shared/matching/ai_scorer.mjs` (deleted) or `shared/onboarding/resume_parser.mjs` (deleted). All LLM work is inline by you in this skill.

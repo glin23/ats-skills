@@ -7,8 +7,8 @@
 
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 
-const SUBMITTED_STATUSES = new Set(['✅ 已投', '✅ 已确认']);
 const PENDING_STATUS = '🤖 AI sourced';
 const SKIPPED_STATUS = '⚠️ 跳过未投';
 
@@ -17,34 +17,6 @@ const APPLY = args.has('--apply');
 const JSON_OUT = args.has('--json');
 const LIMIT_ARG = process.argv.find((a) => a.startsWith('--limit='));
 const LIMIT = LIMIT_ARG ? Math.max(1, Number(LIMIT_ARG.split('=')[1] || 0)) : null;
-
-function normalizeCompany(s = '') {
-  let n = String(s)
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ');
-
-  n = n.replace(/\b(inc|llc|ltd|corp|corporation|company|co)\b/g, '').trim();
-  n = n.replace(/\s+/g, '');
-  // Board slugs often append "jobs" or "careers" to the real company.
-  n = n.replace(/(jobs|careers)$/g, '');
-  return n;
-}
-
-function normalizeTitle(s = '') {
-  return String(s)
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/\u00a0/g, ' ')
-    .replace(/[–—]/g, '-')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\b(internship)\b/g, 'intern')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 function atsUrlScore(url = '') {
   const u = String(url).toLowerCase();

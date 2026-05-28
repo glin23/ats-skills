@@ -1,9 +1,9 @@
 ---
 name: mrweirdo-doctor
-description: Check whether mrweirdo-jobs is installed and ready before a real run. Trigger when the user asks to verify setup, debug install, confirm Codex/Claude Code skill links, check Chrome CDP, or ask "can I use it now?" Does not discover jobs or submit applications.
+description: Check whether Mr. Weirdo Jobs is installed and ready before a real run. Trigger when the user asks to verify setup, debug install, confirm Codex/Claude Code skill links, check Chrome CDP, or ask "can I use it now?" Does not discover jobs or submit applications.
 ---
 
-# mrweirdo-doctor
+# Mr. Weirdo Jobs Doctor
 
 Use this skill as the pre-flight gate before a first real user run.
 
@@ -11,6 +11,7 @@ Use this skill as the pre-flight gate before a first real user run.
 
 - Verifies Node 24+, git, Chrome, repo layout, Skill links, and user-state files.
 - Optionally verifies Chrome DevTools Protocol, normally `localhost:9222` or the host recorded in `~/.mrweirdo-jobs/cdp_host`.
+- Optionally summarizes guarded apply readiness: CDP state, target-role queue size, capacity toward the user's batch target, and latest local report path.
 - Never opens ATS pages, discovers jobs, scores jobs, or submits applications.
 
 ## Run The Check
@@ -27,10 +28,16 @@ If the user is about to run `/mrweirdo-onboard` or asks whether Chrome is ready:
 node shared/doctor.mjs --cdp
 ```
 
+If the user is about to run real applications or asks "can I apply now?":
+
+```bash
+node shared/doctor.mjs --cdp --supervisor
+```
+
 If the command is being run from outside the repo:
 
 ```bash
-node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp
+node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp --supervisor
 ```
 
 ## How To Respond
@@ -52,5 +59,7 @@ ATS_CDP_PORT=9223 bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh
 Then rerun:
 
 ```bash
-node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp
+node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp --supervisor
 ```
+
+If the apply queue is ready but capacity is short of the user's larger target, tell them to run a small real batch first, then use `rescore_review` and supported-ATS discovery before scaling.

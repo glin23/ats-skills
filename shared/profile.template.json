@@ -37,11 +37,17 @@
   },
 
   "work_authorization": {
-    "visa_status": "F-1 OPT eligible",
+    "visa_status": "Your work authorization status",
     "authorized_to_work_us": true,
     "requires_sponsorship_now": false,
     "requires_sponsorship_future": true,
     "salary_expectation_usd": ""
+  },
+
+  "legal_attestations": {
+    "_notes": "Optional. Leave null unless the user explicitly confirms. The auto-apply driver will skip legally sensitive questions instead of guessing.",
+    "conflicting_obligations": null,
+    "no_prohibited_possessor_status": null
   },
 
   "demographics": {
@@ -53,6 +59,7 @@
   },
 
   "resume_path": "/absolute/path/to/your_resume.pdf",
+  "essay_profile_path": "",
   "cover_letter_path": "",
   "cover_letter_template": "",
 
@@ -65,6 +72,7 @@
     "biggest_weakness": "",
     "favorite_project": "",
     "earliest_start_date": "MM/DD/YYYY",
+    "hours_per_week": "",
     "willing_to_relocate": true,
     "willing_to_relocate_scope": "Anywhere US",
     "countries_open_to": ["US"],
@@ -74,15 +82,16 @@
   "target_filters": {
     "_notes": [
       "用于 mrweirdo-jobs sourcing + AI matching。",
+      "role_types mirrors search_intent.role_type_targets after onboarding; leave empty in the template.",
       "role_types 决定 AI 接受什么类型的岗位；不在列表里的 role 会被 AI 自动 fit_score ≤ 3。",
       "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。"
     ],
-    "role_types": ["intern", "new_grad_FT"],
+    "role_types": [],
     "locations": ["US", "Remote-US", "United States"],
     "countries_open_to": ["US"],
     "relocation_policy": "anywhere_primary_country",
     "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
-    "min_fit_score": 6,
+    "min_fit_score": 5,
     "visa_must_sponsor": false,
 
     "batch_pace": "slow",

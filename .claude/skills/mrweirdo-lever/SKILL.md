@@ -1,13 +1,13 @@
 ---
 name: mrweirdo-lever
-description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/mrweirdo-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable (real prior experience from 用户's Palantir attempt).
+description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/mrweirdo-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable, with real dogfood fixes encoded in lever_helpers.js.
 ---
 
 # Lever ATS 投递 skill — v0.8 stable
 
 低风险地把一个 Lever 申请页（`jobs.lever.co/<company>/<uuid>/apply`）填到 "差最后一下点 Submit" 的状态。所有字段值来自 `profile.json`，简历来自固定路径。**Skill 永远不自动点 Submit** — 最后一步必须由用户在对话里显式说"投这家"。
 
-> **v0.8 status**: stable. 用户 has prior real-world experience with Lever (5/13 Palantir attempt, see `feedback_ats_auto_apply_strategy_2026.md`). The 5 known gotchas are encoded in `shared/lever_helpers.js`.
+> **v0.8 status**: stable for the manual single-URL flow. The 5 known Lever gotchas are encoded in `shared/lever_helpers.js`.
 
 ## 何时触发
 
@@ -20,7 +20,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
 
 ## 前置要求
 
-1. **Chrome with CDP 9222 已启动**（user uses lily Profile 7）：
+1. **Chrome with CDP 9222 已启动**，使用隔离 Chrome profile：
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
@@ -123,7 +123,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 
 ## Known Lever gotchas
 
-实测于 2026-05-13 用户 第一次投 Palantir 时踩到（投了一遍失败 + 一次重试成功）。这 5 个坑全部在 `shared/lever_helpers.js` 里有 workaround 实现。
+这 5 个坑来自真实 Lever dogfood，全部在 `shared/lever_helpers.js` 里有 workaround 实现。
 
 | # | 坑 | 现象 | Workaround |
 |---|---|---|---|
@@ -167,5 +167,5 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 - `shared/lever_helpers.js` — 5 个 gotcha 的 workaround 实现
 - `shared/sourcing/lever_board_api.mjs` — sourcing client（含 `salary` 提取）
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
-- `~/.claude/projects/-Users-lee/memory/feedback_ats_auto_apply_strategy_2026.md` — 5/13 Palantir 实战 + harness classifier 行为
+- `shared/lever_helpers.js` — Lever-specific workaround reference
 - ATS 标准答案库（Notion）：用户 workspace root page，id 在 `~/.mrweirdo-jobs/config.json.notion_root_page_id`

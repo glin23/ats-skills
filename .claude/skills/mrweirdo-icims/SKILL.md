@@ -29,11 +29,11 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 
 ## 前置要求
 
-1. **Chrome with CDP 9222 已启动**（lily Profile，保证 iCIMS account 已登录）：
+1. **Chrome with CDP 9222 已启动**（隔离 Chrome profile，保证 iCIMS account 已登录）：
    ```bash
    bash shared/chrome-cdp-launcher.sh
    ```
-2. **iCIMS 账号已注册** — 每个 tenant subdomain 都是独立账户体系（thermofisher 和 cintas 不互通）。第一次投某 tenant 时 用户 必须手动注册一次（邮箱 + 密码 + 简历）。建议用密码管理器记。
+2. **iCIMS 账号已注册** — 每个 tenant subdomain 都是独立账户体系（thermofisher 和 cintas 不互通）。第一次投某 tenant 时，用户必须手动注册一次（邮箱 + 密码 + 简历）。建议用密码管理器记。
 3. **`~/.mrweirdo-jobs/profile.json` 存在**（由 `/mrweirdo-onboard` 生成）+ `~/.mrweirdo-jobs/config.json.resume_path` 指向本地 PDF。
 4. **Node 24+**。
 
