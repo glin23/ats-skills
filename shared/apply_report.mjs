@@ -89,6 +89,12 @@ const scored = db.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${windowClause}`
   .get(...windowParams).n;
 const matched = countWhere(`role_type_match = 'intern' AND fit_score >= 5`);
 const submittedCount = countWhere(`status IN ('✅ 已投', '✅ 已确认')`);
+// Honest sub-breakdowns of the submitted set: how many are genuinely
+// internships (the target) vs full-time that slipped an early bug, and how
+// many carry actual confirmation-page evidence. Never overclaim on a card.
+const internSubmitted = countWhere(`status IN ('✅ 已投', '✅ 已确认') AND role_type_match = 'intern'`);
+const ftSubmitted = countWhere(`status IN ('✅ 已投', '✅ 已确认') AND role_type_match = 'new_grad_FT'`);
+const confirmedCount = countWhere(`status IN ('✅ 已投', '✅ 已确认') AND confirmation_url IS NOT NULL AND confirmation_url <> ''`);
 const skippedCount = countWhere(`status IN ('⚠️ 跳过未投', '❌ Rejected')`);
 
 // A few honest, human-readable example skip reasons (skip the noisy
@@ -195,11 +201,20 @@ const steps = [
     share: w(matched),
   }),
   funnelStep({
-    label: 'Auto-applied & verified',
-    value: submittedCount.toLocaleString(),
-    sub: 'every submit confirmed on the page',
+    label: 'Internships auto-applied',
+    value: internSubmitted.toLocaleString(),
+    sub: ftSubmitted > 0
+      ? `+${ftSubmitted} full-time slipped through an early bug — now gated`
+      : 'role-type gated to internships only',
     tone: 'hero',
-    share: w(submittedCount),
+    share: w(internSubmitted),
+  }),
+  funnelStep({
+    label: 'Confirmation page captured',
+    value: confirmedCount.toLocaleString(),
+    sub: `post-submit success page saved as evidence (${confirmedCount} of ${submittedCount})`,
+    tone: 'match',
+    share: w(confirmedCount),
   }),
   funnelStep({
     label: 'Skipped — honestly',
@@ -221,9 +236,9 @@ const recentList = recentSubmits.length
         <span class="r-co">${escapeHtml(r.company)}</span>
         <span class="r-dot">·</span>
         <span class="r-title">${escapeHtml(r.title)}</span>
-        <span class="r-ok">✅ verified</span>
+        <span class="r-ok">✅ submitted</span>
       </li>`).join('\n')
-  : '<li class="r-empty">No verified submissions in this window yet.</li>';
+  : '<li class="r-empty">No submissions in this window yet.</li>';
 
 const elapsedPill = elapsedMin != null
   ? `<span class="pill">⏱ ${escapeHtml(elapsedMin)} min</span>`
@@ -387,8 +402,8 @@ const html = `<!doctype html>
 
       <div class="headline">
         <div class="eyebrow">The funnel, not the flex</div>
-        <div class="hero"><span>${submittedCount.toLocaleString()}</span> internships auto-applied &amp; verified</div>
-        <div class="hero-sub">out of ${scored.toLocaleString()} jobs scored — every one of them checked, not blasted.</div>
+        <div class="hero"><span>${internSubmitted.toLocaleString()}</span> internships auto-applied</div>
+        <div class="hero-sub">out of ${scored.toLocaleString()} jobs scored — every one checked, not blasted${confirmedCount > 0 ? `; ${confirmedCount} with a saved confirmation page` : ''}.</div>
       </div>
 
       <div class="funnel">
@@ -400,12 +415,12 @@ const html = `<!doctype html>
         <div class="ic">🛡️</div>
         <div>
           <div class="b-title">0 fabricated answers</div>
-          <div class="b-sub">Every skip is logged with a specific reason. Every submit is verified on the confirmation page — no number on this card is made up.</div>
+          <div class="b-sub">Every skip is logged with a specific reason; ${confirmedCount} submissions have a saved confirmation page. No number on this card is made up.</div>
         </div>
       </div>
 
       <div class="recent">
-        <h3>Recent verified submissions</h3>
+        <h3>Recent auto-applied internships</h3>
         <ul>
           ${recentList}
         </ul>
