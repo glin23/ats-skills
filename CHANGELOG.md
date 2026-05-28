@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-05-28 — Supervisor stack, discovery, role-type targeting, safety hardening, and the first regression harness
+
 ### Added
 - Regression test harness using Node's built-in `node --test` (zero deps):
   `test/*.test.mjs` locks the role-type gate (full-time-leak prevention +
@@ -11,10 +13,6 @@
   GitHub Actions CI workflow (`.github/workflows/ci.yml`) that runs the suite,
   the role-guard smoke test, and a `node --check` of every shared module on
   push/PR. Run locally with `npm test` / `npm run test:smoke`.
-
-## [2.2.0] - 2026-05-28 — Supervisor stack, discovery, role-type targeting, and safety hardening
-
-### Added
 - Added first-class `role_type_targets` support for internship, part-time,
   and new-grad/full-time boundaries.
 - Added `shared/role_types.mjs` as the shared role classifier used by
