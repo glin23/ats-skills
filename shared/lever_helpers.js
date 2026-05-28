@@ -20,15 +20,32 @@
  *      backend storage ID). This takes ~1-2s after the file lands in the
  *      hidden file input. Submitting before then = silent failure / rollback.
  *
- *   4. There's a hidden template `<div class="error-message">File exceeds
- *      100MB</div>` baked into every Lever page. Its `.innerText` matches
- *      "File exceeds 100MB" even when no error occurred. The only reliable
- *      "is this error actually shown?" check is `offsetParent !== null`.
+ *   4. There's a hidden template
+ *      `<div class="resume-upload-oversize">File exceeds the maximum upload
+ *      size of 100MB...</div>` (plus a generic `.error-message`) baked into
+ *      every Lever page. Its `.innerText` matches "File exceeds ... 100MB"
+ *      even when no error occurred. The only reliable "is this error actually
+ *      shown?" check is `offsetParent !== null`. `isErrorMessageVisible()`
+ *      additionally suppresses any oversize/100MB text whenever the visible
+ *      `resume-upload-success` state is present, because that combination is
+ *      the benign template, not a real rejection (see GOTCHA #6).
  *
- *   5. The drag-drop zone uses a JS handler that mis-reads file size on macOS
- *      (the "100MB" false-positive bug). Always upload directly into the
- *      hidden `<input type="file">` via `cdp.mjs upload` — never simulate
- *      drop events on the zone.
+ *   5. Upload via CDP `DOM.setFileInputFiles` into the hidden
+ *      `<input type="file" name="resume">` (`cdp.mjs upload`). This is the
+ *      reliable path — CDP fires the native `change` event, Lever's handler
+ *      runs, and the file uploads. Do NOT simulate `drop` events on the zone.
+ *
+ *   6. The upload is a TWO-STEP ASYNC flow and is SLOW. After the file lands
+ *      in the input, Lever POSTs it to its backend and only then writes the
+ *      `resumeStorageId`. Observed latency on live boards (ekimetrics,
+ *      field-ai, pyka, 2026-05-28) is ~4–8 s, sometimes exceeding 5 s. The
+ *      old 5 s default timeout for `waitForResumeStorageId` could fire BEFORE
+ *      the storage ID landed; the caller then misread the hidden oversize
+ *      template (GOTCHA #4) as a real "File exceeds 100MB" rejection and
+ *      skipped a perfectly good row. There is no real size rejection on a
+ *      ~116 KB PDF. The fix: wait generously (default now 15 s) and verify the
+ *      upload by the VISIBLE success state via `verifyResumeUploaded()`, never
+ *      by the presence of the hidden oversize template.
  *
  * Also shares the Greenhouse react-select v5 mousedown trio for any
  * `.select__control` pickers on the form (commitment / role-specific
@@ -106,7 +123,11 @@
    * Returns: { ok, storageId } | { ok: false, error, waited_ms }
    */
   async function waitForResumeStorageId(timeoutMs) {
-    const deadline = Date.now() + (timeoutMs ?? 5000);
+    // Default 15 s: live Lever boards take ~4–8 s to assign the backend
+    // storage ID (GOTCHA #6). The previous 5 s default raced the backend and
+    // produced spurious "100MB" skips.
+    const budget = timeoutMs ?? 15000;
+    const deadline = Date.now() + budget;
     const started = Date.now();
     while (Date.now() < deadline) {
       const el = document.querySelector('input[name="resumeStorageId"]');
@@ -117,9 +138,43 @@
     }
     return {
       ok: false,
-      error: 'resumeStorageId did not populate within ' + (timeoutMs ?? 5000) + 'ms',
+      error: 'resumeStorageId did not populate within ' + budget + 'ms',
       waited_ms: Date.now() - started,
     };
+  }
+
+  /**
+   * verifyResumeUploaded() — GOTCHA #6 helper. The AUTHORITATIVE upload check.
+   *
+   * Confirms the resume actually attached, using only signals Lever shows on a
+   * real success — never the hidden oversize/100MB template (GOTCHA #4):
+   *   - `input[name="resumeStorageId"]` has a non-empty backend value, AND/OR
+   *   - the visible `.resume-upload-success` ("Success!") label is shown, AND
+   *   - the upload button carries the `has-file` class (shows the filename).
+   *
+   * Returns: { ok, storageId, successVisible, hasFile, fileName }
+   */
+  function verifyResumeUploaded() {
+    const storage = document.querySelector('input[name="resumeStorageId"]');
+    const storageId = storage && storage.value ? storage.value.trim() : '';
+
+    const successEl = document.querySelector('.resume-upload-success');
+    const successVisible = !!(successEl && successEl.offsetParent !== null);
+
+    const btn = document.querySelector('.visible-resume-upload, [class*="resume-upload"][class*="has-file"]');
+    const hasFile = !!(
+      (btn && /\bhas-file\b/.test(btn.className)) ||
+      document.querySelector('.has-file')
+    );
+
+    const fileInput = document.querySelector('input[name="resume"][type="file"], #resume-upload-input');
+    const fileName =
+      fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0].name : null;
+
+    // Authoritative: a backend storage ID, or the visible success + has-file
+    // pair. Either alone is strong; both is conclusive.
+    const ok = storageId !== '' || (successVisible && hasFile);
+    return { ok, storageId: storageId || null, successVisible, hasFile, fileName };
   }
 
   /**
@@ -133,6 +188,15 @@
    * Returns: { visible: bool, messages: string[] }
    */
   function isErrorMessageVisible() {
+    // GOTCHA #6: when the resume upload succeeded, ignore any "File exceeds
+    // ... 100MB" / oversize text. That string lives in a baked-in template
+    // (`.resume-upload-oversize`) that is never display:none in some themes,
+    // so it can read as "visible" even on a clean success. A ~116 KB PDF is
+    // never a real size rejection, so treat that specific message as benign
+    // whenever the visible success state is present.
+    const uploadOk = verifyResumeUploaded().ok;
+    const OVERSIZE_RE = /exceeds .*(maximum|100\s*mb)|100\s*mb/i;
+
     const els = Array.from(document.querySelectorAll('.error-message, .error, [class*="error" i]'));
     const messages = [];
     let visible = false;
@@ -140,6 +204,10 @@
       if (el.offsetParent === null) continue;
       const txt = (el.innerText || '').trim();
       if (!txt) continue;
+      // Suppress the benign oversize/100MB template once the upload is good.
+      const isOversize =
+        OVERSIZE_RE.test(txt) || /\bresume-upload-oversize\b/.test(el.className);
+      if (isOversize && uploadOk) continue;
       visible = true;
       messages.push(txt);
     }
@@ -488,6 +556,7 @@
     // Lever-specific
     setSelectedLocation,
     waitForResumeStorageId,
+    verifyResumeUploaded,
     isErrorMessageVisible,
     // Standard helpers
     setText,
