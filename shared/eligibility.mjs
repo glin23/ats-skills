@@ -4,6 +4,7 @@
 // inline `eligibleReason`; only the side-effecting DB/CLI wrapper stays in the
 // script.
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
+import { deriveRoleTypeFromJob } from './role_types.mjs';
 
 export const DEFAULT_SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
 
@@ -34,4 +35,22 @@ export function eligibleReason(row = {}, {
     : (Array.isArray(supportedAuto) && supportedAuto.includes(row.ats_platform));
   if (!supported) return 'unsupported_ats_platform';
   return 'eligible';
+}
+
+// Pure post-SQL queue predicate extracted from auto_apply_queue.mjs. A candidate
+// row passes when it is NOT an already-submitted company/title, NOT already seen
+// in this queue pass, AND its derived role type is in the allowed targets.
+// Behavior is verbatim with the prior inline loop guards; only the decision is
+// relocated here. The queue still does the `seenKeys.add` bookkeeping and the
+// MAX_ROWS cap around this check.
+export function passesQueueFilters(row = {}, {
+  roleTypes = [],
+  submittedKeys = new Set(),
+  seenKeys = new Set(),
+} = {}) {
+  const key = duplicateKey(row);
+  if (submittedKeys.has(key)) return false;
+  if (seenKeys.has(key)) return false;
+  if (!roleTypes.includes(deriveRoleTypeFromJob(row))) return false;
+  return true;
 }
