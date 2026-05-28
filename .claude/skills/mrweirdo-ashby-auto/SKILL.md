@@ -24,9 +24,21 @@ description: v2 auto-submit version of mrweirdo-ashby. Fills an Ashby ATS applic
 - `~/.mrweirdo-jobs/profile.json` exists with personal/education/work_authorization populated
 - Resume PDF exists at `profile.resume_path`
 - `ats_platform == 'ashby'` for the row being processed
-- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, NOT large-cap, supported platform)
+- Caller provided a concrete `ROW_ID` from `/mrweirdo-onboard`'s queue
+- The DB row still has `auto_apply_eligible=1`, `status='🤖 AI sourced'`,
+  `role_type_match IN ('intern','part_time','new_grad_FT')` according to the
+  user's selected `role_type_targets`, and `apply_quota_limit IS NULL`
+- Row passed all gating in onboard Step 8 (fit_score ≥ threshold, recommended, target role type, NOT large-cap, supported platform)
 
 If any pre-condition fails on entry, log skip + return — do NOT attempt to fill.
+
+Run this guard before opening the URL:
+
+```bash
+node "$MRWEIRDO_REPO_ROOT/shared/validate_auto_row.mjs" --row-id "$ROW_ID"
+```
+
+If it fails, return that reason to the onboard loop and do not navigate.
 
 ---
 
@@ -161,13 +173,14 @@ node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT_POST"
 Parse `$SUCCESS`:
 
 - `{ok: true}` (Ashby confirms via "successfully submitted" body text) — **success**:
-  - Mark DB row: `status='✅ 已投'`, `auto_submitted_at=now`, `bot_note='mrweirdo-ashby-auto v2'`
-  - Append `daily_count.jsonl` (caller handles)
+  - Emit a structured final line like `{"outcome":"submitted","job_id":ROW_ID,"post_url":"<current URL>"}`
+  - Let onboard call `shared/record_apply_outcome.mjs` to mark the DB row. Do not update `jobs.db` directly inside this helper.
+  - Append `daily_count.jsonl` only from the onboard caller after the recorder says `action:"submitted"`.
   - Append `feedback.jsonl`: `{outcome:'success', auto_submitted:true, ats:'ashby', screenshot_pre, screenshot_post}`
 
 - `{ok: false}` — **uncertain**:
   - Do NOT click Submit again
-  - Mark DB row: `status='⚠️ 跳过未投'`, `skip_reason='submit_verify_fail'`
+  - Emit `{"outcome":"skip","reason":"submit_verify_fail",...}` and let the onboard recorder mark the DB row.
   - Forensic screenshots both saved
 
 ---

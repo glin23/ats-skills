@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mrweirdo-jobs (v2.1.6) bootstrap
+# Mr. Weirdo Jobs (v2.1.7) bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
@@ -27,7 +27,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "mrweirdo-jobs (v2.1.6) bootstrap"
+blue "Mr. Weirdo Jobs (v2.1.7) bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -127,7 +127,7 @@ link_skill_tree "$CODEX_SKILLS_DIR" "Codex user skills"
 link_skill_tree "$MRWEIRDO_REPO_ROOT/.agents/skills" "Codex workspace skills"
 
 # ---------- 6. ~/.mrweirdo-jobs/ layout ----------
-mkdir -p "$MRWEIRDO_HOME"/log "$MRWEIRDO_HOME"/chrome-profile
+mkdir -p "$MRWEIRDO_HOME"/log "$MRWEIRDO_HOME"/chrome-profile "$MRWEIRDO_HOME"/generated_materials
 [ -f "$MRWEIRDO_HOME/.env" ] || (touch "$MRWEIRDO_HOME/.env" && chmod 600 "$MRWEIRDO_HOME/.env")
 green "  ~/.mrweirdo-jobs/ layout ✓"
 
@@ -136,7 +136,7 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 # not installing for the first time). Otherwise write the sentinel so the
 # onboard skill knows to surface its Welcome banner proactively.
 if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
-  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.6")"
+  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.7")"
   cat > "$MRWEIRDO_HOME/.first_run" <<EOF
 {"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"$SETUP_VERSION"}
 EOF
@@ -161,14 +161,15 @@ if [ "$IS_FIRST_RUN" = "1" ]; then
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.6)                ║
+║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.7)                ║
 ║                                                                  ║
 ║   Your resume-driven internship / new-grad application agent.    ║
 ║                                                                  ║
 ║   Three steps to start applying:                                 ║
 ║                                                                  ║
-║     1️⃣   Drop your resume (PDF)                                  ║
-║     2️⃣   Answer 7 quick questions (work auth · target roles)    ║
+║     1️⃣   Drop your resume (PDF) + a short self-introduction      ║
+║     2️⃣   Answer 3 hard-boundary questions                       ║
+║          (work auth · location · legal/attestation policy)       ║
 ║     3️⃣   Review progress — supported ATS rows can auto-submit   ║
 ║                                                                  ║
 ║   ──────────────────────────────────────────────────────────     ║
@@ -194,9 +195,6 @@ fi
 cat <<'REF'
   Reference (advanced):
     /mrweirdo-cherry-pick              hand-pick from scored queue, gated apply
-    /mrweirdo-greenhouse-auto <url>    internal auto-submit Greenhouse URL
-    /mrweirdo-ashby-auto      <url>    internal auto-submit Ashby URL
-    /mrweirdo-lever-auto      <url>    internal experimental Lever URL
     /mrweirdo-greenhouse      <url>    gated (you click Submit) single GH
     /mrweirdo-ashby           <url>    gated single Ashby
     /mrweirdo-lever           <url>    gated single Lever

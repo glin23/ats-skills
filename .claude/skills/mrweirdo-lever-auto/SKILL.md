@@ -73,7 +73,7 @@ PROFILE=$(cat "$MRWEIRDO_HOME/profile.json")
 FILL_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(async () => await Lever.fillForm($PROFILE))()")
 ```
 
-Parse `$FILL_RESULT` for `{filled, errors}`. Per memory `devlog-2026-05-23-ats-skills-mega.md`: 用户's Palantir attempt surfaced 5 gotchas — most are now handled inside `lever_helpers.js`, but errors can still occur. If `errors` present:
+Parse `$FILL_RESULT` for `{filled, errors}`. Prior Lever dogfood surfaced 5 gotchas — most are now handled inside `lever_helpers.js`, but errors can still occur. If `errors` present:
 
 - Run `Lever.findEmptyRequired()` to get the remaining required fields
 - Main Claude (you) reasons over profile.json to fill them semantically (one pass)
@@ -164,5 +164,5 @@ Parse `$SUCCESS`:
 - `shared/lever_helpers.js` — `fillForm` (async) / `findSubmit` / `checkSuccess` / `findEmptyRequired` / `waitForResumeStorageId` / `isErrorMessageVisible` / `setSelectedLocation`
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - v2 design: auto helpers are internal-only and invoked from `mrweirdo-onboard`
-- 用户's Palantir gotchas: memory `devlog-2026-05-23-ats-skills-mega.md`
+- Lever gotchas: `shared/lever_helpers.js`
 - v1 manual-submit equivalent: `mrweirdo-lever`

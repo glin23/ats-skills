@@ -15,6 +15,7 @@ PROFILE_DIR="${MRWEIRDO_CHROME_PROFILE:-$MRWEIRDO_HOME/chrome-profile}"
 CDP_HOST_FILE="$MRWEIRDO_HOME/cdp_host"
 CHROME_APP="/Applications/Google Chrome.app"
 CHROME_BIN="$CHROME_APP/Contents/MacOS/Google Chrome"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
 
 red()    { printf '\033[31m%s\033[0m\n' "$*"; }
 green()  { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -35,7 +36,9 @@ if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   red "Port $PORT is in use by another process, but it does not look like Chrome CDP."
   lsof -nP -iTCP:"$PORT" -sTCP:LISTEN
   red "Free the port, or use another one:"
-  red "  ATS_CDP_PORT=9223 bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh"
+  red "  ATS_CDP_PORT=9223 bash \"$SCRIPT_PATH\""
+  red ""
+  red "Then run apply commands with the same ATS_CDP_PORT=9223 prefix."
   exit 1
 fi
 
@@ -44,6 +47,8 @@ if [ ! -x "$CHROME_BIN" ]; then
   red "Google Chrome not found at $CHROME_BIN"
   yellow "If you use Chromium, Brave, or another Chromium-based browser, edit"
   yellow "CHROME_APP / CHROME_BIN in this script."
+  yellow "You can also run from a normal macOS Terminal if your agent sandbox"
+  yellow "cannot open GUI apps."
   exit 2
 fi
 
@@ -90,4 +95,7 @@ done
 
 yellow "Launched Chrome, but CDP did not respond on port $PORT within 5s."
 yellow "Check the Chrome window and try again."
+yellow "If this was run from a sandboxed agent, run the same command in a"
+yellow "regular Terminal or Cloud Code terminal with macOS app permissions:"
+yellow "  ATS_CDP_PORT=$PORT bash \"$SCRIPT_PATH\""
 exit 1

@@ -1,4 +1,13 @@
 .DS_Store
 profile.json
+search_intent.json
+essay_profile.json
+resume.pdf
+jobs.db
+feedback.jsonl
+quota.jsonl
+essay_pending.jsonl
+generated_materials/
+reports/
 log/
 .agents/

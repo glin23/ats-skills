@@ -1,5 +1,152 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.2.0] - 2026-05-28 — Supervisor stack, discovery, role-type targeting, and safety hardening
+
+### Added
+- Added first-class `role_type_targets` support for internship, part-time,
+  and new-grad/full-time boundaries.
+- Added `shared/role_types.mjs` as the shared role classifier used by
+  discovery hard-filtering and auto-apply queue selection.
+- Added `shared/auto_apply_queue.mjs` so batch dispatch uses one reusable,
+  target-role-aware queue instead of duplicated inline SQL.
+- Added `shared/discover_candidates.mjs`, a reusable discovery + hard-filter
+  wrapper with a no-network `--plan` mode and a `--run` mode that writes
+  `/tmp/mrweirdo-onboard/to_score.json` for main-agent scoring.
+- Added `shared/supervisor_status.mjs`, a one-command local snapshot for CDP,
+  queue, capacity, latest report, DB status counts, and next safe commands.
+- Added `shared/apply_report.mjs` to generate a local-only HTML
+  "Mr. Weirdo Jobs Application Report" after a run.
+- Added `shared/recompute_auto_apply_eligibility.mjs` so existing local
+  databases can be repaired after threshold or role-type calibration changes.
+- Added `shared/supervisor_preflight.mjs`, a no-submit gate that checks
+  profile assets, role targets, queue validation, smoke tests, and CDP before
+  a batch opens any ATS pages.
+- Added `shared/apply_supervisor.mjs`, a single local CLI entrypoint that
+  runs no-submit validation with `--dry-run` or, with explicit `--real`,
+  verifies/launches Chrome CDP before delegating to the foreground batch
+  runner.
+- Added `shared/apply_batch.mjs`, a foreground supervisor runner that ties
+  preflight, queueing, per-row validation, driver execution, evidence-bound
+  recording, pacing, and report generation into one auditable command.
+- Added `shared/queue_diagnostics.mjs` so a batch shortfall explains whether
+  the blocker is low fit score, unsupported ATS, quota, role boundary, or
+  duplicate submitted rows.
+- Added local HTML queue review and capacity-plan reports so a requested
+  100-application run shows ready-now rows, fit-one-below rescore candidates,
+  unsupported ATS candidates, and remaining sourcing need.
+- Added `shared/rescore_review.mjs` so fit-one-below candidates can be
+  exported for human review and only selected IDs can be promoted into the
+  auto-apply threshold.
+- Added `shared/record_apply_outcome.mjs`, an evidence-bound recorder that
+  updates `jobs.db` only after parsing the driver's final structured outcome.
+- Added generic answer-template rendering so public `answer_bank.json` can use
+  profile placeholders instead of shipping one student's personal essay text.
+- Added `shared/essay_profile.template.json` and updated `/mrweirdo-onboard`
+  so first-run intake is resume + short self-introduction + three
+  hard-boundary questions, producing reusable private essay/cover-letter
+  writing memory at `~/.mrweirdo-jobs/essay_profile.json`.
+- Added `scripts/role_guard_smoke.mjs` to lock the Internship / Part-time /
+  Full-time boundaries and stale-queue duplicate guard in a repeatable check.
+- Public-facing docs now consistently reserve "Mr. Weirdo Jobs" as the
+  project brand, while keeping `mrweirdo-jobs` as the repo/command slug.
+- `.gitignore` now protects common local user-state artifacts if someone
+  accidentally places them inside the repo tree.
+
+### Fixed
+- Auto-apply queue selection now requires `auto_apply_eligible=1`, target
+  role type, supported ATS, no quota guard, and `fit_score >= 5`.
+- `/mrweirdo-onboard` now treats part-time as distinct from internship and
+  full-time instead of collapsing everything into `intern/new_grad_FT/both`.
+- `/mrweirdo-onboard` now recomputes stale `auto_apply_eligible` flags before
+  queue selection, so old `fit>=5` internship rows are not silently ignored.
+- Final auto-row validation now rechecks role type from the title and blocks
+  same-company/same-title rows that have already been submitted.
+- `/mrweirdo-onboard` no longer documents unconditional `✅ 已投` writes;
+  submitted status now goes through the recorder and requires
+  `outcome="submitted"` from the driver.
+- `/mrweirdo-onboard` no longer front-loads a seven-question onboarding form;
+  softer preferences are inferred from the student's self-introduction and
+  asked later only when they block real jobs.
+- Supervisor preflight now warns when the requested batch size is larger than
+  the currently eligible queue, so a "run 100" request cannot silently process
+  only a small leftover pool.
+- Supervisor preflight and the Chrome CDP launcher now print concrete recovery
+  commands when Chrome CDP is missing, the default port is occupied by a
+  non-CDP Chrome, or a sandboxed agent cannot open a GUI Chrome process.
+- Greenhouse dogfood fixes now cover semester-only graduation date dropdowns,
+  hidden policy acknowledgements, retired job redirects, embedded Greenhouse
+  iframes, non-resume supplemental file guards, and compensation fallback text.
+- Scorer prompt (`shared/scoring/score_prompt.md`) now hard-caps role-type
+  mismatches: a role whose `role_type_match` is outside the user's
+  `role_type_targets` must score `seniority_match <= 2` and `fit_score <= 4`,
+  not `seniority_match: 10`. Defense-in-depth behind the eligibility gate so
+  full-time roles can no longer *read* as a fit≥5 for an intern-only seeker
+  (root cause of the 2026-05-27 full-time leak, verified gate-blocked
+  2026-05-28).
+- `shared/ashby_apply_driver.mjs`: added profile-derived buckets for the
+  ubiquitous Ashby name fields (Legal/Preferred First/Last Name) so they no
+  longer fall through to `no_bucket_for` / main-agent pending.
+- `shared/ashby_apply_driver.mjs`: "How did you hear about this job?" is now
+  filled as free text first (it is frequently a `textarea`, occasionally a
+  radio group or react-select combobox) instead of being forced through the
+  radio-multichoice handler — which previously matched a *false* container and
+  could click an unrelated radio (e.g. a sponsorship option). Both fixes were
+  verified by real submissions on 2026-05-28 (acorns Growth PM Intern, lambda
+  Accounting AI Intern, both Ashby, confirmation pages captured).
+- Known follow-up (logged, not yet fixed): numeric "What are your salary
+  requirements?" fields (`input[type=number]`) reject the neutral
+  `compensation_expectations` sentence and loop. The driver should detect a
+  numeric comp field and emit `salary_number_required` when no user-authorized
+  figure exists, instead of retrying. Surfaced by fuel-cycle row (skipped, not
+  fabricated).
+- Closed the role-type gate's title-trust hole: `shared/role_types.mjs` adds
+  `roleTypeConflict(job)`, which flags an intern/co-op-titled role whose
+  `employment_type` looks permanent (`FullTime`/`Permanent`/`Regular`) with no
+  intern/temp/contract/seasonal signal — the ambiguous case worth a human
+  glance. Title still wins (a real full-time-HOURS internship like a 12-week
+  program is NOT blocked); the conflict is surfaced, not silently trusted.
+  `shared/discover_candidates.mjs` annotates such candidates (`bot_note`) and
+  counts `role_type_conflicts` in the discovery summary. Eligibility behavior
+  unchanged.
+- `shared/ashby_apply_driver.mjs` no longer silently commits the user to a
+  SPECIFIC city. General relocation/onsite *willingness* is still auto-answered
+  when `relocation_policy === 'anywhere_legal_work'`, but specific-city
+  *logistics facts* — "reliable transportation to our <City> office?", "do you
+  currently live/reside in/near <City>?" — now return
+  `specific_city_fact_unconfirmed` (ask-or-skip) unless the city is in
+  `factual_gap_fields.onsite_location_logistics.confirmed_cities`. New
+  `onsite_location_logistics` taxonomy entry added to
+  `shared/essay_profile.template.json`.
+- `/mrweirdo-onboard` Step 10 now (a) surfaces the queued company/role list for
+  visibility/confirmation before a `--real` batch submits anything (no
+  application goes out under the user's identity to an unseen company), and
+  (b) fills impactful OPTIONAL essays ("why do you want to work here", cover
+  letters) from `essay_profile.json` instead of skipping them — especially for
+  `fit_score >= 7` rows — keeping the never-fabricate guardrail.
+
+### Added
+- Added a `factual_gap_fields` taxonomy to `shared/essay_profile.template.json`
+  documenting the recurring non-inferable fields ATS forms require — permanent
+  address, social handles, compensation acceptance, third-party/game accounts,
+  personal preferences/opinions, and a separate cover-letter file. These are
+  ask-or-skip (never invented); `/mrweirdo-onboard` should surface unknown ones
+  upfront so the auto-apply loop stops re-stalling mid-application on the same
+  classes of question (observed on skipped rows 190/197/625).
+
+## [2.1.7] - 2026-05-27 — Fit threshold calibration
+
+### Changed
+- Auto-apply now follows the recall-first calibration: `fit_score >= 5`
+  is eligible.
+- `/mrweirdo-onboard` Step 8 and Step 10 now use threshold 5 instead
+  of 7. Dedupe, quota, supported-platform, and status guards still
+  apply, so this increases recall without allowing duplicate or
+  unsupported submissions.
+- The scorer's `recommended` definition and profile template
+  `min_fit_score` now match the same threshold.
+
 ## [2.1.6] - 2026-05-27 — Upfront relocation questionnaire
 
 ### Changed
@@ -9,7 +156,7 @@
   first-class input, not late-stage apply blockers.
 - A3 is now a structured geographic / relocation policy question with
   options for fixed local search, named metros, anywhere in the US, or
-  any legally workable location such as US + China.
+  multiple legally workable countries/regions.
 - `profile.json` and `search_intent.json` now carry
   `relocation_policy`, `countries_open_to`, and
   `willing_to_relocate_for_internship` so discovery, scoring, and ATS
@@ -18,8 +165,9 @@
 ### Fixed
 - Greenhouse location-specific questions now read the structured
   relocation policy. A user who explicitly says "anywhere in the US"
-  or "US + China" can truthfully answer yes to Austin-style internship
-  relocation questions, while location-restricted users still block.
+  or lists multiple workable countries/regions can truthfully answer
+  yes to Austin-style internship relocation questions, while
+  location-restricted users still block.
 
 ## [2.1.5] - 2026-05-27 — Controlled 3-row test follow-up
 
@@ -59,7 +207,7 @@ queueing plus several Greenhouse form gaps.
 
 ### Fixed
 - `/mrweirdo-onboard` Step 10 now runs the duplicate guard before queue
-  selection, enforces the fit≥7 threshold at queue time, and ranks only
+  selection, enforces the fit≥5 threshold at queue time, and ranks only
   one row per company/title fingerprint.
 - Greenhouse success detection now accepts `/confirmation` pages with
   Greenhouse's "Thank you for your interest / next steps email" copy,
@@ -114,8 +262,8 @@ risk-boundary failures.
 
 ## [2.1.2] - 2026-05-27 — Productize Skill packaging for Claude Code + Codex
 
-This release starts turning the repo from Lee's personal job agent into
-a cleaner, installable Skill collection for both Claude Code and Codex.
+This release starts turning Mr. Weirdo Jobs from prototype into a
+cleaner, installable Skill collection for both Claude Code and Codex.
 
 ### Changed
 - `setup.sh` now links the tracked `.claude/skills/*` source into
@@ -258,7 +406,7 @@ limitations) rather than scattering across form shapes.
 - GH `candidate-location` Google Places autocomplete occasionally
   returns 0 options on slow connections. Mitigated by a 3.5s wait,
   not eliminated.
-- Forms requiring assets Lee does not currently have (GPA, SAT/ACT
+- Forms requiring assets the user does not currently have (GPA, SAT/ACT
   scores, 1-minute intro video, official transcript) are correctly
   skipped with an explicit `skip_reason`. Profile gap, not bug.
 
@@ -302,7 +450,8 @@ two namespaces forever.
 
 ## [1.2.0] - 2026-05-25 — Rebrand to mrweirdo-jobs
 
-Project rebranded from `ats-skills` to `mrweirdo-jobs` (用户's personal brand).
+Project rebranded from `ats-skills` to `mrweirdo-jobs` under the
+Mr. Weirdo Jobs brand.
 Everything works the same; the changes are user-facing names only.
 
 ### Renamed
@@ -391,7 +540,7 @@ privacy: job data never leaves the machine.
 
 ## [1.0.0] - 2026-05-24 — Open OSS, self-host
 
-The project moves from "用户's private daily-driver" to "anyone can install + run."
+The project moves from a private daily-driver to "anyone can install + run."
 
 ### Added
 - **`/ats-init`** skill — 9-step onboarding orchestrator. Collects API keys
@@ -432,20 +581,20 @@ The project moves from "用户's private daily-driver" to "anyone can install + 
   PROFILE="$MRWEIRDO_HOME/profile.json"
   RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json")
   ```
-  Legacy `shared/profile.json` fallback retained so 用户's v0.9.1 setup keeps
+  Legacy `shared/profile.json` fallback retained so existing v0.9.1 setups keep
   working unchanged.
 - `shared/notion_sync.mjs:45` — DATABASE_ID now resolves through
   `paths.mjs.notionDbId()` (env → config.json → legacy default).
 - `README.md` — rewritten for v1.0 audience. One-line install command.
   Per-skill descriptions. Privacy note. Gmail filter tutorial.
 
-### Migration for existing users (用户)
-用户's `v0.9.1` setup keeps working:
+### Migration for existing users
+Existing `v0.9.1` setups keep working:
 - If `~/.mrweirdo-jobs/profile.json` missing, code falls back to
   `<repo>/shared/profile.json`
-- If `~/.mrweirdo-jobs/config.json` missing, hardcoded Notion DB id 94b728d7
-  (用户's actual DB) is used as fallback
-- All view IDs default to 用户's existing 36a1e8ce-prefixed ids
+- If `~/.mrweirdo-jobs/config.json` missing, the legacy Notion DB id is
+  used as fallback.
+- All view IDs default to the legacy 36a1e8ce-prefixed ids.
 
 To migrate to the v1.0 path layout: run `/ats-init` (it preserves nothing —
 generates fresh config + profile). Or copy `~/Projects/ats-skills/shared/profile.json`
@@ -519,7 +668,7 @@ with `notion_db_id` + `resume_path`.
   - Ashby `findEmptyRequired` missing Current Location combobox: detect by placeholder + walker pattern
 
 ### Notes
-- First v0.3 dogfood pending — verify AI sourcing top-10 with 用户's manual pick
+- First v0.3 dogfood pending — verify AI sourcing top-10 with manual picks.
 - Cost: $0.15/week at 50 sourced jobs/week
 
 ## [0.2.0] - 2026-05-23

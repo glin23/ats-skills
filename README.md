@@ -1,6 +1,6 @@
-# mrweirdo-jobs
+# Mr. Weirdo Jobs
 
-> **v2.1.6 — resume-driven job search agent for US college students.**
+> **v2.2.0 — resume-driven job search automation for US college students.**
 > A Claude Code + Codex Skill collection with a Node 24/CDP backend:
 > resume intake → job discovery → fit scoring → ATS form filling →
 > submission audit → Gmail confirmation loop.
@@ -15,21 +15,24 @@
 ## What it does
 
 ```
-你 → 上传简历 → /mrweirdo-onboard
+你 → 上传简历 + 自我介绍 → /mrweirdo-onboard
                 ↓
        agent 前台执行:
-         · 读简历 → AI 推 search intent + profile
-         · 问几个关键问题：目标岗位、地点、周期、授权状态
+         · 读简历/自我介绍 → AI 推 search intent + profile + essay profile
+         · 问 3 个硬边界问题：工签、地点、法律/证明类问题策略
          · 跨平台 discovery：Greenhouse / Ashby / Lever / YC / RemoteOK 等
          · Hard filter + AI score
+         · 遇到 cover letter / essay 时用 essay profile 生成真实定制答案
          · 默认保护：大公司限投、LinkedIn/Indeed 不自动化
          · Auto-submit 主要覆盖 Greenhouse / Ashby
                 ↓
 你 → 看本地 DB / Datasette / optional review UI + Gmail confirmation
 ```
 
-The main product is a Skill collection, not a SaaS. All private state
-stays on the user's machine under `~/.mrweirdo-jobs/`.
+Mr. Weirdo Jobs is the project name and public brand. The repo slug,
+commands, and local state directory use `mrweirdo-jobs` / `mrweirdo-*`
+for compatibility. The main product is a Skill collection, not a SaaS.
+All private state stays on the user's machine under `~/.mrweirdo-jobs/`.
 
 ## Who this is for
 
@@ -45,6 +48,14 @@ is still uneven:
 No hard-coded major or industry preferences exist in the code.
 
 **Not for**: senior career changers, non-US job searches, people who want hands-on control of every submission.
+
+## Role-Type Isolation
+
+Internship, part-time, and new-grad/full-time are separate targets. During
+onboarding the user chooses `role_type_targets`; auto-apply only dispatches
+rows that match those selected targets. Internship runs do not auto-apply
+full-time roles, and full-time runs do not auto-apply internships. When a user
+wants both internship and part-time, pass or store `["intern", "part_time"]`.
 
 ## Current support level — read before installing
 
@@ -111,10 +122,12 @@ Then in Claude Code or Codex:
 /mrweirdo-onboard
 ```
 
-The skill will ask you for your resume PDF path. First-run timing depends
-on discovery volume and how many rows you allow it to submit; the public
-beta default is 10 auto-submit rows per run, usually tens of minutes
-rather than a 10-minute promise.
+The skill will ask you for your resume PDF path and a short self-introduction,
+then three hard-boundary questions (work authorization, location flexibility,
+and legal/attestation policy). First-run timing depends on discovery volume
+and how many rows you allow it to submit; the public beta default is 10
+auto-submit rows per run, usually tens of minutes rather than a 10-minute
+promise.
 
 ### Optional: Datasette audit UI
 
@@ -191,9 +204,13 @@ Architecture:
 3. Pre-fill Country (US) and profile-derived location via `reactSelect()` where needed.
 4. Click Submit. Parse validation errors. Match each missing field to an answer in `shared/answer_bank.json`.
 5. Up to 5 attempts; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
-6. On `outcome: essay_pending`, surface the questions to the main agent for human-in-the-loop essay writing.
+6. On `outcome: essay_pending`, surface the questions to the main agent. The agent uses `~/.mrweirdo-jobs/essay_profile.json` plus job context to draft truthful, tailored answers; it asks the user only for missing batch-level facts or legal-sensitive answers.
 
-Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility. Public beta onboarding caps auto-submit at 10 rows per run by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks for a bigger batch. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
+Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility; real apply batches should not be launched in Claude Code background mode. Public beta onboarding caps auto-submit at 10 rows per run by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks for a bigger batch. The simplest guarded entrypoint is `shared/apply_supervisor.mjs`: run it with `--dry-run` to validate the queue without submitting, or with `--real` after the user explicitly asks to apply. It verifies or launches Chrome CDP, then delegates to `shared/apply_batch.mjs`, which performs preflight, queue validation, driver execution, evidence-bound DB recording, pacing, report generation, and a local batch lock so two apply batches cannot run concurrently against the same user data. If a requested batch is larger than the current eligible queue, `shared/queue_diagnostics.mjs` explains whether the shortage is low fit score, unsupported ATS, quota, role boundary, or duplicate submissions. `shared/queue_review_report.mjs` generates a local HTML review page with ready-to-apply rows, one-point-below-threshold rows for human re-scoring, and ATS expansion candidates. `shared/rescore_review.mjs` exports the fit-one-below candidates and can promote only user-selected IDs with `--promote ... --apply`. `shared/apply_capacity_plan.mjs` turns that shortage into a target-count capacity plan, so users can see how many applications require re-scoring, new sourcing, or new ATS support. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
+
+For adding more rows, `shared/discover_candidates.mjs --plan` shows the target-role-safe discovery keywords and sources without touching the network; `--run` performs discovery, hard-filtering, and writes `/tmp/mrweirdo-onboard/to_score.json` for the main agent's scoring pass.
+
+For a one-command local health snapshot, run `node shared/supervisor_status.mjs --max 3 --target 100`. It derives role targets from `~/.mrweirdo-jobs/search_intent.json` unless you explicitly pass `--role-targets`. It reports CDP state, whether a real apply batch is currently ready, latest application report, ready queue size, capacity shortfall, and the next safe commands. If CDP is down, the first commands are the visible-terminal recovery commands to start Chrome CDP before applying.
 
 ---
 
@@ -205,7 +222,7 @@ Concretely:
 
 | Stage | LLM source |
 |---|---|
-| Resume PDF parse → profile + search_intent | Main agent session |
+| Resume PDF + self-introduction parse → profile + search_intent + essay_profile | Main agent session |
 | Cross-platform job filtering (semantic) | Main agent session |
 | 6-dimension scoring (50 jobs / turn) | Main agent session |
 | Per-form field reasoning during auto-apply | Main agent session |
@@ -221,6 +238,8 @@ The exception: if you want background scheduled runs (future v2.4 cron mode), yo
 ~/.mrweirdo-jobs/                       # all per-user state
 ├── profile.json                        # form-fill data, generated by /mrweirdo-onboard from resume
 ├── search_intent.json                  # AI-derived search params, generated by /mrweirdo-onboard
+├── essay_profile.json                  # reusable writing memory for cover letters + essay questions
+├── generated_materials/                # local generated cover letters / essay drafts when needed
 ├── resume.pdf                          # your resume copy
 ├── jobs.db                             # SQLite — every discovered + scored + applied job
 ├── feedback.jsonl                      # per-apply outcome log (audit)
@@ -261,7 +280,7 @@ examples/
 - Node 24+ (for built-in `node:sqlite`, `fetch`, and `WebSocket`)
 - Google Chrome (default install location, or edit `shared/chrome-cdp-launcher.sh`)
 - Claude Code or Codex installed
-- A US-based resume PDF
+- A resume PDF and a short self-introduction for writing/search intent
 - (Optional) `pip install datasette` for the audit UI
 - (Optional) Gmail filter for `/mrweirdo-confirm` (one-time, ~30 seconds setup)
 

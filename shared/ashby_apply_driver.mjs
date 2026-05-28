@@ -28,16 +28,19 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { renderAnswerTemplate } from './answer_templates.mjs';
 
 // ============================================================
 // CLI dispatcher — handle --list-pending-essays before anything else.
 // ============================================================
 const HOME = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
-const REPO = process.env.MRWEIRDO_REPO_ROOT || '/Users/lee/Projects/mrweirdo-jobs';
+const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const CDP = join(REPO, 'shared/cdp.mjs');
 const ANSWER_BANK_PATH = join(REPO, 'shared/answer_bank.json');
 const ESSAY_PENDING_LOG = join(HOME, 'essay_pending.jsonl');
+const SEARCH_INTENT_PATH = join(HOME, 'search_intent.json');
 
 if (process.argv[2] === '--list-pending-essays') {
   listPendingEssays();
@@ -49,6 +52,7 @@ if (process.argv[2] === '--list-pending-essays') {
 // ============================================================
 const PROFILE = JSON.parse(readFileSync(join(HOME, 'profile.json'), 'utf8'));
 const RESUME = PROFILE.resume_path || join(HOME, 'resume.pdf');
+const SEARCH_INTENT = readJsonOptional(SEARCH_INTENT_PATH, {});
 
 const APPLY_URL = process.argv[2];
 const JOB_ID = process.argv[3] || null;
@@ -60,6 +64,14 @@ if (!APPLY_URL) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.error('[driver]', ...a);
+function readJsonOptional(path, fallback = {}) {
+  try {
+    if (!existsSync(path)) return fallback;
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
 
 function resolveCdpHost() {
   if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
@@ -96,6 +108,17 @@ async function closeTab(tab) {
   }
 }
 
+async function activateTab(tab) {
+  if (!tab) return { ok: false, note: 'no_tab' };
+  const host = resolveCdpHost();
+  try {
+    const res = await fetch(`http://${host}/json/activate/${tab}`, { method: 'GET' });
+    return { ok: res.ok, status: res.status };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ============================================================
 // Answer bank loader — externalized essay templates + defaults.
 // ============================================================
@@ -120,8 +143,8 @@ const FALLBACK_BANK = {
     years_of_experience: ['< 1', '<1', '0-1', '1', '0', 'Less than 1'],
     seniority_level: ['Intern', 'Student', 'Entry', 'Junior'],
   },
-  location_preferences: { city: 'Boston', city_full_match: ['massachusetts', 'united states'] },
-  fallback_text: { linkedin: '', graduation_date: 'May 2027', start_date_summer_2026: 'May 2026' },
+  location_preferences: { city: '', city_full_match: [] },
+  fallback_text: { linkedin: '', graduation_date: '', start_date_summer_2026: '' },
 };
 
 function loadAnswerBank() {
@@ -156,10 +179,26 @@ function companyFromUrl(url) {
 const COMPANY = companyFromUrl(APPLY_URL);
 const COMPANY_PRETTY = COMPANY.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+function stateFullName(state) {
+  const s = String(state || '').trim();
+  const map = {
+    MA: 'Massachusetts',
+    NY: 'New York',
+    CA: 'California',
+    WA: 'Washington',
+    TX: 'Texas',
+    OH: 'Ohio',
+    FL: 'Florida',
+    IL: 'Illinois',
+    DC: 'District of Columbia',
+  };
+  return map[s.toUpperCase()] || s;
+}
+
 function essayAnswerFor(questionText) {
   for (const t of BANK.essay_templates_compiled || []) {
     if (t.regex.test(questionText)) {
-      return t.template.replace(/\{\{COMPANY_PRETTY\}\}/g, COMPANY_PRETTY);
+      return renderAnswerTemplate(t.template, { profile: PROFILE, companyPretty: COMPANY_PRETTY, searchIntent: SEARCH_INTENT });
     }
   }
   return null;
@@ -209,7 +248,7 @@ async function pickComboboxInQuestion(tab, questionText, value) {
         const wanted = ${JSON.stringify(term.toLowerCase())};
         const opts = [...document.querySelectorAll("[role=option]")];
         const match = opts.find(o => (o.innerText || '').trim().toLowerCase() === wanted)
-          || opts.find(o => (o.innerText || '').toLowerCase().includes(wanted));
+          || (wanted.length >= 5 ? opts.find(o => (o.innerText || '').toLowerCase().includes(wanted)) : null);
         if (match) {
           ['mousedown', 'mouseup', 'click'].forEach(t => match.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window, button: 0 })));
           return { ok:true, picked: (match.innerText || '').trim().slice(0,120), mode:'combobox_in_question', term: wanted };
@@ -226,14 +265,35 @@ async function pickComboboxInQuestion(tab, questionText, value) {
 async function open() {
   const r = cdp('goto', APPLY_URL);
   const j = JSON.parse(r.stdout);
+  await activateTab(j.id);
   return j.id;
+}
+
+async function waitForAshbyForm(tab, timeoutMs = 25000) {
+  const started = Date.now();
+  let last = null;
+  while (Date.now() - started < timeoutMs) {
+    last = await evalInTab(tab, `
+      (() => ({
+        ready: document.readyState,
+        url: location.href,
+        title: document.title,
+        has_resume: !!document.querySelector('#_systemfield_resume'),
+        input_count: document.querySelectorAll('input, textarea, select').length,
+        body_text: (document.body?.innerText || '').slice(0, 240)
+      }))()
+    `);
+    if (last.has_resume || last.input_count > 5) return { ok: true, state: last };
+    await sleep(1000);
+  }
+  return { ok: false, note: 'ashby_form_not_loaded', state: last };
 }
 
 // ---------- step: upload resume + dispatch React change ----------
 async function uploadResume(tab) {
   const u = cdp('upload', tab, '#_systemfield_resume', RESUME);
   if (!u.stdout.includes('"ok":true')) {
-    return { ok: false, note: 'upload_failed', detail: u.stdout };
+    return { ok: false, note: 'upload_failed', detail: u.stdout || u.stderr || `exit_code=${u.code}` };
   }
   // After CDP setFileInputFiles, React may UNMOUNT the resume input — don't
   // hard-fail if the element is gone; assume the upload widget swapped to a
@@ -243,7 +303,7 @@ async function uploadResume(tab) {
       const r = document.querySelector("#_systemfield_resume");
       if (!r) {
         const body = document.body.innerText;
-        const looks_attached = /resume\\.pdf|resume_lee_lin|\\bReplace\\b/i.test(body);
+        const looks_attached = /resume\\.pdf|resume[_\\s-]?[\\w-]*\\.pdf|\\bReplace\\b/i.test(body);
         return { ok: looks_attached, note: looks_attached ? 'react_unmounted_but_attached' : 'react_unmounted_no_confirmation', files: 0 };
       }
       r.dispatchEvent(new Event("change", { bubbles: true }));
@@ -307,6 +367,45 @@ async function submitAndCheck(tab) {
   `);
 }
 
+async function fillTextInQuestion(tab, question, value) {
+  const r = await evalInTab(tab, `
+    (() => {
+      const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const targetQ = ${JSON.stringify(question.toLowerCase().replace(/\s+/g, ' ').slice(0, 60))};
+      const selector = "input[type=text], input[type=url], input[type=email], textarea";
+
+      // First prefer explicit label[for=id] matches.
+      for (const inp of [...document.querySelectorAll(selector)]) {
+        const lbl = inp.id ? document.querySelector('label[for="' + CSS.escape(inp.id) + '"]') : null;
+        if (lbl && norm(lbl.innerText).includes(targetQ)) {
+          const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+          return { ok:true, sel, via:'label_for' };
+        }
+      }
+
+      // Then find the smallest non-body container that contains the question
+      // and exactly the field belonging to that question.
+      const containers = [...document.querySelectorAll("fieldset, div")].filter(c => {
+        const t = norm(c.innerText);
+        if (!t.includes(targetQ)) return false;
+        return !![...c.querySelectorAll(selector)].find(inp => inp.offsetParent !== null);
+      });
+      containers.sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
+      for (const c of containers.slice(0, 8)) {
+        const inp = [...c.querySelectorAll(selector)].find(el => el.offsetParent !== null);
+        if (!inp) continue;
+        if (!inp.id) inp.id = 'mrw_txt_' + Math.random().toString(36).slice(2,8);
+        const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+        return { ok:true, sel, via:'smallest_container', container_size: norm(c.innerText).length };
+      }
+      return { ok:false };
+    })()
+  `);
+  if (!r.ok) return r;
+  cdp('typetext', tab, r.sel, value);
+  return { ok: true, mode: 'text_fill' };
+}
+
 // ---------- step: answer a missing field by keyword ----------
 async function answerMissing(tab, missingLabel) {
   const ml = missingLabel.toLowerCase();
@@ -319,9 +418,13 @@ async function answerMissing(tab, missingLabel) {
   const authorizedAns = PROFILE.work_authorization?.authorized_to_work_us
     ? 'Yes'
     : (BANK.yes_no_defaults?.work_authorization || 'Yes');
-  const locationCity = BANK.location_preferences?.city || PROFILE.personal.address_city || PROFILE.personal.city || 'Boston';
-  const locationState = PROFILE.personal.address_state || 'MA';
-  const cityFull = `${locationCity}, ${locationState}, USA`;
+  const atsLocation = PROFILE.standard_qa?.current_location_for_ats || PROFILE.target_filters?.current_location_for_ats || '';
+  const locationCity = BANK.location_preferences?.city || PROFILE.personal.address_city || PROFILE.personal.city || SEARCH_INTENT.user_summary?.school_location?.city || '';
+  const locationState = PROFILE.personal.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
+  const locationStateFull = stateFullName(locationState);
+  const cityFull = atsLocation || [locationCity, locationStateFull, PROFILE.personal.address_country || SEARCH_INTENT.user_summary?.school_location?.country || 'United States']
+    .filter(Boolean)
+    .join(', ');
   const linkedin = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin || '';
   const genderAns = BANK.yes_no_defaults?.gender || PNA;
   const raceAns = BANK.yes_no_defaults?.race || PNA;
@@ -329,12 +432,74 @@ async function answerMissing(tab, missingLabel) {
   const disabilityAns = BANK.yes_no_defaults?.disability || 'I do not want to answer';
   const rtoAns = BANK.yes_no_defaults?.rto_office_in_person || 'Yes';
 
+  // --- Relocation policy (from search_intent geographic_preference) ---------
+  // RULE (do not auto-commit the user to a SPECIFIC-CITY FACT they never confirmed):
+  //  * A GENERAL willingness-to-relocate / general remote-hybrid RTO question is
+  //    POLICY-covered when relocation_policy === 'anywhere_legal_work' AND
+  //    willing_to_relocate_for_internship === true  → auto-answer Yes (rtoAns).
+  //  * A SPECIFIC-CITY LOGISTICS FACT — i.e. something the tool cannot know about
+  //    the user's real life — must NEVER be auto-answered. These are:
+  //      - "do you have reliable transportation to our <City> office?" (a capability fact)
+  //      - "do you currently live in / near <City>?" / "are you currently located in <metro>?" (a residence fact)
+  //    Unless the user has explicitly confirmed that named city, surface as a gap
+  //    (pending_for_main_claude) so the row is asked/skipped, not silently committed.
+  //  * "willing/able to work onsite at <City> N days/week" is in-between: the
+  //    "willing" part is policy-covered, so when the policy allows we answer Yes;
+  //    but if the phrasing asserts a residence/transport FACT (handled by the
+  //    specific-city-fact guard below, which runs first), we ask-or-skip instead.
+  const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
+  const relocationPolicyOpen = geo.relocation_policy === 'anywhere_legal_work'
+    && geo.willing_to_relocate_for_internship === true;
+  // Cities the user has explicitly confirmed living-in / having logistics for.
+  // Sourced from the essay-profile factual gap field (orchestrator populates the
+  // private file); empty by default so unknown cities always ask-or-skip.
+  const confirmedCities = (PROFILE.factual_gap_fields?.onsite_location_logistics?.confirmed_cities || [])
+    .map((c) => String(c).toLowerCase());
+  const mentionsConfirmedCity = confirmedCities.some((c) => c && ml.includes(c));
+
+  // Specific-city LOGISTICS FACT detector. Matches questions that assert the user
+  // already resides in / has physical transport to a NAMED place — a personal fact
+  // the tool cannot know. A bare named city (no "transport"/"reside"/"located"
+  // verb) is NOT caught here so general willingness phrasings still flow through.
+  const isSpecificCityLogisticsFact =
+    /reliable transportation|own transportation|have transportation|access to (?:reliable )?transportation|means of transportation|commute (?:to|into)/i.test(ml)
+    || /currently (?:live|living|reside|residing|located|based)|do you (?:live|reside)|already (?:live|living|reside|based)/i.test(ml);
+  if (isSpecificCityLogisticsFact && !mentionsConfirmedCity) {
+    return {
+      ok: false,
+      note: 'specific_city_fact_unconfirmed',
+      pending_for_main_claude: true,
+      question: missingLabel
+    };
+  }
+
+  const compensationExpectation = BANK.fallback_text?.compensation_expectations
+    || "Open to discussion based on the role, location, and the company's standard internship or entry-level range.";
+
   if (/authorized.{0,40}work.{0,20}u\.?s|legally authorized.{0,40}u\.?s/i.test(ml)) {
     const authComboPrefs = /f-?1|opt|cpt/i.test(PROFILE.work_authorization?.visa_status || '')
       ? ['CPT', 'OPT', authorizedAns]
       : [authorizedAns];
     const combo = await pickComboboxInQuestion(tab, missingLabel, authComboPrefs);
-    if (combo.ok || combo.note !== 'no_combobox_in_question') return combo;
+    if (combo.ok) return combo;
+  }
+
+  if (/sponsor|sponsorship|work authorization|visa/i.test(ml)) {
+    const visa = String(PROFILE.work_authorization?.visa_status || '').toLowerCase();
+    const needsFuture = PROFILE.work_authorization?.requires_sponsorship_future;
+    const needsNow = PROFILE.work_authorization?.requires_sponsorship_now;
+    const sponsorComboPrefs = /f-?1|opt|cpt/.test(visa) && needsFuture
+      ? [
+          'I currently hold OPT and will require H-1B sponsorship in the future',
+          'I currently hold STEM OPT and will require H-1B sponsorship in the future',
+          'H-1B sponsorship in the future',
+          'Yes'
+        ]
+      : needsNow || needsFuture
+        ? ['Yes', 'I require another type of visa sponsorship']
+        : ['No', 'No sponsorship required'];
+    const combo = await pickComboboxInQuestion(tab, missingLabel, sponsorComboPrefs);
+    if (combo.ok) return combo;
   }
 
   // PHASE 0: Essay templates (long-form Qs) take priority. Short date fields
@@ -343,8 +508,21 @@ async function answerMissing(tab, missingLabel) {
     return await answerEssay(tab, missingLabel);
   }
 
-  // PHASE 1: Multichoice radio (How did you hear / Years of experience)
-  if (/how did you hear|hear about|years?.{0,5}(of )?experience|seniority|level|work term|term availability/i.test(ml)) {
+  // PHASE 1: "How did you hear about this job?" can be a free textarea/text input, a
+  // radio group, OR a react-select combobox depending on the tenant. Try them in that
+  // order with the first preferred value ("LinkedIn"). Other multichoice questions
+  // (years of experience / seniority / work term) go straight to the radio handler.
+  if (/how did you hear|hear about/i.test(ml)) {
+    const preferred = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn', 'Online', 'Other'])[0];
+    const textRes = await fillTextInQuestion(tab, missingLabel, preferred);
+    if (textRes && textRes.ok) return textRes;
+    const radioRes = await answerRadioMultichoice(tab, missingLabel);
+    if (radioRes && radioRes.ok) return radioRes;
+    const combo = await pickComboboxInQuestion(tab, missingLabel, preferred);
+    if (combo && combo.ok) return combo;
+    return { ok: false, note: 'hear_about_unresolved', text: textRes, radio: radioRes, combo };
+  }
+  if (/years?.{0,5}(of )?experience|seniority|level|work term|term availability/i.test(ml)) {
     return await answerRadioMultichoice(tab, missingLabel);
   }
 
@@ -364,28 +542,64 @@ async function answerMissing(tab, missingLabel) {
     { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No - I am authorized to work in the U.S. without employer sponsorship', fallback: 'No' },
     { match: /require.{0,5}sponsor|need.{0,5}sponsor|sponsorship/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: PNA },
     { match: /work auth|visa/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: PNA },
-    { match: /currently located.{0,40}(san francisco|sf bay|bay area)|sf bay area/i, action: 'click_radio_in_question', q: missingLabel, choice: "No, but I'm open to relocating to the Bay Area", fallback: 'No' },
-    // RTO covers many phrasings
-    { match: /prepared to work.{0,25}\d\+?.{0,25}days.{0,40}office|san francisco office/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: PNA },
-    { match: /rto|return to office|office.{0,5}\d+.{0,5}day|in[- ]office|in.{0,5}person|hybrid|on[- ]site|onsite|based in.{0,15}(office|nyc|sf)|relocate|willing.{0,15}move|currently.{0,5}reside/i, action: 'click_radio_in_question', q: missingLabel, choice: rtoAns, fallback: PNA },
+    {
+      match: /currently located.{0,40}(san francisco|sf bay|bay area)|sf bay area/i,
+      action: 'click_radio_in_question',
+      q: missingLabel,
+      choices: [
+        'Yes, I am open to relocation',
+        "No, but I'm open to relocating to the Bay Area",
+        'Open to relocation',
+        'No'
+      ]
+    },
+    // RTO / onsite-commitment / relocation-willingness phrasings.
+    // These assert a WILLINGNESS (covered by relocation_policy) rather than a
+    // residence/transport fact (those are intercepted by the specific-city-fact
+    // guard above). They are tagged `relocationCommitment` so they only auto-Yes
+    // when the user's policy permits; otherwise they fall through to pending.
+    { match: /requires working.{0,120}offices?.{0,80}(days?|week)|offices?.{0,80}(three|3)\s+days?.{0,40}week/i, action: 'click_radio_in_question', q: missingLabel, choice: rtoAns, fallback: PNA, relocationCommitment: true },
+    { match: /available to work.{0,80}\d+\s*days?.{0,80}(headquarters|hq|office|on[- ]?site|onsite)|headquarters/i, action: 'click_radio_in_question', q: missingLabel, choice: rtoAns, fallback: PNA, relocationCommitment: true },
+    { match: /prepared to work.{0,25}\d\+?.{0,25}days.{0,40}office|san francisco office/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: PNA, relocationCommitment: true },
+    { match: /rto|return to office|office.{0,5}\d+.{0,5}day|in[- ]office|in.{0,5}person|hybrid|on[- ]site|onsite|based in.{0,15}(office|nyc|sf)|relocate|willing.{0,15}move|currently.{0,5}reside/i, action: 'click_radio_in_question', q: missingLabel, choice: rtoAns, fallback: PNA, relocationCommitment: true },
     { match: /gender/i, action: 'click_radio_in_question', q: missingLabel, choice: genderAns, fallback: 'Decline to self-identify' },
     { match: /race|ethnic/i, action: 'click_radio_in_question', q: missingLabel, choice: raceAns, fallback: 'Decline to self-identify' },
     { match: /sexual orientation/i, action: 'click_checkbox_in_question', q: missingLabel, choice: PNA },
     { match: /veteran/i, action: 'click_radio_in_question', q: missingLabel, choice: veteranAns, fallback: PNA },
     { match: /disab/i, action: 'click_radio_in_question', q: missingLabel, choice: disabilityAns, fallback: PNA },
-    { match: /current location|^location$/i, action: 'fill_location_combobox', value: cityFull },
-    { match: /where are you located/i, action: 'fill_text_in_question', q: missingLabel, value: cityFull },
+    { match: /current location|^location$|where are you located|where are you currently based|currently based|where.*based/i, action: 'fill_location_combobox', q: missingLabel, value: cityFull },
+    { match: /compensation|salary|pay expectation|expected pay|expected compensation/i, action: 'fill_text_in_question', q: missingLabel, value: compensationExpectation },
     { match: /linkedin/i, action: 'fill_text_in_question', q: missingLabel, value: linkedin },
     { match: /portfolio|website/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.portfolio || linkedin },
-    { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.education?.school || 'Babson College' },
+    { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.education?.school || 'Your School' },
     { match: /^degree|degree$/i, action: 'fill_text_in_question', q: missingLabel, value: `${PROFILE.education?.degree || 'Bachelor of Science'} in ${PROFILE.education?.major || 'Business'}` },
     { match: /graduation date|when do you expect to graduate/i, action: 'fill_text_in_question', q: missingLabel, value: BANK.fallback_text?.graduation_date || 'May 2027' },
+    // Name fields — extremely common on Ashby; resolve from profile, never pending.
+    // Order matters: "preferred"/"legal" qualifiers must be tested before the plain forms.
+    { match: /preferred first name/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.preferred_name || PROFILE.personal.first_name },
+    { match: /preferred last name/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.last_name },
+    { match: /preferred name/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.preferred_name || PROFILE.personal.first_name },
+    { match: /(legal )?(first|given) name/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.first_name },
+    { match: /(legal )?(last|family) name|surname/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.last_name },
+    { match: /(legal|full) name/i, action: 'fill_text_in_question', q: missingLabel, value: PROFILE.personal.full_name },
   ];
 
   const bucket = buckets.find((b) => b.match.test(ml));
   if (!bucket) {
     // Last resort: textarea / long-text → mark pending for main agent
     return { ok: false, note: 'no_bucket_for:' + missingLabel.slice(0, 60), pending_for_main_claude: true, question: missingLabel };
+  }
+
+  // Policy gate: an onsite/relocation COMMITMENT question only auto-answers when the
+  // user's relocation_policy permits it. A plain remote/hybrid acknowledgment (no
+  // relocate/onsite/named-office wording) is harmless and stays auto-Yes regardless,
+  // so real submissions that rely on the general RTO path are unaffected.
+  if (bucket.relocationCommitment && !relocationPolicyOpen) {
+    const isPlainRemoteHybrid = /remote|hybrid/i.test(ml)
+      && !/relocat|onsite|on[- ]site|in[- ]office|in.{0,5}person|headquarters|\bhq\b|office/i.test(ml);
+    if (!isPlainRemoteHybrid) {
+      return { ok: false, note: 'relocation_commitment_policy_unset', pending_for_main_claude: true, question: missingLabel };
+    }
   }
 
   if (bucket.action === 'upload_resume') {
@@ -462,9 +676,8 @@ async function answerMissing(tab, missingLabel) {
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
         const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 56))};
-        const targetChoice = ${JSON.stringify(bucket.choice)};
-        const fallbackChoice = ${JSON.stringify(bucket.fallback || '')};
-        const choices = [targetChoice, fallbackChoice].filter(Boolean).map(c => c.toLowerCase());
+        const rawChoices = ${JSON.stringify(bucket.choices || [bucket.choice, bucket.fallback].filter(Boolean))};
+        const choices = rawChoices.filter(Boolean).map(c => c.toLowerCase());
 
         // Find SMALLEST container with question text + has 2-12 selectable inputs OR buttons.
         const all = [...document.querySelectorAll("fieldset, div")];
@@ -544,6 +757,20 @@ async function answerMissing(tab, missingLabel) {
   }
 
   if (bucket.action === 'fill_location_combobox') {
+    if (bucket.q) {
+      const cityOnly = bucket.value.split(',')[0].trim();
+      const locationTerms = [
+        bucket.value,
+        locationStateFull ? `${cityOnly}, ${locationStateFull}, United States` : '',
+        locationState ? `${cityOnly}, ${locationState}, United States` : '',
+        PROFILE.education?.school && locationStateFull ? `${PROFILE.education.school}, ${locationStateFull}, United States` : '',
+        PROFILE.education?.school || '',
+        locationState ? '' : cityOnly,
+      ].filter(Boolean);
+      const scoped = await pickComboboxInQuestion(tab, bucket.q, locationTerms);
+      if (scoped.ok || scoped.note !== 'no_combobox_in_question') return scoped;
+    }
+
     // Find combobox, focus, typetext, pick option
     const found = await evalInTab(tab, `
       (() => {
@@ -555,7 +782,10 @@ async function answerMissing(tab, missingLabel) {
         return { ok:true, sel };
       })()
     `);
-    if (!found.ok) return found;
+    if (!found.ok) {
+      if (bucket.q) return await fillTextInQuestion(tab, bucket.q, bucket.value);
+      return found;
+    }
     cdp('typetext', tab, found.sel, bucket.value.split(',')[0]); // type just city portion
     await sleep(1600);
     return await evalInTab(tab, `
@@ -581,42 +811,7 @@ async function answerMissing(tab, missingLabel) {
   }
 
   if (bucket.action === 'fill_text_in_question') {
-    const r = await evalInTab(tab, `
-      (() => {
-        const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
-        const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 60))};
-        const selector = "input[type=text], input[type=url], input[type=email], textarea";
-
-        // First prefer explicit label[for=id] matches.
-        for (const inp of [...document.querySelectorAll(selector)]) {
-          const lbl = inp.id ? document.querySelector('label[for="' + CSS.escape(inp.id) + '"]') : null;
-          if (lbl && norm(lbl.innerText).includes(targetQ)) {
-            const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
-            return { ok:true, sel, via:'label_for' };
-          }
-        }
-
-        // Then find the smallest non-body container that contains the question
-        // and exactly the field belonging to that question.
-        const containers = [...document.querySelectorAll("fieldset, div")].filter(c => {
-          const t = norm(c.innerText);
-          if (!t.includes(targetQ)) return false;
-          return !![...c.querySelectorAll(selector)].find(inp => inp.offsetParent !== null);
-        });
-        containers.sort((a, b) => norm(a.innerText).length - norm(b.innerText).length);
-        for (const c of containers.slice(0, 8)) {
-          const inp = [...c.querySelectorAll(selector)].find(el => el.offsetParent !== null);
-          if (!inp) continue;
-          if (!inp.id) inp.id = 'mrw_txt_' + Math.random().toString(36).slice(2,8);
-          const sel = /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
-          return { ok:true, sel, via:'smallest_container', container_size: norm(c.innerText).length };
-        }
-        return { ok:false };
-      })()
-    `);
-    if (!r.ok) return r;
-    cdp('typetext', tab, r.sel, bucket.value);
-    return { ok: true, mode: 'text_fill' };
+    return await fillTextInQuestion(tab, bucket.q, bucket.value);
   }
 
   return { ok: false, note: 'unhandled_action' };
@@ -781,6 +976,18 @@ function logEssayPending(rec) {
   }
 }
 
+function addPendingQuestion(pending, item) {
+  if (!item?.question || !item?.selector) return;
+  if (pending.some((p) => p.question === item.question && p.selector === item.selector)) return;
+  pending.push(item);
+}
+
+function dedupePendingQuestions(pending) {
+  const out = [];
+  for (const item of pending || []) addPendingQuestion(out, item);
+  return out;
+}
+
 // ============================================================
 // Main
 // ============================================================
@@ -789,6 +996,12 @@ async function main() {
   const tab = await open();
   // Longer hydrate wait — agentio + others need >5s for React to fully mount form
   await sleep(6000);
+  const hydrated = await waitForAshbyForm(tab);
+  if (!hydrated.ok) {
+    console.log(JSON.stringify({ outcome: 'skip', reason: 'ashby_form_not_loaded', detail: hydrated, job_id: JOB_ID }));
+    await closeTab(tab);
+    return;
+  }
 
   log('Upload resume…');
   const u = await uploadResume(tab);
@@ -825,7 +1038,7 @@ async function main() {
       if (pendingForMainClaude.length > 0) {
         const rec = {
           outcome: 'essay_pending', tab_id: tab, job_id: JOB_ID,
-          pending: pendingForMainClaude,
+          pending: dedupePendingQuestions(pendingForMainClaude),
           still_missing: res.missing,
           company: COMPANY,
           url: APPLY_URL,
@@ -861,7 +1074,7 @@ async function main() {
             return null;
           })()
         `);
-        if (sel) pendingForMainClaude.push({ question: m, selector: sel.sel, tag: sel.tag });
+        if (sel) addPendingQuestion(pendingForMainClaude, { question: m, selector: sel.sel, tag: sel.tag });
       }
       log('  answer', m.slice(0, 50), '→', JSON.stringify(a).slice(0, 100));
     }
@@ -871,7 +1084,7 @@ async function main() {
   if (pendingForMainClaude.length > 0) {
     const rec = {
       outcome: 'essay_pending', tab_id: tab, job_id: JOB_ID,
-      pending: pendingForMainClaude,
+      pending: dedupePendingQuestions(pendingForMainClaude),
       still_missing: lastMissing,
       company: COMPANY,
       url: APPLY_URL,

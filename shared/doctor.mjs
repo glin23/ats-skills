@@ -7,15 +7,50 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir, platform } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { roleTypesFromSearchIntent } from './role_types.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || resolve(__dirname, '..');
 const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
 const json = args.has('--json');
 const strict = args.has('--strict');
 const checkCdp = args.has('--cdp');
 const installCheck = args.has('--install-check');
+const supervisor = args.has('--supervisor') || args.has('--apply-ready');
+
+function optionValue(name, fallback) {
+  const inline = argv.find((arg) => arg.startsWith(`${name}=`));
+  if (inline) return inline.slice(name.length + 1);
+  const index = argv.indexOf(name);
+  if (index >= 0 && argv[index + 1] && !argv[index + 1].startsWith('--')) {
+    return argv[index + 1];
+  }
+  return fallback;
+}
+
+const supervisorMax = optionValue('--max', process.env.MRWEIRDO_MAX_AUTO_APPLY || '3');
+const supervisorTarget = optionValue('--target', process.env.MRWEIRDO_TARGET_APPLICATIONS || '100');
+
+function readSearchIntent() {
+  try {
+    const data = JSON.parse(readFileSync(join(home, 'search_intent.json'), 'utf8'));
+    return data.search_intent || data;
+  } catch {
+    return null;
+  }
+}
+
+function resolveSupervisorRoleTargets() {
+  const explicit = optionValue('--role-targets', process.env.MRWEIRDO_ROLE_TYPE_TARGETS || '');
+  if (explicit) return explicit;
+  const intent = readSearchIntent();
+  if (!intent) return '';
+  return roleTypesFromSearchIntent(intent, '').join(',');
+}
+
+const supervisorRoleTargets = resolveSupervisorRoleTargets();
 
 function resolveCdpHost() {
   if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
@@ -115,6 +150,111 @@ async function checkCdpEndpoint() {
   }
 }
 
+function parseJsonFromOutput(output) {
+  const text = String(output || '');
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end < start) throw new Error('no JSON object in output');
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+function checkSupervisorStatus() {
+  const scriptPath = join(repoRoot, 'shared', 'supervisor_status.mjs');
+  if (!existsSync(scriptPath)) {
+    warn('Apply readiness', `${scriptPath} not found.`, 'Pull the latest repo version before running batch apply.');
+    return;
+  }
+  if (!supervisorRoleTargets) {
+    warn(
+      'Apply readiness',
+      'No role_type_targets found in arguments, environment, or search_intent.json.',
+      'Run onboarding or pass --role-targets intern,part_time,new_grad_FT explicitly.'
+    );
+    return;
+  }
+
+  const out = spawnSync(
+    process.execPath,
+    [
+      scriptPath,
+      '--json',
+      '--max',
+      String(supervisorMax),
+      '--target',
+      String(supervisorTarget),
+      '--role-targets',
+      String(supervisorRoleTargets),
+    ],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, MRWEIRDO_HOME: home },
+      encoding: 'utf8',
+    }
+  );
+
+  if (out.error || out.status !== 0) {
+    const detail = (out.stderr || out.stdout || out.error?.message || '').trim();
+    warn('Apply readiness', `Unable to read supervisor status. ${detail}`.trim(), 'Run: node shared/supervisor_status.mjs');
+    return;
+  }
+
+  let status;
+  try {
+    status = parseJsonFromOutput(out.stdout);
+  } catch (e) {
+    warn('Apply readiness', `Supervisor status did not return parseable JSON: ${e.message}`, 'Run: node shared/supervisor_status.mjs --json');
+    return;
+  }
+
+  const roleTargets = (status.role_targets || []).join(',') || supervisorRoleTargets;
+  const cdpPorts = status.cdp || [];
+  const cdpReady = cdpPorts.some((port) => port.ok);
+  if (cdpReady) {
+    const readyPorts = cdpPorts.filter((port) => port.ok).map((port) => port.port).join(', ');
+    pass('Apply CDP', `Ready on port(s): ${readyPorts}.`);
+  } else {
+    warn(
+      'Apply CDP',
+      `No apply CDP endpoint is ready on ${cdpPorts.map((port) => port.port).join('/') || '9222/9223'}.`,
+      'Run: bash ~/.mrweirdo-jobs/repo/shared/chrome-cdp-launcher.sh'
+    );
+  }
+
+  const queueReady = Number(status.queue?.ready_for_requested_batch || 0);
+  const requested = Number(status.queue?.requested || supervisorMax);
+  if (queueReady >= requested) {
+    pass('Apply queue', `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`);
+  } else {
+    warn(
+      'Apply queue',
+      `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`,
+      'Review fit-4 candidates or run supported-ATS discovery before scaling.'
+    );
+  }
+
+  const capacity = status.capacity;
+  if (capacity) {
+    const readyNow = Number(capacity.ready_now || 0);
+    const target = Number(capacity.target_applications || supervisorTarget);
+    const shortfall = Number(capacity.shortfall_now || 0);
+    if (shortfall > 0) {
+      warn(
+        'Apply capacity',
+        `${readyNow}/${target} ready now; shortfall ${shortfall}.`,
+        'Use rescore_review for fit-4 rows, then discover more supported ATS rows.'
+      );
+    } else {
+      pass('Apply capacity', `${readyNow}/${target} ready now.`);
+    }
+  }
+
+  if (status.latest_report?.path) {
+    pass('Latest apply report', status.latest_report.path);
+  } else {
+    warn('Latest apply report', 'No apply report found yet.', 'Run a dry-run or real batch to generate one.');
+  }
+}
+
 function runChecks() {
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor >= 24) pass('Node.js', `v${process.versions.node}`);
@@ -176,6 +316,11 @@ function runChecks() {
 
     checkJsonFile(join(home, 'profile.json'), 'profile.json');
     checkJsonFile(join(home, 'search_intent.json'), 'search_intent.json');
+    if (existsSync(join(home, 'essay_profile.json'))) {
+      checkJsonFile(join(home, 'essay_profile.json'), 'essay_profile.json');
+    } else {
+      warn('essay_profile.json', `${join(home, 'essay_profile.json')} not found yet.`, 'Run /mrweirdo-onboard to create reusable essay/cover-letter writing memory.');
+    }
 
     const dbPath = join(home, 'jobs.db');
     if (existsSync(dbPath)) pass('jobs.db', dbPath);
@@ -201,7 +346,7 @@ function printHuman() {
   console.log('');
   console.log(`summary: ${counts.PASS || 0} pass, ${counts.WARN || 0} warn, ${counts.FAIL || 0} fail`);
   if ((counts.FAIL || 0) === 0) {
-    const cdpWarn = results.some((r) => r.level === 'WARN' && r.name === 'Chrome CDP');
+    const cdpWarn = results.some((r) => r.level === 'WARN' && /CDP/.test(r.name));
     if (cdpWarn) {
       console.log('status: install looks usable, but start Chrome CDP before running real applications.');
     } else if ((counts.WARN || 0) > 0) {
@@ -216,6 +361,7 @@ function printHuman() {
 
 runChecks();
 if (checkCdp) await checkCdpEndpoint();
+if (supervisor && !installCheck) checkSupervisorStatus();
 
 const failCount = results.filter((r) => r.level === 'FAIL').length;
 const warnCount = results.filter((r) => r.level === 'WARN').length;

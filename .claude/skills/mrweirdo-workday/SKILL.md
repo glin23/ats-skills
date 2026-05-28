@@ -136,7 +136,7 @@ sleep 2   # let next step render
 
 Loop back to step 5 with re-injected helpers until `Workday.detectStep().step === 6` (Review) or we hit the final step in the config.
 
-### 7. Final step — submit (wait for 用户's explicit authorization)
+### 7. Final step — submit (wait for the user's explicit authorization)
 
 ⚠️ **Do not auto-submit**. Show 用户 `/tmp/workday_pre_submit.png` and the field summary. Wait for 用户 to say "投" / "submit" / "可以了".
 

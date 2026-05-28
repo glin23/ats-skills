@@ -21,6 +21,8 @@
 //   // result.by_source = { remoteok: 12, greenhouse_bulk: 200, ... }
 //   // result.errors = [{ source, error }, ...]
 
+import { classifyRoleType } from '../role_types.mjs';
+
 // Source adapter registry. Each adapter normalizes a different module's
 // signature to a common `{ fetch(opts) → jobs[] }` shape so the dispatcher
 // doesn't care about per-source quirks.
@@ -163,8 +165,8 @@ export async function discoverAll({
       const key = ((j.apply_url || j.url || '') + '').toLowerCase().trim();
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      // Attach source for downstream auditing.
-      merged.push({ ...j, _discovery_source: r.source });
+      // Attach source + shared role type for downstream hard-filter/scoring.
+      merged.push({ ...j, role_type: j.role_type || classifyRoleType(j), _discovery_source: r.source });
     }
   }
 
