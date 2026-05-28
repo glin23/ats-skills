@@ -31,6 +31,13 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderAnswerTemplate } from './answer_templates.mjs';
+import {
+  isSpecificCityLogisticsFact as routingIsSpecificCityFact,
+  relocationPolicyOpen as routingRelocationPolicyOpen,
+  confirmedCitiesFrom as routingConfirmedCities,
+  mentionsConfirmedCity as routingMentionsConfirmedCity,
+  deriveWorkAuthAnswers,
+} from './answer_routing.mjs';
 
 // ============================================================
 // CLI dispatcher — handle --list-pending-essays before anything else.
@@ -412,12 +419,7 @@ async function answerMissing(tab, missingLabel) {
   const PNA = 'I prefer not to answer';
 
   // Profile-derived defaults (profile overrides bank where present)
-  const sponsorAns = PROFILE.work_authorization?.requires_sponsorship_future
-    ? 'Yes'
-    : (BANK.yes_no_defaults?.sponsorship_future || 'Yes');
-  const authorizedAns = PROFILE.work_authorization?.authorized_to_work_us
-    ? 'Yes'
-    : (BANK.yes_no_defaults?.work_authorization || 'Yes');
+  const { sponsorAns, authorizedAns } = deriveWorkAuthAnswers(PROFILE, BANK);
   const atsLocation = PROFILE.standard_qa?.current_location_for_ats || PROFILE.target_filters?.current_location_for_ats || '';
   const locationCity = BANK.location_preferences?.city || PROFILE.personal.address_city || PROFILE.personal.city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const locationState = PROFILE.personal.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
@@ -447,23 +449,11 @@ async function answerMissing(tab, missingLabel) {
   //    "willing" part is policy-covered, so when the policy allows we answer Yes;
   //    but if the phrasing asserts a residence/transport FACT (handled by the
   //    specific-city-fact guard below, which runs first), we ask-or-skip instead.
-  const geo = SEARCH_INTENT.search_intent?.geographic_preference || {};
-  const relocationPolicyOpen = geo.relocation_policy === 'anywhere_legal_work'
-    && geo.willing_to_relocate_for_internship === true;
-  // Cities the user has explicitly confirmed living-in / having logistics for.
-  // Sourced from the essay-profile factual gap field (orchestrator populates the
-  // private file); empty by default so unknown cities always ask-or-skip.
-  const confirmedCities = (PROFILE.factual_gap_fields?.onsite_location_logistics?.confirmed_cities || [])
-    .map((c) => String(c).toLowerCase());
-  const mentionsConfirmedCity = confirmedCities.some((c) => c && ml.includes(c));
-
-  // Specific-city LOGISTICS FACT detector. Matches questions that assert the user
-  // already resides in / has physical transport to a NAMED place — a personal fact
-  // the tool cannot know. A bare named city (no "transport"/"reside"/"located"
-  // verb) is NOT caught here so general willingness phrasings still flow through.
-  const isSpecificCityLogisticsFact =
-    /reliable transportation|own transportation|have transportation|access to (?:reliable )?transportation|means of transportation|commute (?:to|into)/i.test(ml)
-    || /currently (?:live|living|reside|residing|located|based)|do you (?:live|reside)|already (?:live|living|reside|based)/i.test(ml);
+  // Decisions extracted to shared/answer_routing.mjs (pure, unit-tested).
+  const relocationPolicyOpen = routingRelocationPolicyOpen(SEARCH_INTENT);
+  const confirmedCities = routingConfirmedCities(PROFILE);
+  const mentionsConfirmedCity = routingMentionsConfirmedCity(ml, confirmedCities);
+  const isSpecificCityLogisticsFact = routingIsSpecificCityFact(ml);
   if (isSpecificCityLogisticsFact && !mentionsConfirmedCity) {
     return {
       ok: false,

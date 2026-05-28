@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
+import { eligibleReason } from './eligibility.mjs';
 
 const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
@@ -22,19 +23,6 @@ function boolArg(name) {
   return process.argv.includes(name);
 }
 
-function duplicateKey(row) {
-  return `${normalizeCompany(row.company)}::${normalizeTitle(row.title)}`;
-}
-
-function eligibleReason(row, roleType, allowedRoleTypes, submittedKeys) {
-  if (row.status !== '🤖 AI sourced') return 'not_pending';
-  if (row.apply_quota_limit != null) return 'quota_guarded';
-  if (submittedKeys.has(duplicateKey(row))) return 'duplicate_same_company_title_already_submitted';
-  if (!allowedRoleTypes.includes(roleType)) return 'role_type_not_allowed';
-  if ((row.fit_score ?? 0) < MIN_FIT) return 'fit_below_threshold';
-  if (!SUPPORTED_AUTO.has(row.ats_platform)) return 'unsupported_ats_platform';
-  return 'eligible';
-}
 
 const apply = boolArg('--apply');
 const json = boolArg('--json');
@@ -73,7 +61,13 @@ const summary = {
 
 for (const row of rows) {
   const roleType = deriveRoleTypeFromJob(row);
-  const reason = eligibleReason(row, roleType, allowedRoleTypes, submittedKeys);
+  const reason = eligibleReason(row, {
+    roleType,
+    allowedRoleTypes,
+    submittedKeys,
+    minFit: MIN_FIT,
+    supportedAuto: SUPPORTED_AUTO,
+  });
   const nextEligible = reason === 'eligible' ? 1 : 0;
   const currentEligible = Number(row.auto_apply_eligible || 0);
   summary.by_reason[reason] = (summary.by_reason[reason] || 0) + 1;
