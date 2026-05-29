@@ -3,6 +3,24 @@
 ## [Unreleased]
 
 ### Changed
+- Extracted the Ashby driver's answer-bucket matching DECISION into a pure
+  `shared/answer_buckets.mjs` (`matchAnswerBucket(label, ctx)` +
+  `buildAnswerBuckets`) — **verbatim** with the prior inline `buckets` array and
+  `buckets.find(b => b.match.test(ml))` in `answerMissing()`. Every regex,
+  action, value, choice, fallback and the `relocationCommitment` flag are moved
+  unchanged; the values that referenced driver-scope variables (`linkedin`,
+  `cityFull`, `compensationExpectation`, `sponsorAns`, `authorizedAns`, `rtoAns`,
+  `PNA`, EEO answers, profile fields) are supplied via a `ctx` object the driver
+  builds from PROFILE/BANK/SEARCH_INTENT (reusing `deriveWorkAuthAnswers`). The
+  driver still performs all CDP eval/click/fill on the returned descriptor — only
+  the decision is relocated, so the verified live path is byte-for-byte the same.
+  Also extracted the post-SQL queue filter into a pure
+  `passesQueueFilters(row, {roleTypes, submittedKeys, seenKeys})` in
+  `shared/eligibility.mjs`, now used by `shared/auto_apply_queue.mjs`.
+  Added `test/answer_buckets.test.mjs`, `test/answer_buckets_fixtures.test.mjs`
+  (+ `test/fixtures/ashby_questions.json` of real Ashby phrasings) and
+  `test/queue_filters.test.mjs`. Parity verified: `recompute --json` `by_reason`
+  and `auto_apply_queue` row output are byte-identical before/after. Suite: 31 → 51.
 - Extracted the safety-critical answer-routing decisions
   (`shared/answer_routing.mjs`) and the auto-apply eligibility gate
   (`shared/eligibility.mjs`) into pure, importable modules — **verbatim** with

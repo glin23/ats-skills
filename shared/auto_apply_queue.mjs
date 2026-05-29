@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
-import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
+import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
+import { passesQueueFilters, duplicateKey } from './eligibility.mjs';
 
 const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
 const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
@@ -65,12 +66,9 @@ const submittedKeys = new Set(
 const rows = [];
 const queuedKeys = new Set();
 for (const row of candidates) {
-  const key = `${normalizeCompany(row.company)}::${normalizeTitle(row.title)}`;
-  if (submittedKeys.has(key)) continue;
-  if (queuedKeys.has(key)) continue;
-  if (!roleTypes.includes(deriveRoleTypeFromJob(row))) continue;
+  if (!passesQueueFilters(row, { roleTypes, submittedKeys, seenKeys: queuedKeys })) continue;
   rows.push(row);
-  queuedKeys.add(key);
+  queuedKeys.add(duplicateKey(row));
   if (rows.length >= MAX_ROWS) break;
 }
 

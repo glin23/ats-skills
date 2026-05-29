@@ -1,0 +1,42 @@
+[
+  {
+    "label": "Legal Last Name",
+    "expectedAction": "fill_text_in_question",
+    "note": "name field resolves from profile.personal.last_name"
+  },
+  {
+    "label": "Preferred First Name",
+    "expectedAction": "fill_text_in_question",
+    "note": "preferred qualifier ordered before plain first-name form"
+  },
+  {
+    "label": "How did you hear about this job?",
+    "expectedAction": "hear_about",
+    "note": "intercepted by answerMissing before the bucket list; bucket list itself returns null"
+  },
+  {
+    "label": "What are your salary requirements?",
+    "expectedAction": "fill_text_in_question",
+    "note": "compensation bucket -> fill comp expectation text"
+  },
+  {
+    "label": "Are you legally authorized to work in the United States?",
+    "expectedAction": "click_radio_in_question",
+    "note": "authorized-to-work -> Yes radio (F-1 OPT is authorized now)"
+  },
+  {
+    "label": "Will you now or in the future require sponsorship for employment visa status (e.g. H-1B)?",
+    "expectedAction": "click_radio_in_question",
+    "note": "sponsorship -> sponsorAns radio (Yes; never a false no-sponsorship)"
+  },
+  {
+    "label": "Are you willing and able to work in-office three days per week as required for this role?",
+    "expectedAction": "click_radio_in_question",
+    "note": "RTO willingness -> rtoAns radio, carries relocationCommitment flag; not a residence FACT"
+  },
+  {
+    "label": "Are you currently located in the SF Bay Area? Or, if not located in the Bay Area, are you open to relocation?",
+    "expectedAction": "specific_city_fact",
+    "note": "residence FACT intercepted by answer_routing fact-guard before any bucket; never auto-answered"
+  }
+]
