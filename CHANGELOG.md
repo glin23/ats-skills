@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Fixed
+- **Lever flow hardened for batch driving** (verified live 2026-05-28 by 5 real
+  submitted Lever internships: everbridge, ekimetrics, endpointclinical,
+  voltus, get-vocal). In `shared/lever_helpers.js`: (1) `waitForResumeStorageId`
+  default 15 s → **45 s** (a slow form, everbridge, took ~35 s to assign the
+  backend storage ID); (2) `findEmptyRequired` now also sweeps Lever custom
+  "card" questions (`name="cards[uuid][fieldN]"` radios / native selects / text)
+  that the `label[for=id]` sweeps missed — the gap that forced manual
+  radio-filling — reporting each unfilled required control with its options;
+  (3) new `Lever.fillCardField(nameOrId, value)` answers a card field reliably
+  (radios/checkboxes via `<label>` click — React-safe; selects by option text;
+  text via native setter).
 - **Lever resume upload no longer false-skips on a bogus "File exceeds 100MB"
   error** (HANDOFF dragon #6). Root cause was timing, not a real rejection:
   Lever's upload is a slow two-step async flow — `cdp.mjs upload`

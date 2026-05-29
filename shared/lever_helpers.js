@@ -123,10 +123,12 @@
    * Returns: { ok, storageId } | { ok: false, error, waited_ms }
    */
   async function waitForResumeStorageId(timeoutMs) {
-    // Default 15 s: live Lever boards take ~4–8 s to assign the backend
-    // storage ID (GOTCHA #6). The previous 5 s default raced the backend and
-    // produced spurious "100MB" skips.
-    const budget = timeoutMs ?? 15000;
+    // Default 45 s: live Lever boards take ~4–8 s on a fast form but up to
+    // ~35 s on a slow one (everbridge, measured 2026-05-28) to assign the
+    // backend storage ID (GOTCHA #6). The previous 5 s default raced the
+    // backend and produced spurious "100MB" skips; even 15 s was too short on
+    // slow forms, so the default is now 45 s.
+    const budget = timeoutMs ?? 45000;
     const deadline = Date.now() + budget;
     const started = Date.now();
     while (Date.now() < deadline) {
@@ -394,6 +396,47 @@
       }
     }
 
+    // 3) Lever custom "card" questions (radios / native selects / text). These
+    // use `name="cards[uuid][fieldN]"` and frequently have NO label[for=id]
+    // association, so sweeps 1–2 miss them. Scan each `.application-question`
+    // marked required (✱ / *) and report the first unfilled control with its
+    // options so the caller can answer it. (This was the 2026-05-28 gap that
+    // forced manual radio-filling on everbridge/ekimetrics.)
+    for (const q of document.querySelectorAll('.application-question')) {
+      if (!q.offsetParent) continue;
+      const labEl = q.querySelector('.application-label, label');
+      const labelText = (labEl && labEl.innerText) || '';
+      if (!labelText.includes('*') && !labelText.includes('✱')) continue;
+      const cleanLabel = labelText.replace(/\s*[\*✱]\s*/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+      const radios = [...q.querySelectorAll('input[type=radio]')];
+      const checkboxes = [...q.querySelectorAll('input[type=checkbox]')];
+      const selects = [...q.querySelectorAll('select')];
+      const texts = [...q.querySelectorAll('input[type=text], input[type=url], input[type=email], textarea')];
+      const optLabel = (inp) => ((inp.closest('label') && inp.closest('label').innerText) || inp.value || '').replace(/\s+/g, ' ').trim();
+      if (radios.length) {
+        const name = radios[0].name;
+        if (seen.has(name) || radios.some((r) => r.checked)) continue;
+        result.push({ id: name, label: cleanLabel, type: 'radio', required: true, currentValue: '', options: radios.map((r) => ({ value: r.value, text: optLabel(r) })) });
+        seen.add(name);
+      } else if (selects.length) {
+        const sel = selects[0];
+        const cur = (sel.options[sel.selectedIndex] || {}).text || '';
+        if (seen.has(sel.name || sel.id) || (sel.value && !/^(select|choose)/i.test(cur))) continue;
+        result.push({ id: sel.name || sel.id, label: cleanLabel, type: 'select', required: true, currentValue: '', options: [...sel.options].map((o) => o.text) });
+        seen.add(sel.name || sel.id);
+      } else if (checkboxes.length) {
+        const name = checkboxes[0].name;
+        if (seen.has(name) || checkboxes.some((c) => c.checked)) continue;
+        result.push({ id: name, label: cleanLabel, type: 'checkbox', required: true, currentValue: '', options: checkboxes.map((c) => ({ value: c.value, text: optLabel(c) })) });
+        seen.add(name);
+      } else if (texts.length) {
+        const t = texts[0];
+        if (seen.has(t.name || t.id) || (t.value || '').trim()) continue;
+        result.push({ id: t.name || t.id, label: cleanLabel, type: t.tagName === 'TEXTAREA' ? 'textarea' : 'text', required: true, currentValue: '', options: null });
+        seen.add(t.name || t.id);
+      }
+    }
+
     return result;
   }
 
@@ -552,6 +595,59 @@
     return { ok: errors.length === 0, filled, errors, plan };
   }
 
+  /**
+   * fillCardField(nameOrId, value) — reliably answer a Lever custom "card"
+   * field (the kind findEmptyRequired sweep #3 reports). Handles the three
+   * shapes that broke manual filling on 2026-05-28:
+   *   - radio / checkbox: clicks the matching <label> (React-safe; a bare
+   *     input.click()+native-setter was silently reverted on some forms),
+   *     matching `value` against the option value OR its visible label text.
+   *   - native <select>: sets the option whose text or value matches.
+   *   - text / textarea: native value setter + input/change events.
+   * `value` is matched case-insensitively as a substring for radios/selects.
+   */
+  function fillCardField(nameOrId, value) {
+    const sel = '[name="' + nameOrId + '"]';
+    const nodes = [...document.querySelectorAll(sel)].length
+      ? [...document.querySelectorAll(sel)]
+      : (document.getElementById(nameOrId) ? [document.getElementById(nameOrId)] : []);
+    if (!nodes.length) return { ok: false, note: 'field_not_found', field: nameOrId };
+    const want = String(value);
+    const rx = new RegExp(want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const first = nodes[0];
+
+    if (first.type === 'radio' || first.type === 'checkbox') {
+      const optText = (i) => ((i.closest('label') && i.closest('label').innerText) || i.value || '').replace(/\s+/g, ' ').trim();
+      const match = nodes.find((i) => rx.test(i.value || '') || rx.test(optText(i)))
+        || nodes.find((i) => optText(i).toLowerCase() === want.toLowerCase());
+      if (!match) return { ok: false, note: 'no_matching_option', field: nameOrId, options: nodes.map(optText) };
+      const lbl = match.closest('label') || document.querySelector('label[for="' + match.id + '"]');
+      if (lbl && lbl.click) lbl.click(); else match.click();
+      const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+      if (desc && desc.set) desc.set.call(match, true);
+      match.dispatchEvent(new Event('input', { bubbles: true }));
+      match.dispatchEvent(new Event('change', { bubbles: true }));
+      return { ok: match.checked, picked: optText(match), via: 'label_click' };
+    }
+
+    if (first.tagName === 'SELECT') {
+      const opt = [...first.options].find((o) => o.text.trim().toLowerCase() === want.toLowerCase())
+        || [...first.options].find((o) => rx.test(o.text) || rx.test(o.value));
+      if (!opt) return { ok: false, note: 'no_matching_option', field: nameOrId, options: [...first.options].map((o) => o.text) };
+      first.value = opt.value;
+      first.dispatchEvent(new Event('change', { bubbles: true }));
+      return { ok: first.value === opt.value, picked: opt.text };
+    }
+
+    // text / textarea
+    const proto = first.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const d = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (d && d.set) d.set.call(first, want); else first.value = want;
+    first.dispatchEvent(new Event('input', { bubbles: true }));
+    first.dispatchEvent(new Event('change', { bubbles: true }));
+    return { ok: !!first.value, mode: 'text_fill' };
+  }
+
   globalThis.Lever = {
     // Lever-specific
     setSelectedLocation,
@@ -566,6 +662,7 @@
     closeAllMenus,
     findSubmit,
     findEmptyRequired,
+    fillCardField,
     checkSuccess,
     normalizeProfile,
     fillForm,
