@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Lever flow hardened for batch driving** (verified live 2026-05-28 by 5 real
+  submitted Lever internships: everbridge, ekimetrics, endpointclinical,
+  voltus, get-vocal). In `shared/lever_helpers.js`: (1) `waitForResumeStorageId`
+  default 15 s → **45 s** (a slow form, everbridge, took ~35 s to assign the
+  backend storage ID); (2) `findEmptyRequired` now also sweeps Lever custom
+  "card" questions (`name="cards[uuid][fieldN]"` radios / native selects / text)
+  that the `label[for=id]` sweeps missed — the gap that forced manual
+  radio-filling — reporting each unfilled required control with its options;
+  (3) new `Lever.fillCardField(nameOrId, value)` answers a card field reliably
+  (radios/checkboxes via `<label>` click — React-safe; selects by option text;
+  text via native setter).
+- **Lever resume upload no longer false-skips on a bogus "File exceeds 100MB"
+  error** (HANDOFF dragon #6). Root cause was timing, not a real rejection:
+  Lever's upload is a slow two-step async flow — `cdp.mjs upload`
+  (`DOM.setFileInputFiles`) drops the file and fires the native `change`, then
+  Lever POSTs it to its backend and only *afterwards* writes `resumeStorageId`.
+  Live boards take ~4–8 s (ekimetrics, field-ai, pyka, everbridge measured
+  2026-05-28 — everbridge took 5.16 s). The old `waitForResumeStorageId`
+  default of 5000 ms raced the backend; on a timeout the caller then read the
+  hidden `.resume-upload-oversize` / `.error-message` template (a baked-in
+  "File exceeds the maximum upload size of 100MB" element, never a real
+  rejection on a 116 KB PDF) and skipped a perfectly good row.
+  Fix, all in `shared/lever_helpers.js`:
+  - `waitForResumeStorageId` default timeout raised 5 s → 15 s.
+  - New `Lever.verifyResumeUploaded()` — the authoritative attach check, using
+    only real-success signals (`resumeStorageId` non-empty, the visible
+    `.resume-upload-success` "Success!" label, and the `has-file` button),
+    never the hidden oversize template.
+  - `isErrorMessageVisible()` now suppresses any "100MB"/oversize text once the
+    upload has succeeded, so the benign template can no longer read as a real
+    error. Verified end-to-end on four live Lever boards: resume attaches and
+    shows "Success!" with a real backend storage ID; no submission was made.
+
 ### Changed
 - Extracted the Ashby driver's answer-bucket matching DECISION into a pure
   `shared/answer_buckets.mjs` (`matchAnswerBucket(label, ctx)` +
