@@ -1,0 +1,58 @@
+{
+  "_notes": [
+    "Schema example for ~/.mrweirdo-jobs/company_list.user.json.",
+    "This file is not loaded by default and is not a shared company pool.",
+    "Use it only as a template when a local user wants per-company quotas or preferences."
+  ],
+  "companies": [
+    {
+      "name": "Example Startup",
+      "greenhouse_slug": "example-startup",
+      "ashby_slug": null,
+      "lever_slug": null,
+      "smartrecruiters_slug": null,
+      "icims_tenant": null,
+      "jobvite_tenant": null,
+      "bamboohr_tenant": null,
+      "rippling_tenant": null,
+      "recruitee_tenant": null,
+      "personio_tenant": null,
+      "tags": [
+        "student-friendly",
+        "internships"
+      ],
+      "priority": "medium",
+      "apply_quota": {
+        "enabled": false,
+        "limit": null,
+        "period": null,
+        "note": null
+      }
+    },
+    {
+      "name": "Example Large Company",
+      "greenhouse_slug": null,
+      "ashby_slug": null,
+      "lever_slug": "example-large-company",
+      "smartrecruiters_slug": null,
+      "icims_tenant": null,
+      "jobvite_tenant": null,
+      "bamboohr_tenant": null,
+      "rippling_tenant": null,
+      "recruitee_tenant": null,
+      "personio_tenant": null,
+      "tags": [
+        "large-company",
+        "quota-guard"
+      ],
+      "priority": "high",
+      "apply_quota": {
+        "enabled": true,
+        "limit": 1,
+        "period": "cycle",
+        "note": "Keep quota-guarded companies out of batch auto-submit; use cherry-pick."
+      }
+    }
+  ]
+}
+

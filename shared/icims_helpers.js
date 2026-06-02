@@ -1,7 +1,7 @@
 /**
  * icims_helpers.js — iCIMS ATS form helpers (v0.8 ALPHA, best-guess scaffold)
  *
- * ⚠️  v0.8 ALPHA DISCLAIMER — NOT DOGFOOD-VERIFIED.
+ * ⚠️  v0.8 ALPHA DISCLAIMER — NOT LIVE-VERIFIED.
  *
  * 用户 has NOT yet successfully run a real iCIMS submission with these helpers.
  * Selectors / field semantics below are inferred from:
@@ -14,7 +14,7 @@
  * Every selector marked `// TODO-verify` MUST be confirmed against the live
  * DOM on first real submission and adjusted in place.
  *
- * Architectural assumptions (verify on first dogfood):
+ * Architectural assumptions (verify on first live verification):
  *   1. iCIMS classic template uses server-rendered HTML forms with traditional
  *      `<input id="firstName">` IDs — NOT React. Plain JS setVal + dispatch
  *      'change' event SHOULD work for most fields (unlike Ashby).
@@ -276,7 +276,7 @@
   /**
    * ICIMS.normalizeProfile(raw)
    *
-   * Maps 用户's profile.json shape to iCIMS standard fields.
+   * Maps the local profile.json shape to iCIMS standard fields.
    */
   ICIMS.normalizeProfile = function (raw) {
     if (!raw) return null;
@@ -470,7 +470,7 @@
     }
 
     // Custom employer questions — likely textarea / native-select. TODO-verify
-    // structure on first dogfood. For now flag any empty required field we
+    // structure on first live verification. For now flag any empty required field we
     // didn't already plan as 'manual'.
     const planned = new Set(plan.map((p) => p.selector || ('#' + p.fieldId)));
     const empty = ICIMS.findEmptyRequired();
@@ -490,7 +490,7 @@
     return {
       ok: true,
       plan,
-      _disclaimer: 'v0.8 alpha — best-guess; verify each field on first dogfood',
+      _disclaimer: 'v0.8 alpha — best-guess; verify each field on first live verification',
     };
   };
 

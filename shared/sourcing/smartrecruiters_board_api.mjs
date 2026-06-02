@@ -25,7 +25,7 @@
  * Interface mirrors greenhouse_board_api.mjs / ashby_board_api.mjs so the
  * sourcing pipeline can route by ATS slug.
  *
- * v0.8 — scaffold. Not yet dogfooded against a live submit pipeline.
+ * v0.8 — scaffold. Not yet live-verified against a live submit pipeline.
  */
 
 const SR_ENDPOINT = 'https://api.smartrecruiters.com/v1/companies';

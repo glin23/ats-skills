@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-lever
-description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/mrweirdo-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable, with real dogfood fixes encoded in lever_helpers.js.
+description: Automate Lever ATS application form filling using CDP via shared/cdp.mjs. Trigger with "投这个 Lever URL：<url>" or "/mrweirdo-lever <url>". User must explicitly authorize the final Submit click — skill never auto-submits. v0.8 stable, with real-form fixes encoded in lever_helpers.js.
 ---
 
 # Lever ATS 投递 skill — v0.8 stable
@@ -25,7 +25,7 @@ description: Automate Lever ATS application form filling using CDP via shared/cd
    bash shared/chrome-cdp-launcher.sh
    ```
    验证：`curl -s http://localhost:9222/json/version` 返回 JSON 即 OK。
-2. **`shared/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
+2. **`~/.mrweirdo-jobs/profile.json` 存在**，至少含 `full_name / email / phone / linkedin_url / location_text / resume_path`。schema 见 `shared/profile.template.json`。
 3. **简历 PDF 可读**：`~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）。**先 `cp` 到 `/tmp/`** — Lever 的 drag-drop 区在 macOS 沙盒外的路径上会触发误报（见 Known gotchas #5）。
 4. **Node 24+**：内置 WebSocket 才能跑 `cdp.mjs`。
 
@@ -62,7 +62,7 @@ node shared/cdp.mjs eval "$TAB" "$(cat shared/lever_helpers.js)"
 ```bash
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
-PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || { echo "missing profile.json — run /mrweirdo-onboard"; exit 1; }
 SRC_RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 cp "$SRC_RESUME" /tmp/
 RESUME=/tmp/$(basename "$SRC_RESUME")
@@ -123,7 +123,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_post_submit.pn
 
 ## Known Lever gotchas
 
-这 5 个坑来自真实 Lever dogfood，全部在 `shared/lever_helpers.js` 里有 workaround 实现。
+这 5 个坑来自真实 Lever live verification，全部在 `shared/lever_helpers.js` 里有 workaround 实现。
 
 | # | 坑 | 现象 | Workaround |
 |---|---|---|---|

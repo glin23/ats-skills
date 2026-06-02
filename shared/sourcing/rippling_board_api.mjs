@@ -19,7 +19,7 @@
  * Strategy:
  *   1) GET https://ats.rippling.com/{tenant}/jobs
  *   2) Extract the `<script id="__NEXT_DATA__">{...}</script>` JSON blob.
- *   3) Walk `props.pageProps.jobs` (or similar — confirm via dogfood) and
+ *   3) Walk `props.pageProps.jobs` (or similar — confirm via live verification) and
  *      normalize each entry.
  *   4) If __NEXT_DATA__ is absent (older tenant pages without Next.js),
  *      fall back to anchor-tag regex over the HTML.
@@ -190,7 +190,7 @@ function normalizeFromNext(raw, tenant) {
 /**
  * HTML fallback parser — used when __NEXT_DATA__ is missing. Matches anchors
  * that point at `/jobs/<id>` within the same tenant slug. Less reliable;
- * dogfood and iterate the regex.
+ * live verification and iterate the regex.
  */
 function parseHtmlFallback(html, tenant) {
   const slug = cleanTenant(tenant);

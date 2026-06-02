@@ -1,6 +1,6 @@
 # Mr. Weirdo Jobs
 
-> **v2.2.0 — resume-driven job search automation for US college students.**
+> **v2.2.0 public alpha — resume-driven job search automation for US college students.**
 > A Claude Code + Codex Skill collection with a Node 24/CDP backend:
 > resume intake → job discovery → fit scoring → ATS form filling →
 > submission audit → Gmail confirmation loop.
@@ -34,6 +34,47 @@ commands, and local state directory use `mrweirdo-jobs` / `mrweirdo-*`
 for compatibility. The main product is a Skill collection, not a SaaS.
 All private state stays on the user's machine under `~/.mrweirdo-jobs/`.
 
+## Public Alpha Status
+
+This repo is ready for **public alpha** testing, not broad beta yet.
+Use it if you are comfortable running a local developer tool, reading warnings,
+and reviewing the first few submissions carefully.
+
+Alpha success means:
+
+- a fresh install completes on macOS;
+- `/mrweirdo-onboard` creates this user's local profile/search files;
+- each run performs fresh discovery and updates local history;
+- supported Greenhouse/Ashby rows can submit in a small batch after the user
+  confirms the parsed profile/search intent;
+- if no rows are ready, the tool explains why and points to the next realtime
+  discovery/review step.
+
+Before inviting classmates, run:
+
+```bash
+cd ~/.mrweirdo-jobs/repo
+npm run release:alpha
+```
+
+## Database model
+
+The database is **local to the person running the skill**, not a shared
+demo corpus and not any remote backend.
+
+- Default local install state lives in `~/.mrweirdo-jobs/`.
+- `jobs.db` is this user's local history and de-dupe ledger. Submitted /
+  confirmed rows are kept as history. Each run performs fresh discovery:
+  newly discovered postings are inserted, re-seen postings update
+  `last_seen_at` + `seen_count`, and stale / low-fit / skipped / repeatedly
+  failed rows are pruned after the run report.
+- `source_cursor.json` is this user's local discovery cursor. It advances after
+  each discovery run so the next run crawls a new slice of public board sources.
+
+In other words, users should not keep seeing the same frozen 1000-company dump
+forever. Each run should discover again, insert newly seen postings, apply to
+fresh eligible rows, and remove dead discovered rows that are no longer useful.
+
 ## Who this is for
 
 US college students looking for internships or new-grad full-time roles,
@@ -59,12 +100,11 @@ wants both internship and part-time, pass or store `["intern", "part_time"]`.
 
 ## Current support level — read before installing
 
-The code is already dogfooded on real applications, but it is still an
-early, self-hosted agent. Treat the support matrix honestly:
+This is still an early, self-hosted agent. Treat the support matrix honestly:
 
-- **Best-tested auto-submit**: Greenhouse and Ashby. v2.1.1 field
-  testing includes 38 submitted rows in the author's local database,
-  including Cloudflare Greenhouse and multiple Ashby essay flows.
+- **Best-tested auto-submit**: Greenhouse and Ashby. These paths have
+  end-to-end real-form validation, including Cloudflare Greenhouse and
+  Ashby essay flows.
 - **Known weak spot**: Lever upload can trigger a bogus "100MB" error
   under CDP. It is kept for manual/single-URL experimentation, not
   treated as reliable batch infrastructure.
@@ -125,7 +165,7 @@ Then in Claude Code or Codex:
 The skill will ask you for your resume PDF path and a short self-introduction,
 then three hard-boundary questions (work authorization, location flexibility,
 and legal/attestation policy). First-run timing depends on discovery volume
-and how many rows you allow it to submit; the public beta default is 10
+and how many rows you allow it to submit; the public alpha default is 10
 auto-submit rows per run, usually tens of minutes rather than a 10-minute
 promise.
 
@@ -166,9 +206,10 @@ If using Notion, treat it as a human review mirror:
 4. The agent syncs those decisions back before applying, then writes
    submitted/skipped/confirmed status back out.
 
-The current Notion client lives in `shared/notion_sync.mjs`. It is
-retained as an optional mirror, not the primary database, because Notion
-API latency and schema drift are bad foundations for an audit log.
+The current Notion client lives in `shared/notion_sync.mjs`. It is retained as
+an optional user-owned mirror, off by default. It only runs after the user
+explicitly configures their own `NOTION_API_KEY` and `NOTION_JOB_DB_ID`; there is
+no default Notion database.
 
 ---
 
@@ -195,7 +236,7 @@ API latency and schema drift are bad foundations for an audit log.
 
 ## v2.1 driver model (submit-error-driven)
 
-v2.1 introduces `shared/ashby_apply_driver.mjs` and `shared/greenhouse_apply_driver.mjs` — submit-error-driven drivers that fill what they can, hit Submit, parse the form's own validation errors, then loop. Compared to the v2.0 pre-emptive `fillForm` approach this is more resilient to per-tenant form variance. In field testing on 2026-05-26 the local database reached 38 submitted rows, with the most reliable path being Greenhouse + Ashby.
+v2.1 introduces `shared/ashby_apply_driver.mjs` and `shared/greenhouse_apply_driver.mjs` — submit-error-driven drivers that fill what they can, hit Submit, parse the form's own validation errors, then loop. Compared to the v2.0 pre-emptive `fillForm` approach this is more resilient to per-tenant form variance. The most reliable validated path remains Greenhouse + Ashby.
 
 Architecture:
 
@@ -206,11 +247,11 @@ Architecture:
 5. Up to 5 attempts; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
 6. On `outcome: essay_pending`, surface the questions to the main agent. The agent uses `~/.mrweirdo-jobs/essay_profile.json` plus job context to draft truthful, tailored answers; it asks the user only for missing batch-level facts or legal-sensitive answers.
 
-Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility; real apply batches should not be launched in Claude Code background mode. Public beta onboarding caps auto-submit at 10 rows per run by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks for a bigger batch. The simplest guarded entrypoint is `shared/apply_supervisor.mjs`: run it with `--dry-run` to validate the queue without submitting, or with `--real` after the user explicitly asks to apply. It verifies or launches Chrome CDP, then delegates to `shared/apply_batch.mjs`, which performs preflight, queue validation, driver execution, evidence-bound DB recording, pacing, report generation, and a local batch lock so two apply batches cannot run concurrently against the same user data. If a requested batch is larger than the current eligible queue, `shared/queue_diagnostics.mjs` explains whether the shortage is low fit score, unsupported ATS, quota, role boundary, or duplicate submissions. `shared/queue_review_report.mjs` generates a local HTML review page with ready-to-apply rows, one-point-below-threshold rows for human re-scoring, and ATS expansion candidates. `shared/rescore_review.mjs` exports the fit-one-below candidates and can promote only user-selected IDs with `--promote ... --apply`. `shared/apply_capacity_plan.mjs` turns that shortage into a target-count capacity plan, so users can see how many applications require re-scoring, new sourcing, or new ATS support. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
+Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility; real apply batches should not be launched in Claude Code background mode. Public alpha onboarding caps auto-submit at 10 rows per run by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks for a bigger batch. The simplest guarded entrypoint is `shared/apply_supervisor.mjs`: run it with `--dry-run` to validate the queue without submitting, or with `--real` after the user explicitly asks to apply. It verifies or launches Chrome CDP, then delegates to `shared/apply_batch.mjs`, which performs preflight, queue validation, driver execution, evidence-bound DB recording, pacing, report generation, and a local batch lock so two apply batches cannot run concurrently against the same user data. If a requested batch is larger than the current eligible queue, `shared/queue_diagnostics.mjs` explains whether the gap is low fit score, unsupported ATS, quota, role boundary, or duplicate submissions. `shared/queue_review_report.mjs` generates a local HTML review page with ready-to-apply rows, one-point-below-threshold rows for human re-scoring, and unsupported ATS rows. `shared/rescore_review.mjs` exports the fit-one-below rows and can promote only user-selected IDs with `--promote ... --apply`. `shared/apply_readiness_plan.mjs` writes a readiness report for the current local history, so users can see how many rows are immediately submittable, how many need review, and how many new supported-ATS rows the next realtime discovery run should find. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
 
-For adding more rows, `shared/discover_candidates.mjs --plan` shows the target-role-safe discovery keywords and sources without touching the network; `--run` performs discovery, hard-filtering, and writes `/tmp/mrweirdo-onboard/to_score.json` for the main agent's scoring pass.
+For the next realtime discovery run, `shared/discover_candidates.mjs --plan` shows the target-role-safe discovery keywords and sources without touching the network; `--run` performs fresh discovery for the current user, hard-filters the results, and writes `/tmp/mrweirdo-onboard/to_score.json` for the main agent's scoring pass.
 
-For a one-command local health snapshot, run `node shared/supervisor_status.mjs --max 3 --target 100`. It derives role targets from `~/.mrweirdo-jobs/search_intent.json` unless you explicitly pass `--role-targets`. It reports CDP state, whether a real apply batch is currently ready, latest application report, ready queue size, capacity shortfall, and the next safe commands. If CDP is down, the first commands are the visible-terminal recovery commands to start Chrome CDP before applying.
+For a one-command local health snapshot, run `node shared/supervisor_status.mjs --max 3 --target 100`. It derives role targets from `~/.mrweirdo-jobs/search_intent.json` unless you explicitly pass `--role-targets`. It reports CDP state, whether a real apply batch is currently ready, latest application report, ready row count, current remaining target, and the next safe commands. If CDP is down, the first commands are the visible-terminal recovery commands to start Chrome CDP before applying.
 
 ---
 
@@ -235,13 +276,14 @@ The exception: if you want background scheduled runs (future v2.4 cron mode), yo
 ## File layout
 
 ```
-~/.mrweirdo-jobs/                       # all per-user state
+~/.mrweirdo-jobs/                       # all local state for the person running the skill
 ├── profile.json                        # form-fill data, generated by /mrweirdo-onboard from resume
 ├── search_intent.json                  # AI-derived search params, generated by /mrweirdo-onboard
 ├── essay_profile.json                  # reusable writing memory for cover letters + essay questions
 ├── generated_materials/                # local generated cover letters / essay drafts when needed
 ├── resume.pdf                          # your resume copy
-├── jobs.db                             # SQLite — every discovered + scored + applied job
+├── jobs.db                             # SQLite — local job history + application ledger
+├── source_cursor.json                  # local discovery cursor, advances after each run
 ├── feedback.jsonl                      # per-apply outcome log (audit)
 ├── quota.jsonl                         # large-company submit counter (for cherry-pick)
 ├── daily_count.jsonl                   # historical submission counter (informational; no blanket daily cap)
@@ -269,7 +311,7 @@ repo/.agents/skills/                    # Codex workspace-local symlinks, genera
 └── mrweirdo-workday/                   # v1, per-company config
 
 examples/
-└── lee_company_list.json               # reference company list (the author's curated 248 — NOT used by default in v2; example only)
+└── example_company_list.json           # optional example format — NOT used by default in v2
 ```
 
 ---
@@ -302,8 +344,9 @@ Or re-run the install command — `setup.sh` is idempotent.
   - HTTP requests to ATS platforms (Greenhouse / Ashby / Lever / RemoteOK / YC / other public boards) to fetch listings and submit your application
   - Model calls via your active Claude Code or Codex session
   - Gmail API calls via the Anthropic-bundled Gmail MCP, only for threads with the `applied-jobs` label
-- No cloud database. No "your data on our servers". This is self-host only.
-- No telemetry. The author does not see your applications, your resume, or your Gmail.
+- No cloud database by default. Notion is optional and only uses the user's own
+  explicitly configured Notion database if they turn that mirror on.
+- No telemetry. Project maintainers do not see your applications, your resume, or your Gmail.
 
 ---
 
@@ -317,7 +360,7 @@ Issues and pull requests welcome, especially:
 - Translations and docs improvements
 - New auto-submit platform helpers, **but only with**:
   1. A clear pre-submit safety net (CAPTCHA detection at minimum)
-  2. Documented dogfood evidence of ≥3 successful real submissions
+  2. Documented end-to-end verification evidence from real submission flows
   3. Acknowledgment of the platform's ToS auto-submit prohibition
 
 What will NOT be accepted:

@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 
-const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const HOME = atsHome();
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);

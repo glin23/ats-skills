@@ -11,7 +11,7 @@ Use this skill as the pre-flight gate before a first real user run.
 
 - Verifies Node 24+, git, Chrome, repo layout, Skill links, and user-state files.
 - Optionally verifies Chrome DevTools Protocol, normally `localhost:9222` or the host recorded in `~/.mrweirdo-jobs/cdp_host`.
-- Optionally summarizes guarded apply readiness: CDP state, target-role queue size, capacity toward the user's batch target, and latest local report path.
+- Optionally summarizes guarded apply readiness: CDP state, target-role ready row count, remaining target, and latest local report path.
 - Never opens ATS pages, discovers jobs, scores jobs, or submits applications.
 
 ## Run The Check
@@ -62,4 +62,4 @@ Then rerun:
 node ~/.mrweirdo-jobs/repo/shared/doctor.mjs --cdp --supervisor
 ```
 
-If the apply queue is ready but capacity is short of the user's larger target, tell them to run a small real batch first, then use `rescore_review` and supported-ATS discovery before scaling.
+If there are ready rows but fewer than the user's larger target, tell them to run a small real batch first, then use `rescore_review` and another realtime supported-ATS discovery run before scaling.

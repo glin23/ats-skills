@@ -42,9 +42,9 @@
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, existsSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join, resolve as pathResolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 
 // ---------- constants ----------
 
@@ -53,7 +53,7 @@ export const MAX_VISION_ATTEMPTS_PER_FORM = 3;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const LOG_DIR = join(homedir(), '.mrweirdo-jobs', 'log');
+const LOG_DIR = join(atsHome(), 'log');
 const LOG_FILE = join(LOG_DIR, 'locator.jsonl');
 const FRAME_DIR = '/tmp/mrweirdo-jobs';
 const FRAME_PATH = join(FRAME_DIR, 'locator-frame.png');

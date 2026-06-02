@@ -2,11 +2,10 @@
  * greenhouse_bulk_crawl.mjs — Bulk Greenhouse Job Board crawler across all
  * known public board slugs.
  *
- * v2 discovery layer (see PRD §"Roadmap" v2.3). Unlike the v1 path which
- * queries `examples/lee_company_list.json` (~145 curated Greenhouse slugs),
- * this module reads `shared/sourcing/data/greenhouse_companies.json` —
- * a community-maintained list of ~8,200 known Greenhouse boards — and
- * fans out parallel fetches with a bounded concurrency pool.
+ * v2 discovery layer. This module reads
+ * `shared/sourcing/data/greenhouse_companies.json` — a broad public list of
+ * known Greenhouse boards — and fans out parallel fetches with a bounded
+ * concurrency pool.
  *
  * Zero deps. Pure Node 24 stdlib. Reuses `fetchJobs()` from the sibling
  * `greenhouse_board_api.mjs` so the 1 req/s polite-throttle gate, retry
@@ -36,10 +35,10 @@
  *   The checked-in list at `shared/sourcing/data/greenhouse_companies.json`
  *   was built from `github.com/Feashliaa/job-board-aggregator` (their
  *   `data/greenhouse_companies.json`, scraped from Greenhouse via Common
- *   Crawl), merged with curated slugs from `examples/lee_company_list.json`.
+ *   Crawl), with a small set of project-maintained additions.
  *   To refresh:
  *     curl -sL https://raw.githubusercontent.com/Feashliaa/job-board-aggregator/main/data/greenhouse_companies.json
- *     and merge with current curated list (preserve any slugs not in upstream).
+ *     and merge with current additions (preserve any slugs not in upstream).
  *   Coverage is necessarily incomplete — Greenhouse does not publish an
  *   official directory. Expect a ~30-60% hit-rate on stale/private/empty
  *   slugs; bulkFetchGreenhouse() returns those in `errors`.
@@ -49,6 +48,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchJobs } from './greenhouse_board_api.mjs';
+import { sourceWindow } from './source_window.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const COMPANIES_FILE = path.join(__dirname, 'data', 'greenhouse_companies.json');
@@ -128,8 +128,10 @@ async function _pool(items, concurrency, worker, onError) {
  *                  matched. Companies still attempted = unbounded.
  *   - slugs:       Array<string> = (bundled list) — override the slug
  *                  source (useful for testing / subset crawls).
- *   - maxCompanies:number = (all) — only attempt the first N slugs.
- *                  Useful for smoke tests.
+ *   - maxCompanies:number = (all) — only attempt a window of N slugs.
+ *                  Useful for smoke tests and rotating refresh runs.
+ *   - companyOffset:number = 0 — offset into the slug list when maxCompanies
+ *                  is set, wrapping around the end of the list.
  *   - onProgress:  ({ done, total, found, errors }) => void
  *                  Called after each company finishes (success or fail).
  *   - timeout:     number = 12000 — per-request timeout (ms), forwarded
@@ -149,11 +151,12 @@ export async function bulkFetchGreenhouse({
   limit = 5000,
   slugs = null,
   maxCompanies = null,
+  companyOffset = 0,
   onProgress = null,
   timeout = 12000,
 } = {}) {
   const allSlugs = slugs || (await loadCompanyList());
-  const targets = maxCompanies ? allSlugs.slice(0, maxCompanies) : allSlugs;
+  const targets = sourceWindow(allSlugs, { limit: maxCompanies, offset: companyOffset });
   const patterns = _buildKeywordPatterns(keywords);
 
   const jobs = [];
@@ -230,11 +233,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .filter(Boolean);
   const concurrency = parseInt(argMap.concurrency || '10', 10);
   const maxCompanies = argMap['max-companies'] ? parseInt(argMap['max-companies'], 10) : null;
+  const companyOffset = argMap.offset ? parseInt(argMap.offset, 10) : 0;
   const limit = argMap.limit ? parseInt(argMap.limit, 10) : 5000;
 
   console.error('[gh-bulk] starting bulk crawl');
   console.error(`[gh-bulk] keywords: ${keywords.length ? keywords.join(' | ') : '(none — pulling all jobs)'}`);
-  console.error(`[gh-bulk] concurrency: ${concurrency}  maxCompanies: ${maxCompanies ?? 'all'}  limit: ${limit}`);
+  console.error(`[gh-bulk] concurrency: ${concurrency}  maxCompanies: ${maxCompanies ?? 'all'}  offset: ${companyOffset}  limit: ${limit}`);
 
   const t0 = Date.now();
   let lastLogAt = 0;
@@ -243,6 +247,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     concurrency,
     limit,
     maxCompanies,
+    companyOffset,
     onProgress: ({ done, total, found, errors }) => {
       const now = Date.now();
       // Log every 2s or at end.

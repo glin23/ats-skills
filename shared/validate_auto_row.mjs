@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
 
@@ -17,7 +18,7 @@ if (!rowId) {
   process.exit(2);
 }
 
-const home = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const home = atsHome();
 let intent = { search_intent: { seniority: 'intern' } };
 try {
   intent = JSON.parse(fs.readFileSync(path.join(home, 'search_intent.json'), 'utf8'));

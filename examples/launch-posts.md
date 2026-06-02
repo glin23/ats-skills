@@ -16,7 +16,7 @@ Spent enough time copy-pasting the same name/email/visa answers
 into 100 job applications that I built a Claude Code skill for it.
 
 Open-sourced today: mrweirdo-jobs
-- AI sources from 250+ companies' public job boards
+- AI discovers jobs from public ATS/job-board sources
 - Local SQLite dashboard (zero cloud)
 - Confirms parsed resume/search intent, then small-batch auto-submits supported rows
 
@@ -33,7 +33,7 @@ The other 5% — weird selectors, react-select v5 pickers — get
 escalated to Sonnet via screenshot.
 
 Zero npm deps. Node 24 + built-in node:sqlite.
-Current public beta uses a resume-parse confirmation, then small-batch
+Current public alpha uses a resume-parse confirmation, then small-batch
 auto-submit for supported Greenhouse/Ashby rows.
 ```
 
@@ -76,12 +76,12 @@ What I learned shipping this:
 
 1. Consent happens before the batch, not per form. The agent shows the
    parsed resume/search intent first; after confirmation, supported
-   Greenhouse/Ashby rows can be auto-submitted in a small public-beta
+   Greenhouse/Ashby rows can be auto-submitted in a small public-alpha
    batch.
 
 2. Per-company opt-in beats LinkedIn-style aggregators. The repo ships
    public board sources across Greenhouse / Ashby / Lever / YC / RemoteOK.
-   Stable public-beta auto-submit is limited to Greenhouse / Ashby.
+   Stable public-alpha auto-submit is limited to Greenhouse / Ashby.
 
 3. Zero cloud DB. v1.0 used Notion. v1.1 switched to local SQLite +
    optional Datasette web UI. Lower friction (no integration token,
@@ -128,7 +128,7 @@ GitHub 搜 mrweirdo-jobs（链接放 profile）
 ----
 能做的事:
 
-1. AI 从 250+ 公司的公开招聘 board 拉新岗位
+1. AI 从公开 ATS / job board 实时发现岗位
    Greenhouse / Ashby 稳定投递；Lever / 其他 ATS 保留为手动或 beta
 
 2. 用 Sonnet 给每个岗位打 6 维度分数
@@ -140,7 +140,7 @@ GitHub 搜 mrweirdo-jobs（链接放 profile）
 
 4. 一句 /mrweirdo-jobs 触发 batch
    工具自动开浏览器 → 导航 → 填字段 → 上传简历 → 截图
-   你看截图点 Submit（永远不自动 submit）
+   确认解析后的 profile / search intent 后，小批量自动提交支持的行
 
 5. 投完 Gmail 自动 label 的 confirmation 邮件
    自动 mark 进度
@@ -150,7 +150,7 @@ GitHub 搜 mrweirdo-jobs（链接放 profile）
 
 - 零 cloud DB（所有数据在你本地 SQLite）
 - 零 npm deps（Node 24 + node:sqlite + fetch built-in）
-- Submit 必须人工授权（一次 batch authorization 不绕 classifier）
+- 解析结果必须先确认；默认小批量，避免一次性大规模提交
 - 大公司限投自动跳过 (Google/Meta 等配额保护)
 - MIT license
 

@@ -1,15 +1,15 @@
 ---
 name: mrweirdo-icims
-description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career portal (`careers-*.icims.com`) application form filling using CDP via shared/cdp.mjs. iCIMS REQUIRES account creation; flow includes resume upload + multi-step wizard + EEOC. Trigger with '投这个 iCIMS URL：<url>' or '/mrweirdo-icims <url>'. User must explicitly authorize Submit — skill never auto-submits."
+description: "[v0.8 ALPHA — needs live verification] Automate iCIMS career portal (`careers-*.icims.com`) application form filling using CDP via shared/cdp.mjs. iCIMS REQUIRES account creation; flow includes resume upload + multi-step wizard + EEOC. Trigger with '投这个 iCIMS URL：<url>' or '/mrweirdo-icims <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # iCIMS ATS 投递 skill (v0.8 ALPHA)
 
-> **⚠️ v0.8 alpha — not yet dogfood-verified.** `shared/icims_helpers.js` selectors are
+> **⚠️ v0.8 alpha — not yet live-verified.** `shared/icims_helpers.js` selectors are
 > best-guess based on iCIMS Career Connector docs + open-source scrapers + sampling
 > live `careers-*.icims.com` portals. iCIMS has **massive template variance** —
 > classic vs Refresh vs SAP-skin — and selectors will need correction per-tenant on
-> first dogfood. Treat skill output skeptically; screenshot every step.
+> first live verification. Treat skill output skeptically; screenshot every step.
 
 把 iCIMS (`careers-<tenant>.icims.com`) 申请页填到 "差最后一下点 Submit" 的状态。iCIMS 与 Greenhouse/Ashby 不同之处：
 
@@ -41,10 +41,10 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 
 ## 已知 v0.8 局限（必读）
 
-- **未 dogfood 验证** — selectors 大概率有字段失败；准备人工修 `icims_helpers.js`。
+- **未实战验证** — selectors 大概率有字段失败；准备人工修 `icims_helpers.js`。
 - **模板分裂** — 经典 iCIMS（server-rendered HTML）/ Refresh（React overlay）/ SAP-skin 三种都见过；v0.8 主要照经典模板写，Refresh tenant 第一步先在浏览器手投一次再扩展 helper。
 - **多步 wizard 半支持** — `detectStep()` + `findNextStep()` 已有，但每步之间的转场（保存中 / 校验失败回滚）未验证。
-- **EEOC + voluntary 自我披露页常被忽略** — iCIMS 大多 tenant 在 Submit 前加 EEOC 表（race / gender / veteran / disability），可全选 "decline to answer"，但选项 ID 是 per-tenant 的，需要 dogfood 后扩 helper。
+- **EEOC + voluntary 自我披露页常被忽略** — iCIMS 大多 tenant 在 Submit 前加 EEOC 表（race / gender / veteran / disability），可全选 "decline to answer"，但选项 ID 是 per-tenant 的，需要 live verification 后扩 helper。
 - **每个 tenant 是独立账户** — 不要试图跨 tenant 复用 cookie / session。
 - **反爬强（CloudFront + 部分 Akamai Bot Manager）** — 严格用 the user's真 Chrome session；**严禁 headless / fresh-profile / proxy**。建议 **≤3 投递/天/tenant** 直到摸到 throttle 边界。
 - **iCIMS Help / Refresh 大版本之间 selector 变了**，老 GitHub scraper 抓的 `#firstName` 在新版可能是 `[data-automation-id="firstName"]`。
@@ -59,7 +59,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate iCIMS career 
 curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
-PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || { echo "missing profile.json — run /mrweirdo-onboard"; exit 1; }
 RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 [ -f "$RESUME" ] || { echo "resume missing: $RESUME"; exit 1; }
 ```
@@ -163,7 +163,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_icims_post_sub
 
 ## Known Limitations (v0.8)
 
-- **未 dogfood 验证** — 所有 selector / step detection 是 best-guess，第一次跑必有字段失败。
+- **未实战验证** — 所有 selector / step detection 是 best-guess，第一次跑必有字段失败。
 - **Template variance** — classic vs Refresh vs SAP-skin 三种，v0.8 优先经典；遇到新版本先手投一次，回头扩 helper。
 - **每 tenant 独立账号** — 跨 tenant 不复用 session；每个 `careers-X.icims.com` 都要 用户 单独注册一次。
 - **多步 wizard 转场未充分测试** — 步骤间校验失败 / 自动 redirect 行为未验证。
@@ -213,4 +213,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_icims_post_sub
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver（注意：可能需扩 `setfileinput` 命令）
 - iCIMS Career Connector docs: https://www.icims.com/customer-community/ (gated)
 - iCIMS URL 结构: `https://careers-<tenant>.icims.com/jobs/<reqId>/<slug>/job`
-- v0.8 dogfood log（待 用户 第一次跑后填）：`log/icims_dogfood_2026-XX.md`
+- v0.8 verification log（待 用户 第一次跑后填）：`log/icims_verification_2026-XX.md`

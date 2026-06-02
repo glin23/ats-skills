@@ -116,7 +116,7 @@
    *
    * Greenhouse `candidate-location` is NOT a normal react-select picker. It's a
    * Google Places API autocomplete wrapped in `.select__control` with an
-   * `<input role="combobox">`. Dogfood (5/23 Twilio + EnergyHub) found:
+   * `<input role="combobox">`. Real-form validation (5/23 Twilio + EnergyHub) found:
    *   - JS setter + InputEvent: options never render (Google Places ignores it).
    *   - CDP Input.insertText (real keyboard): options STILL don't render on
    *     Greenhouse (works on Ashby's equivalent widget — TBD why).

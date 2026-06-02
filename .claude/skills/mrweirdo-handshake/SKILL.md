@@ -1,11 +1,11 @@
 ---
 name: mrweirdo-handshake
-description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/mrweirdo-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
+description: "[v0.6 BETA — needs live verification] Automate Handshake (app.joinhandshake.com) application form filling using CDP via shared/cdp.mjs. Detects redirect-to-external-ATS and dispatches to mrweirdo-greenhouse / mrweirdo-ashby / mrweirdo-workday. User Chrome must be pre-authenticated to Handshake. Trigger with '投这个 Handshake URL：<url>' or '/mrweirdo-handshake <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # Handshake ATS 投递 skill (v0.6 BETA)
 
-> **⚠️ v0.6 beta — not yet dogfood-verified.** `shared/handshake_helpers.js` selectors are
+> **⚠️ v0.6 beta — not yet live-verified.** `shared/handshake_helpers.js` selectors are
 > best-guess based on Handshake Help Center docs + pattern transfer from Ashby/Greenhouse.
 > First real submission will reveal where fields/selectors need correction. Treat skill
 > output skeptically; screenshot every step.
@@ -36,7 +36,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 
 ## 已知 v0.6 局限（必读）
 
-- **未 dogfood 验证** — selectors 是 best-guess，第一次跑大概率有字段失败。准备人工修 `handshake_helpers.js`。
+- **未实战验证** — selectors 是 best-guess，第一次跑大概率有字段失败。准备人工修 `handshake_helpers.js`。
 - **多步 wizard 不支持** — Handshake 部分 employer 配置多步 apply（preferences / additional questions / final review）。当前 helper 只处理单 page 形式，多步逻辑待 v0.7+。
 - **外跳 ATS 仅检测不接管** — `detectRedirectToExternalATS()` 报告 target_ats 后，本 skill 退出并提示用户用对应 skill 跑。未来 v0.7 可改成自动 dispatch（subprocess invocation）。
 - **反爬强度未测试** — Handshake 有 daily 300 应用上限（官方），但每分钟/每小时的 throttle 未知。建议 **≤5 投递/天** 直到摸清边界。每次提交后 sleep 30-60s jitter。
@@ -53,7 +53,7 @@ description: "[v0.6 BETA — needs dogfood verification] Automate Handshake (app
 curl -sf http://localhost:9222/json/version > /dev/null || bash shared/chrome-cdp-launcher.sh
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
-PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || { echo "missing profile.json — run /mrweirdo-onboard"; exit 1; }
 ls "$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")" > /dev/null
 ```
 缺 → 报错退出。
@@ -144,7 +144,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_handshake_post
 
 ## Known Limitations (v0.6)
 
-- **未 dogfood 验证** — 所有 selector / DOM 假设需要真投递 verify。第一次跑必失败一些字段。
+- **未实战验证** — 所有 selector / DOM 假设需要真投递 verify。第一次跑必失败一些字段。
 - **多个 Handshake 公司 redirect 到外部 ATS** — 此 skill 仅处理 native Handshake form；外跳后 dispatch 给 mrweirdo-greenhouse / mrweirdo-ashby（用户手动跑 sub-skill，v0.6 不做 auto-dispatch）。
 - **暂未支持 multi-step wizards** — Handshake 部分 employer 配多页 apply 流程，当前只处理单 page。
 - **反爬未测试** — 建议 ≤5 投递/天 + 每次后 sleep 30-60s jitter，直到摸到 throttle 边界。Daily 应用 cap 300（官方）。
@@ -191,4 +191,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_handshake_post
 - `shared/sourcing/handshake_search.mjs` — Handshake job search scraper (v0.6 stub)
 - Handshake apply 流程官方文档：https://support.joinhandshake.com/hc/en-us/articles/218693418
 - Handshake URL 结构: `https://app.joinhandshake.com/jobs/<id>` (student) 或 `/emp/jobs/<id>`
-- v0.6 dogfood log（待 用户 第一次跑后填）：`log/handshake_dogfood_2026-XX.md`
+- v0.6 verification log（待 用户 第一次跑后填）：`log/handshake_verification_2026-XX.md`

@@ -1,9 +1,9 @@
 ---
 name: mrweirdo-smartrecruiters
-description: Automate SmartRecruiters ATS application form filling via Chrome CDP. v0.8 BETA — scaffold only, NOT yet dogfooded. SmartRecruiters is being migrated to SAP SuccessFactors; selectors may shift mid-rollout. Text fields go through `cdp.mjs typetext` (real keyboard, isTrusted=true) by default; native <select> dropdowns can use `SR.pickSelect`. Trigger with "投这个 SmartRecruiters URL：<url>" or `/mrweirdo-smartrecruiters <url>`. User must explicitly authorize Submit per harness classifier rules. Recommended: cap at ≤5 submissions/day until dogfood verifies the flow.
+description: Automate SmartRecruiters ATS application form filling via Chrome CDP. v0.8 BETA — scaffold only, NOT yet live-verified. SmartRecruiters is being migrated to SAP SuccessFactors; selectors may shift mid-rollout. Text fields go through `cdp.mjs typetext` (real keyboard, isTrusted=true) by default; native <select> dropdowns can use `SR.pickSelect`. Trigger with "投这个 SmartRecruiters URL：<url>" or `/mrweirdo-smartrecruiters <url>`. User must explicitly authorize Submit per harness classifier rules. Recommended: cap at ≤5 submissions/day until live verification stabilizes the flow.
 ---
 
-# SmartRecruiters ATS 投递 skill (v0.8 BETA — needs dogfood)
+# SmartRecruiters ATS 投递 skill (v0.8 BETA — needs live verification)
 
 ⚠️ **未实战验证**。本 skill 基于 Ashby/Greenhouse 经验 + SmartRecruiters Postings API 公开文档写成，**没有真实投递过一次**。在跑前先看 Known Limitations 一节。
 
@@ -24,7 +24,7 @@ description: Automate SmartRecruiters ATS application form filling via Chrome CD
    ```bash
    ./shared/chrome-cdp-launcher.sh
    ```
-2. **`profile.json` 已填**（仓库根）— name/email/phone/LinkedIn 等
+2. **`~/.mrweirdo-jobs/profile.json` 已填** — name/email/phone/LinkedIn 等
 3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）
 4. **Node 24+**（内置 `WebSocket`，`cdp.mjs` 依赖）
 
@@ -158,7 +158,7 @@ SmartRecruiters.checkSuccess()
 
 `ok === true` + 截图存档 = 完成。
 
-## v0.8 → v0.9 收敛清单（dogfood 后补）
+## v0.8 → v0.9 收敛清单（实战验证后补）
 
 - [ ] 验证 firstName/lastName 真实 selector
 - [ ] 验证 resume input 真实 name/id

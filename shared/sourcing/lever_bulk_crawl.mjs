@@ -52,6 +52,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { fetchJobs } from './lever_board_api.mjs';
+import { sourceWindow } from './source_window.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -129,7 +130,8 @@ async function _pmap(items, concurrency, worker) {
  * @param {number}   [opts.concurrency=10]      Max in-flight tenant fetches.
  * @param {number}   [opts.limit=5000]          Soft cap on returned jobs.
  * @param {string[]} [opts.tenants]             Override the cached tenant list.
- * @param {number}   [opts.maxTenants]          Truncate tenant list (smoke-test).
+ * @param {number}   [opts.maxTenants]          Crawl a window of N tenants.
+ * @param {number}   [opts.tenantOffset=0]      Offset into tenant list when maxTenants is set.
  * @param {(p: {done, total, tenant, jobs, error}) => void} [opts.onProgress]
  * @param {AbortSignal} [opts.abort]
  * @returns {Promise<{ jobs, errors, tenants_attempted, tenants_with_jobs }>}
@@ -141,12 +143,13 @@ export async function bulkFetchLever(opts = {}) {
     limit = 5000,
     tenants,
     maxTenants,
+    tenantOffset = 0,
     onProgress,
     abort,
   } = opts;
 
   const tenantList = tenants ?? (await loadTenants());
-  const work = maxTenants ? tenantList.slice(0, maxTenants) : tenantList;
+  const work = sourceWindow(tenantList, { limit: maxTenants, offset: tenantOffset });
   const keywordsLower = _normalizeKeywords(keywords);
 
   const errors = [];
@@ -216,6 +219,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const concurrency = args.concurrency ? Number(args.concurrency) : 10;
   const limit = args.limit ? Number(args.limit) : 5000;
   const maxTenants = args['max-tenants'] ? Number(args['max-tenants']) : undefined;
+  const tenantOffset = args['tenant-offset'] ? Number(args['tenant-offset']) : 0;
 
   const t0 = Date.now();
   const result = await bulkFetchLever({
@@ -223,6 +227,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     concurrency,
     limit,
     maxTenants,
+    tenantOffset,
     onProgress: ({ done, total, tenant, jobs, error }) => {
       if (done % 10 === 0 || error || jobs > 0) {
         const msg = error

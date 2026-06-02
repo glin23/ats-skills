@@ -10,12 +10,12 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
-const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 const tmpDir = '/tmp/mrweirdo-onboard';
 
 function argValue(name) {
@@ -207,12 +207,12 @@ if (rows.length < maxRows) {
   const diag = runNode(['shared/queue_diagnostics.mjs', '--json']);
   if (diag.code === 0) {
     const parsed = parseLastJson(diag.stdout) || {};
-    console.error(`[apply-batch] queue shortfall: requested=${maxRows}, eligible=${rows.length}`);
+    console.error(`[apply-batch] ready rows below requested batch: requested=${maxRows}, eligible=${rows.length}`);
     if (parsed.by_reason) console.error(`[apply-batch] queue reasons: ${JSON.stringify(parsed.by_reason)}`);
     if (parsed.near_misses) {
       const rescoreCount = parsed.near_misses.rescore_candidates_fit_one_below?.count ?? 0;
       const platformCount = parsed.near_misses.platform_expansion_candidates?.count ?? 0;
-      console.error(`[apply-batch] expansion hints: rescore_fit_${(parsed.min_fit ?? 5) - 1}_to_${parsed.min_fit ?? 5}=${rescoreCount}, unsupported_platform_fit_ge_${parsed.min_fit ?? 5}=${platformCount}`);
+      console.error(`[apply-batch] review hints: rescore_fit_${(parsed.min_fit ?? 5) - 1}_to_${parsed.min_fit ?? 5}=${rescoreCount}, unsupported_platform_fit_ge_${parsed.min_fit ?? 5}=${platformCount}`);
     }
     const reviewArgs = ['shared/queue_review_report.mjs'];
     if (dryRun) reviewArgs.push('--output', join(tmpDir, `queue-review-dry-run-${Date.now()}.html`));
@@ -223,14 +223,14 @@ if (rows.length < maxRows) {
       console.error(`[apply-batch] queue review HTML generation failed; continuing`);
       if (review.stderr) process.stderr.write(review.stderr);
     }
-    const capacityArgs = ['shared/apply_capacity_plan.mjs', '--target', String(maxRows)];
-    if (dryRun) capacityArgs.push('--output', join(tmpDir, `capacity-plan-dry-run-${Date.now()}.html`));
-    const capacity = runNode(capacityArgs);
-    if (capacity.code === 0) {
-      console.error(`[apply-batch] capacity plan HTML: ${capacity.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
+    const readinessArgs = ['shared/apply_readiness_plan.mjs', '--target', String(maxRows)];
+    if (dryRun) readinessArgs.push('--output', join(tmpDir, `readiness-plan-dry-run-${Date.now()}.html`));
+    const readiness = runNode(readinessArgs);
+    if (readiness.code === 0) {
+      console.error(`[apply-batch] readiness report HTML: ${readiness.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
     } else {
-      console.error('[apply-batch] capacity plan generation failed; continuing');
-      if (capacity.stderr) process.stderr.write(capacity.stderr);
+      console.error('[apply-batch] readiness report generation failed; continuing');
+      if (readiness.stderr) process.stderr.write(readiness.stderr);
     }
   }
 }

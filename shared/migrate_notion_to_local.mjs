@@ -81,7 +81,7 @@ const pick = {
 
 function mapRow(notionRow) {
   const p = notionRow.properties || {};
-  // Tolerant of slightly different property names across 用户's setup vs v1.0 schema
+  // Tolerant of slightly different property names across local setups vs v1.0 schema.
   const company = pick.title(p['公司']) || pick.title(p['Company']) || pick.title(p['company']);
   const apply_url = pick.url(p['Apply URL']) || pick.url(p['apply_url']) || pick.url(p['URL']);
   if (!company || !apply_url) return null;

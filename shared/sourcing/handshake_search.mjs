@@ -15,7 +15,7 @@
  *     normalize to the shared sourcing shape (matches
  *     greenhouse_board_api / ashby_board_api).
  *
- * Implementation must wait until we've done a real dogfood pass and
+ * Implementation must wait until we've done a real verification pass and
  * captured:
  *   1) The actual URL pattern that encodes search keywords + filters
  *      (e.g. `/stu/jobs?employment_types[]=Internship&keywords=AI`).
@@ -45,7 +45,7 @@
  *     _id: string,  // Handshake job id
  *   }
  *
- * TODO (implementation steps when ready to dogfood):
+ * TODO (implementation steps when ready for live verification):
  *   1. Use shared/cdp.mjs `goto` to navigate the authenticated Chrome tab to:
  *      `https://app.joinhandshake.com/stu/jobs?<query>`
  *      where <query> encodes searchOpts (keywords, employment_types, locations).

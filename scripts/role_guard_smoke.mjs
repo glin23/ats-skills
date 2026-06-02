@@ -303,7 +303,7 @@ try {
   assert.equal(existsSync(reviewReportPath), true);
   const reviewReport = readFileSync(reviewReportPath, 'utf8');
   assert.match(reviewReport, /Ready To Auto-Apply/);
-  assert.match(reviewReport, /Fit 4 Candidates/);
+  assert.match(reviewReport, /Fit 4 Rows/);
   assert.match(reviewReport, /Marketing Intern/);
   assert.doesNotMatch(reviewReport, /Associate Product Manager/);
   assert.doesNotMatch(reviewReport, /New Graduate Product Analyst/);
@@ -326,12 +326,13 @@ try {
   assert.equal(promoted.fit_score, 5);
   assert.equal(promoted.auto_apply_eligible, 1);
 
-  const capacityPlan = runScript('shared/apply_capacity_plan.mjs', ['--json', '--target', '10'], {
+  const readinessPlan = runScript('shared/apply_readiness_plan.mjs', ['--json', '--target', '10'], {
     MRWEIRDO_ROLE_TYPE_TARGETS: 'intern,part_time',
   });
-  assert.match(capacityPlan, /"target_applications": 10/);
-  assert.match(capacityPlan, /"ready_now"/);
-  assert.match(capacityPlan, /"human_rescore_fit_one_below"/);
+  assert.match(readinessPlan, /"target_applications": 10/);
+  assert.match(readinessPlan, /"ready_now"/);
+  assert.match(readinessPlan, /"remaining_now"/);
+  assert.match(readinessPlan, /"additional_realtime_discovery_needed"/);
 
   const queue = runScript('shared/auto_apply_queue.mjs', ['--summary'], {
     MRWEIRDO_ROLE_TYPE_TARGETS: 'intern,part_time',
@@ -353,6 +354,7 @@ try {
     MRWEIRDO_ROLE_TYPE_TARGETS: 'intern,part_time',
   });
   assert.match(statusJson, /"role_targets"/);
+  assert.match(statusJson, /"readiness"/);
   assert.match(statusJson, /"capacity"/);
   assert.match(statusJson, /apply_supervisor/);
 

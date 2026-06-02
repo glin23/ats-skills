@@ -6,7 +6,7 @@
     "board_slug": "Example_Careers",
     "version": "1.0",
     "last_verified": "2026-05-23",
-    "verified_by": "lee",
+    "verified_by": null,
     "notes": "Schema reference. Copy this file to <slug>.json and replace _meta + step_definitions. URL pattern: https://<tenant_subdomain>.<wd_instance>.myworkdayjobs.com/<board_slug>/job/<location>/<title>_<reqid>"
   },
 

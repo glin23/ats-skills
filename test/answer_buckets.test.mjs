@@ -12,11 +12,11 @@ import { matchAnswerBucket, PNA } from '../shared/answer_buckets.mjs';
 const CTX = {
   PROFILE: {
     personal: {
-      first_name: 'Lee',
-      last_name: 'Lin',
-      full_name: 'Lee Lin',
-      preferred_name: 'Lee',
-      portfolio: 'https://lee.example/portfolio',
+      first_name: 'Alex',
+      last_name: 'Chen',
+      full_name: 'Alex Chen',
+      preferred_name: 'Alex',
+      portfolio: 'https://alex.example/portfolio',
     },
     education: { school: 'Babson College', degree: 'Bachelor of Science', major: 'Business' },
   },
@@ -29,7 +29,7 @@ const CTX = {
   disabilityAns: 'I do not want to answer',
   cityFull: 'Boston, Massachusetts, United States',
   compensationExpectation: 'Open to discussion based on the role.',
-  linkedin: 'https://linkedin.com/in/leelin',
+  linkedin: 'https://linkedin.com/in/alexchen',
   graduationDate: 'May 2027',
   pna: PNA,
 };
@@ -88,10 +88,10 @@ test('start date fills the fixed default date', () => {
 });
 
 test('name fields resolve from profile; preferred/legal qualifiers ordered first', () => {
-  assert.equal(matchAnswerBucket('Legal Last Name', CTX).value, 'Lin');
-  assert.equal(matchAnswerBucket('Preferred First Name', CTX).value, 'Lee');
-  assert.equal(matchAnswerBucket('Legal First Name', CTX).value, 'Lee');
-  assert.equal(matchAnswerBucket('Full Name', CTX).value, 'Lee Lin');
+  assert.equal(matchAnswerBucket('Legal Last Name', CTX).value, 'Chen');
+  assert.equal(matchAnswerBucket('Preferred First Name', CTX).value, 'Alex');
+  assert.equal(matchAnswerBucket('Legal First Name', CTX).value, 'Alex');
+  assert.equal(matchAnswerBucket('Full Name', CTX).value, 'Alex Chen');
 });
 
 test('hear-about is handled before the bucket list — bucket list has no rule', () => {

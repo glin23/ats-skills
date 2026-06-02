@@ -2,6 +2,13 @@
 // Uses Node 24+ built-in `node:sqlite` (experimental — pass --no-warnings to silence).
 // File location: ~/.mrweirdo-jobs/jobs.db (overridable via MRWEIRDO_DB_PATH env).
 //
+// Product data model note:
+// - This is a per-user local database. A separate student should have a separate
+//   MRWEIRDO_HOME / MRWEIRDO_DB_PATH, not a shared demo database.
+// - Discovery rows are per-user run results, not a shared company dump.
+//   Re-seen postings update last_seen_at + seen_count; stale / repeatedly failed
+//   rows can be pruned by shared/prune_discovered_jobs.mjs.
+//
 // API surface mirrors the v1.0 notion_sync.mjs so /mrweirdo-source, /mrweirdo-jobs,
 // /mrweirdo-confirm can swap import paths with minimal flow changes:
 //
@@ -85,6 +92,11 @@ function initSchema(d) {
       discovery_run_id TEXT,
       auto_submitted_at TEXT,
 
+      -- discovery freshness metadata
+      first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+      seen_count INTEGER NOT NULL DEFAULT 1,
+
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -107,6 +119,12 @@ function initSchema(d) {
     "search_source TEXT",
     "discovery_run_id TEXT",
     "auto_submitted_at TEXT",
+    // ALTER TABLE cannot add columns with non-constant datetime defaults, so
+    // existing DBs get nullable columns here and are backfilled below. Fresh DBs
+    // still use the NOT NULL defaults from CREATE TABLE.
+    "first_seen_at TEXT",
+    "last_seen_at TEXT",
+    "seen_count INTEGER NOT NULL DEFAULT 1",
   ];
   for (const colDef of v2Columns) {
     try {
@@ -116,12 +134,23 @@ function initSchema(d) {
     }
   }
 
+  d.exec(`
+    UPDATE jobs
+       SET first_seen_at = COALESCE(first_seen_at, created_at, updated_at, datetime('now')),
+           last_seen_at = COALESCE(last_seen_at, updated_at, created_at, datetime('now')),
+           seen_count = COALESCE(seen_count, 1)
+     WHERE first_seen_at IS NULL
+        OR last_seen_at IS NULL
+        OR seen_count IS NULL;
+  `);
+
   // Step 3: indexes + views (run AFTER columns exist).
   d.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
     CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company);
     CREATE INDEX IF NOT EXISTS idx_jobs_submitted_at ON jobs(submitted_at);
     CREATE INDEX IF NOT EXISTS idx_jobs_discovery_run_id ON jobs(discovery_run_id);
+    CREATE INDEX IF NOT EXISTS idx_jobs_last_seen_at ON jobs(last_seen_at);
     CREATE INDEX IF NOT EXISTS idx_jobs_scored ON jobs(scored);
 
     -- Datasette-friendly views (v1)
@@ -212,7 +241,10 @@ export function upsertJob(job) {
     (c) => !['status', 'user_note', 'skip_reason'].includes(c)
   );
   const updateClause = updateCols.map((c) => `${c} = excluded.${c}`).join(', ');
-  const updatedAtClause = ", updated_at = datetime('now')";
+  const updatedAtClause = `
+      , last_seen_at = datetime('now')
+      , seen_count = COALESCE(seen_count, 0) + 1
+      , updated_at = datetime('now')`;
   const sql = `
     INSERT INTO jobs (${insertCols.join(', ')})
     VALUES (${insertPlaceholders})

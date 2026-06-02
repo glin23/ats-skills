@@ -2,12 +2,12 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { homedir } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
-const home = process.env.MRWEIRDO_HOME || path.join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -57,6 +57,7 @@ const diagnostics = JSON.parse(diagnosticsRun.stdout);
 const readyNow = diagnostics.eligible || 0;
 const rescore = diagnostics.near_misses?.rescore_candidates_fit_one_below || { count: 0, examples: [] };
 const platform = diagnostics.near_misses?.platform_expansion_candidates || { count: 0, examples: [], by_platform: {} };
+const manual = diagnostics.near_misses?.manual_or_unknown_platform_candidates || { count: 0, examples: [], by_bucket: {} };
 const afterRescore = readyNow + (rescore.count || 0);
 const afterPlatform = afterRescore + (platform.count || 0);
 const stillNeededAfterReview = Math.max(0, target - afterRescore);
@@ -68,6 +69,7 @@ const plan = {
   min_fit: diagnostics.min_fit,
   role_targets: diagnostics.allowed_role_types,
   ready_now: readyNow,
+  remaining_now: Math.max(0, target - readyNow),
   shortfall_now: Math.max(0, target - readyNow),
   expansion: {
     human_rescore_fit_one_below: {
@@ -83,16 +85,23 @@ const plan = {
       remaining_after_supported: stillNeededAfterAllKnown,
       examples: platform.examples || [],
     },
+    manual_or_unknown_platform_candidates: {
+      count: manual.count || 0,
+      by_bucket: manual.by_bucket || {},
+      note: 'Manual-only, aggregator, or unknown/custom platform rows are visible for review but are not auto-submit-ready rows.',
+      examples: manual.examples || [],
+    },
+    additional_realtime_discovery_needed: stillNeededAfterAllKnown,
     additional_sourcing_needed_after_known_pool: stillNeededAfterAllKnown,
   },
   recommended_sequence: [
     'Run a small real batch first and inspect the submitted/skip report before scaling.',
-    'Apply the ready-now pool only after the real batch succeeds cleanly.',
-    `Manually review the ${rescore.count || 0} fit-${(diagnostics.min_fit || 5) - 1} candidates before raising any scores to ${diagnostics.min_fit}.`,
-    'Do not enable unsupported ATS platforms for auto-submit until their drivers pass dogfood tests.',
+    'Submit only the rows that are ready now in this user\'s local DB.',
+    `Manually review the ${rescore.count || 0} fit-${(diagnostics.min_fit || 5) - 1} rows before raising any scores to ${diagnostics.min_fit}.`,
+    'Do not enable unsupported ATS platforms for auto-submit until their drivers pass live verification tests.',
     stillNeededAfterAllKnown > 0
-      ? `Discover and score at least ${stillNeededAfterAllKnown} additional supported-ATS target-role rows to reach ${target}.`
-      : `The known pool can theoretically reach ${target} after review/platform expansion, but only ready-now rows should auto-submit unattended.`,
+      ? `Run realtime discovery again and score at least ${stillNeededAfterAllKnown} new supported-ATS target-role rows to reach ${target}.`
+      : `The current local history can reach ${target} after review/platform expansion, but only ready-now rows should auto-submit unattended.`,
   ],
   diagnostics,
 };
@@ -104,7 +113,7 @@ if (hasArg('--json') && !outputArg) {
 
 const reportsDir = path.join(home, 'reports');
 const stamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
-const outputPath = outputArg || path.join(reportsDir, `capacity-plan-${stamp}.html`);
+const outputPath = outputArg || path.join(reportsDir, `readiness-plan-${stamp}.html`);
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
 const html = `<!doctype html>
@@ -112,7 +121,7 @@ const html = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mr. Weirdo Jobs Capacity Plan</title>
+  <title>Mr. Weirdo Jobs Readiness Report</title>
   <style>
     :root { color-scheme: light; --border:#d8dee8; --text:#172033; --muted:#5b6678; --bg:#f7f9fc; --card:#ffffff; --accent:#1358a8; }
     body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
@@ -136,14 +145,14 @@ const html = `<!doctype html>
 </head>
 <body>
   <header>
-    <h1>Mr. Weirdo Jobs Capacity Plan</h1>
+    <h1>Mr. Weirdo Jobs Readiness Report</h1>
     <div class="meta">Generated ${escapeHtml(new Date(plan.generated_at).toLocaleString())} · Target ${escapeHtml(target)} · Role targets ${escapeHtml(plan.role_targets.join(', '))}</div>
   </header>
   <div class="summary">
     <div class="metric"><strong>${escapeHtml(target)}</strong><span>Target</span></div>
     <div class="metric"><strong>${escapeHtml(readyNow)}</strong><span>Ready now</span></div>
     <div class="metric"><strong>${escapeHtml(rescore.count || 0)}</strong><span>Fit-${escapeHtml((diagnostics.min_fit || 5) - 1)} review</span></div>
-    <div class="metric"><strong>${escapeHtml(stillNeededAfterAllKnown)}</strong><span>Still needs sourcing</span></div>
+    <div class="metric"><strong>${escapeHtml(stillNeededAfterAllKnown)}</strong><span>Next realtime discovery</span></div>
   </div>
   <main>
     <section>
@@ -151,12 +160,12 @@ const html = `<!doctype html>
       <ol>${plan.recommended_sequence.map((step) => `<li>${escapeHtml(step)}</li>`).join('\n')}</ol>
     </section>
     <section>
-      <h2>Human Re-score Candidates</h2>
-      <p>If every fit-${escapeHtml((diagnostics.min_fit || 5) - 1)} candidate were accepted, the ready pool would become ${escapeHtml(afterRescore)} and still need ${escapeHtml(stillNeededAfterReview)} more rows for the target.</p>
+      <h2>Rows To Review</h2>
+      <p>If every fit-${escapeHtml((diagnostics.min_fit || 5) - 1)} row were accepted, the ready rows would become ${escapeHtml(afterRescore)} and still need ${escapeHtml(stillNeededAfterReview)} more rows for the target.</p>
       <ul>${rowList(rescore.examples) || '<li>No examples.</li>'}</ul>
     </section>
     <section>
-      <h2>Unsupported ATS Candidates</h2>
+      <h2>Unsupported ATS Rows</h2>
       <p>Count by platform: <code>${escapeHtml(JSON.stringify(platform.by_platform || {}))}</code>. These should not auto-submit until the driver is proven.</p>
       <ul>${rowList(platform.examples) || '<li>No examples.</li>'}</ul>
     </section>

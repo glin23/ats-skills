@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mr. Weirdo Jobs (v2.1.7) bootstrap
+# Mr. Weirdo Jobs bootstrap
 # Curl-pipe friendly: bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
 # Or run directly from a clone: bash setup.sh
 #
@@ -27,7 +27,7 @@ green()  { printf '\033[32m%s\033[0m\n' "$*"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$*"; }
 blue()   { printf '\033[34m%s\033[0m\n' "$*"; }
 
-blue "Mr. Weirdo Jobs (v2.1.7) bootstrap"
+blue "Mr. Weirdo Jobs public alpha bootstrap"
 echo ""
 
 # ---------- 1. Check Node 24+ ----------
@@ -77,6 +77,8 @@ else
     green "  Updated ✓"
   fi
 fi
+
+SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v0.0.0-alpha")"
 
 # ---------- 5. Symlink skills for Claude Code + Codex ----------
 link_skill_tree() {
@@ -136,7 +138,6 @@ green "  ~/.mrweirdo-jobs/ layout ✓"
 # not installing for the first time). Otherwise write the sentinel so the
 # onboard skill knows to surface its Welcome banner proactively.
 if [ ! -f "$MRWEIRDO_HOME/profile.json" ]; then
-  SETUP_VERSION="$(cat "$MRWEIRDO_REPO_ROOT/VERSION" 2>/dev/null || echo "v2.1.7")"
   cat > "$MRWEIRDO_HOME/.first_run" <<EOF
 {"installed_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","setup_version":"$SETUP_VERSION"}
 EOF
@@ -157,32 +158,25 @@ fi
 # ---------- 9. Welcome / next steps ----------
 echo ""
 if [ "$IS_FIRST_RUN" = "1" ]; then
-  cat <<'WELCOME'
+  cat <<WELCOME
 
-╔══════════════════════════════════════════════════════════════════╗
-║                                                                  ║
-║          👋  Welcome to Mr. Weirdo Jobs  (v2.1.7)                ║
-║                                                                  ║
-║   Your resume-driven internship / new-grad application agent.    ║
-║                                                                  ║
-║   Three steps to start applying:                                 ║
-║                                                                  ║
-║     1️⃣   Drop your resume (PDF) + a short self-introduction      ║
-║     2️⃣   Answer 3 hard-boundary questions                       ║
-║          (work auth · location · legal/attestation policy)       ║
-║     3️⃣   Review progress — supported ATS rows can auto-submit   ║
-║                                                                  ║
-║   ──────────────────────────────────────────────────────────     ║
-║                                                                  ║
-║   👉  Before first run, start the dedicated Chrome launcher.      ║
-║       Then open Claude Code or Codex and type:                   ║
-║                                                                  ║
-║          /mrweirdo-onboard                                       ║
-║                                                                  ║
-║       (or just say "I want to start applying for internships"    ║
-║        — the agent will surface onboarding on its own)           ║
-║                                                                  ║
-╚══════════════════════════════════════════════════════════════════╝
+Welcome to Mr. Weirdo Jobs ($SETUP_VERSION)
+
+Public alpha: resume-driven US student job application skill.
+
+Three steps to start:
+  1. Drop your resume PDF and a short self-introduction.
+  2. Answer 3 hard-boundary questions:
+     work authorization, location, and legal/attestation policy.
+  3. Confirm the parsed profile/search intent, then run a small batch.
+     Supported Greenhouse / Ashby rows can auto-submit after that consent.
+
+Before the first run, start the dedicated Chrome launcher.
+Then open Claude Code or Codex and type:
+
+  /mrweirdo-onboard
+
+You can also say: "I want to start applying for internships."
 
 WELCOME
 else

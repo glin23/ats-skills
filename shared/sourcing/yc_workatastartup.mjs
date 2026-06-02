@@ -280,6 +280,8 @@ function _normalizeJobPosting(p, co) {
   const applyUrl = p.applyUrl || profileUrl;
   return {
     source: 'yc_waas',
+    manual_apply_required: true,
+    auto_apply_supported: false,
     company: p.companyName || co.name || null,
     company_slug: co.slug || null,
     title: p.title || null,

@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 
-const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const HOME = atsHome();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
 
@@ -69,7 +70,7 @@ function htmlReport(rows, outputPath, allowedRoleTypes) {
   const ids = rows.map((r) => r.id).join(',');
   const command = ids
     ? `node shared/rescore_review.mjs --promote ${ids} --apply`
-    : 'No candidates to promote.';
+    : 'No rows to promote.';
   const bodyRows = rows.map((row) => `<tr>
     <td>${escapeHtml(row.id)}</td>
     <td>${escapeHtml(row.company)}</td>
@@ -104,7 +105,7 @@ function htmlReport(rows, outputPath, allowedRoleTypes) {
 <body>
   <header>
     <h1>Mr. Weirdo Jobs Rescore Review</h1>
-    <div class="meta">Generated ${escapeHtml(new Date().toLocaleString())} · Role targets: ${escapeHtml(allowedRoleTypes.join(', '))} · Candidates: ${rows.length}</div>
+    <div class="meta">Generated ${escapeHtml(new Date().toLocaleString())} · Role targets: ${escapeHtml(allowedRoleTypes.join(', '))} · Rows: ${rows.length}</div>
   </header>
   <main>
     <div class="command">
@@ -115,7 +116,7 @@ function htmlReport(rows, outputPath, allowedRoleTypes) {
       <thead>
         <tr><th>ID</th><th>Company</th><th>Position</th><th>Fit</th><th>ATS</th><th>Role</th><th>Link</th></tr>
       </thead>
-      <tbody>${bodyRows || '<tr><td colspan="7">No candidates.</td></tr>'}</tbody>
+      <tbody>${bodyRows || '<tr><td colspan="7">No rows.</td></tr>'}</tbody>
     </table>
   </main>
 </body>
@@ -175,7 +176,7 @@ const candidateIds = new Set(candidates.map((row) => row.id));
 if (promoteIds.length) {
   const invalidIds = promoteIds.filter((id) => !candidateIds.has(id));
   if (invalidIds.length) {
-    console.error(`Refusing to promote non-candidate IDs: ${invalidIds.join(',')}`);
+    console.error(`Refusing to promote row IDs that are not in this review: ${invalidIds.join(',')}`);
     process.exit(1);
   }
 

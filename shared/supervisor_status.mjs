@@ -2,15 +2,15 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { homedir } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
-const home = process.env.MRWEIRDO_HOME || path.join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -119,10 +119,10 @@ const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary'], {
 });
 const queueRows = queueRun.stdout.split(/\r?\n/).filter((line) => line.trim().startsWith('{')).length;
 
-const capacityRun = runNode(['shared/apply_capacity_plan.mjs', '--json', '--target', String(target)], {
+const readinessRun = runNode(['shared/apply_readiness_plan.mjs', '--json', '--target', String(target)], {
   MRWEIRDO_ROLE_TYPE_TARGETS: roleTargets,
 });
-const capacity = parseJson(capacityRun.stdout.split(/\n(?=\/)/)[0]) || null;
+const readiness = parseJson(readinessRun.stdout.split(/\n(?=\/)/)[0]) || null;
 
 const discoverPlanRun = runNode(['shared/discover_candidates.mjs', '--plan'], {
   MRWEIRDO_ROLE_TYPE_TARGETS: roleTargets,
@@ -144,14 +144,15 @@ const result = {
     requested: max,
     ready_for_requested_batch: queueRows,
   },
-  capacity,
+  capacity: readiness,
+  readiness,
   discover_plan: discoverPlan,
   next_commands: [
     ...cdpRecoveryCommands,
     `node shared/apply_supervisor.mjs --dry-run --max ${max} --role-targets ${roleTargets}`,
     `node shared/apply_supervisor.mjs --real --max ${max} --role-targets ${roleTargets}`,
     'node shared/rescore_review.mjs --output /tmp/mrweirdo-rescore-review-latest.html',
-    'node shared/discover_candidates.mjs --run',
+    'node shared/discover_candidates.mjs --run --source-window-size "${MRWEIRDO_SOURCE_WINDOW_SIZE:-1000}"',
   ],
 };
 
@@ -164,10 +165,11 @@ if (hasArg('--json')) {
   console.log(`ready to real apply: ${result.ready_to_real_apply ? 'yes' : 'no'}`);
   console.log(`latest report: ${result.latest_report?.path || '(none)'}`);
   console.log(`ready for requested batch: ${queueRows}/${max}`);
-  if (capacity) {
-    console.log(`target ${target}: ready_now=${capacity.ready_now}, shortfall=${capacity.shortfall_now}`);
-    console.log(`review candidates: ${capacity.expansion?.human_rescore_fit_one_below?.count ?? 0}`);
-    console.log(`additional sourcing needed after known pool: ${capacity.expansion?.additional_sourcing_needed_after_known_pool ?? '?'}`);
+  if (readiness) {
+    const remaining = readiness.remaining_now ?? readiness.shortfall_now;
+    console.log(`target ${target}: ready_now=${readiness.ready_now}, remaining=${remaining}`);
+    console.log(`rows to review: ${readiness.expansion?.human_rescore_fit_one_below?.count ?? 0}`);
+    console.log(`next realtime discovery needed: ${readiness.expansion?.additional_realtime_discovery_needed ?? readiness.expansion?.additional_sourcing_needed_after_known_pool ?? '?'}`);
   }
   console.log('status counts:');
   for (const row of result.status_counts) console.log(`- ${row.status}: ${row.count}`);

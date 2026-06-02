@@ -5,7 +5,8 @@
   "description": "Resume-driven job search automation for US college students (Claude Code + Codex skill collection with a Node 24/CDP backend).",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:smoke": "node scripts/role_guard_smoke.mjs"
+    "test:smoke": "node scripts/role_guard_smoke.mjs",
+    "release:alpha": "npm test && npm run test:smoke && node scripts/public_alpha_gate.mjs"
   },
   "engines": {
     "node": ">=24"

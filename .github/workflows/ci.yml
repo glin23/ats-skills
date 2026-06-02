@@ -17,6 +17,8 @@ jobs:
         run: node --test test/*.test.mjs
       - name: Role-guard smoke test
         run: node scripts/role_guard_smoke.mjs
+      - name: Public alpha release gate
+        run: node scripts/public_alpha_gate.mjs
       - name: Syntax-check all shared modules
         run: |
           set -e

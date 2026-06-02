@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
+import { validateProfileBundle } from './validate_user_profile.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
-const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 const maxRows = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 3));
 const roleTargetsEnv = process.env.MRWEIRDO_ROLE_TYPE_TARGETS || '';
 
@@ -74,6 +75,7 @@ async function checkCdp() {
 
 const profilePath = join(home, 'profile.json');
 const intentPath = join(home, 'search_intent.json');
+const profileValidation = validateProfileBundle(home);
 const profile = readJson(profilePath, {});
 const intent = readJson(intentPath, {});
 const allowedRoleTypes = roleTargetsEnv
@@ -125,12 +127,14 @@ const syntaxFiles = [
   'shared/auto_apply_queue.mjs',
   'shared/recompute_auto_apply_eligibility.mjs',
   'shared/validate_auto_row.mjs',
+  'shared/validate_user_profile.mjs',
   'shared/discover_candidates.mjs',
   'shared/supervisor_status.mjs',
   'shared/apply_supervisor.mjs',
   'shared/apply_batch.mjs',
   'shared/queue_diagnostics.mjs',
   'shared/queue_review_report.mjs',
+  'shared/apply_readiness_plan.mjs',
   'shared/apply_capacity_plan.mjs',
   'shared/rescore_review.mjs',
   'shared/record_apply_outcome.mjs',
@@ -150,6 +154,7 @@ const cdp = await checkCdp();
 
 const checks = [
   { name: 'profile_json', ok: existsSync(profilePath), detail: profilePath },
+  { name: 'profile_shape', ok: !existsSync(profilePath) || profileValidation.ok, detail: profileValidation.issues },
   { name: 'resume_pdf', ok: existsSync(resumePath), detail: resumePath },
   { name: 'search_intent_json', ok: existsSync(intentPath), detail: intentPath },
   { name: 'role_targets_nonempty', ok: allowedRoleTypes.length > 0, detail: allowedRoleTypes },
@@ -170,21 +175,21 @@ if (!existsSync(coverLetterPath)) {
 }
 if (queueRows.length > 0 && queueRows.length < maxRows) {
   warnings.push({
-    name: 'queue_shortfall',
+    name: 'ready_rows_below_requested_batch',
     detail: queueDiagnostics
       ? {
           requested: maxRows,
           eligible: queueRows.length,
           by_reason: queueDiagnostics.by_reason,
-          note: 'Run discovery/scoring or add support for more ATS platforms before expecting a larger batch.',
+          note: 'Run realtime discovery/scoring or add support for more ATS platforms before expecting a larger batch.',
         }
-      : `Requested ${maxRows} rows, but only ${queueRows.length} currently pass the auto-apply queue gates. Run discovery/scoring before expecting a larger batch.`,
+      : `Requested ${maxRows} rows, but only ${queueRows.length} currently pass the auto-apply queue gates. Run realtime discovery/scoring before expecting a larger batch.`,
   });
 }
 if (maxRows > 10) {
   warnings.push({
     name: 'large_batch_requested',
-    detail: 'Public beta default is 10. Raise the cap only after a smaller dogfood run has clean results.',
+    detail: 'Public alpha default is 10. Raise the cap only after a smaller verification run has clean results.',
   });
 }
 if (allowedRoleTypes.includes('new_grad_FT')) {

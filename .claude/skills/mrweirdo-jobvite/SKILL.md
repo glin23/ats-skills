@@ -1,11 +1,11 @@
 ---
 name: mrweirdo-jobvite
-description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`jobs.jobvite.com/*`) application form filling using CDP via shared/cdp.mjs. Most tenants allow guest apply (no account required); resume upload via file input. Trigger with '投这个 JobVite URL：<url>' or '/mrweirdo-jobvite <url>'. User must explicitly authorize Submit — skill never auto-submits."
+description: "[v0.8 ALPHA — needs live verification] Automate JobVite (`jobs.jobvite.com/*`) application form filling using CDP via shared/cdp.mjs. Most tenants allow guest apply (no account required); resume upload via file input. Trigger with '投这个 JobVite URL：<url>' or '/mrweirdo-jobvite <url>'. User must explicitly authorize Submit — skill never auto-submits."
 ---
 
 # JobVite ATS 投递 skill (v0.8 ALPHA)
 
-> **⚠️ v0.8 alpha — not yet dogfood-verified.** `shared/jobvite_helpers.js` selectors are
+> **⚠️ v0.8 alpha — not yet live-verified.** `shared/jobvite_helpers.js` selectors are
 > best-guess based on JobVite's `.jv-*` class conventions + sampling live boards +
 > pattern transfer from Ashby/Greenhouse. First real submission will reveal where
 > selectors need correction. Treat skill output skeptically; screenshot every step.
@@ -41,10 +41,10 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
 
 ## 已知 v0.8 局限（必读）
 
-- **未 dogfood 验证** — selectors 是 best-guess；第一次跑大概率有字段失败。准备人工修 `jobvite_helpers.js`。
+- **未实战验证** — selectors 是 best-guess；第一次跑大概率有字段失败。准备人工修 `jobvite_helpers.js`。
 - **React + react-hook-form** — 文本字段强烈推荐 `cdp.mjs typetext`（isTrusted=true）；`setVal` 在部分 tenant silently drops input。
 - **field ID 前缀变体** — 有 tenant 用 `#jv-field-first-name`，有 tenant 用 `#firstName`。helper 已 fallback 试两种，但其他 field 不在 helper 范围 → 人工补 selector。
-- **EEOC 内联** — 不像 iCIMS 单独一页，EEOC 在 main form 里以 radio group 形式出现。每个 tenant 不一样，需要 dogfood + 截图人工填。
+- **EEOC 内联** — 不像 iCIMS 单独一页，EEOC 在 main form 里以 radio group 形式出现。每个 tenant 不一样，需要 live verification + 截图人工填。
 - **JS widget 模式** — 极少数 tenant 把 JobVite 当 widget 嵌到自己网站，DOM 是 iframe 或动态注入；helper 抓不到 → 提示 user uses对应公司官网走 manual。
 - **反爬一般** — JobVite 没有 Akamai Bot Manager 这种级别，但还是建议 **≤5 投递/天 + 每次 sleep 30-60s jitter**，直到摸清边界。
 
@@ -57,7 +57,7 @@ description: "[v0.8 ALPHA — needs dogfood verification] Automate JobVite (`job
 ```bash
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
-PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || { echo "missing profile.json — run /mrweirdo-onboard"; exit 1; }
 curl -sf http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 [ -f "$RESUME" ] || { echo "resume missing: $RESUME"; exit 1; }
@@ -153,7 +153,7 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_jobvite_post_s
 
 ## Known Limitations (v0.8)
 
-- **未 dogfood 验证** — 所有 selector 是 best-guess，第一次跑必有字段失败。
+- **未实战验证** — 所有 selector 是 best-guess，第一次跑必有字段失败。
 - **field ID 变体** — 不同 tenant 在 `jv-field-` 前缀和裸 ID 之间不一致；helper 标准字段 fallback 两种，custom field 需要逐次手补。
 - **react-hook-form 拦截** — 文本字段不要用 setVal，统一走 `cdp.mjs typetext`。
 - **EEOC selectors per-tenant** — 不同 tenant 的 race/gender/veteran/disability 选项 id 不同；helper 抓 group_name 但 option 文本需 fallback 模糊匹配。
@@ -204,4 +204,4 @@ node shared/cdp.mjs screenshot "$TAB" "log/screenshots/${COMPANY}_jobvite_post_s
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver（注意：可能需扩 `setfileinput` 命令）
 - JobVite Career Portal class conventions: `.jv-careersite`, `.jv-job-list-item`, `.jv-field-*`
 - JobVite URL 结构: `https://jobs.jobvite.com/{tenant}/job/{jvId}` (or `/careers/{tenant}/job/{jvId}` legacy)
-- v0.8 dogfood log（待 用户 第一次跑后填）：`log/jobvite_dogfood_2026-XX.md`
+- v0.8 verification log（待 用户 第一次跑后填）：`log/jobvite_verification_2026-XX.md`

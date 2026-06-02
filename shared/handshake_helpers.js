@@ -1,7 +1,7 @@
 /**
  * handshake_helpers.js — Handshake ATS form helpers
  *
- * ⚠️  v0.6 DISCLAIMER — BEST-GUESS NOT DOGFOOD-VERIFIED
+ * ⚠️  v0.6 DISCLAIMER — BEST-GUESS NOT LIVE-VERIFIED
  *
  * 用户 has NOT yet successfully run a real Handshake submission with these
  * helpers. Selectors and field semantics below are inferred from:
@@ -15,7 +15,7 @@
  * DOM on first real submission and adjusted in place. Until then this file is
  * a structural scaffold, not a known-working helper set.
  *
- * Architectural assumptions (verify on first dogfood):
+ * Architectural assumptions (verify on first live verification):
  *   1. Handshake is a React SPA — likely uses event-based input validation
  *      similar to Ashby. Treat text fields as `isTrusted`-required by default
  *      (i.e. prefer CDP `Input.insertText` via `cdp.mjs typetext`).
@@ -208,7 +208,7 @@
       return {
         ok: false,
         note: 'document_picker_not_found',
-        hint: 'TODO-verify: update selectors after first dogfood',
+        hint: 'TODO-verify: update selectors after first live verification',
       };
     }
     // Try radio first (simpler), then dropdown
@@ -473,9 +473,9 @@
     }
 
     // Yes/No or radio questions — TODO-verify Handshake DOM. For now flag as unknown.
-    // ...placeholder until first dogfood reveals actual structure
+    // ...placeholder until first live verification reveals actual structure
 
-    return { ok: true, plan, _disclaimer: 'v0.6 best-guess — verify on dogfood' };
+    return { ok: true, plan, _disclaimer: 'v0.6 best-guess — verify during live verification' };
   };
 
   // ---------- submit / success ----------
@@ -484,7 +484,7 @@
    * Handshake.findSubmit()
    *
    * Handshake's apply dialog has a "Submit Application" button. Selectors are
-   * best guesses — verify on first dogfood.
+   * best guesses — verify on first live verification.
    */
   Handshake.findSubmit = function () {
     const candidates = [

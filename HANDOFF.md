@@ -1,19 +1,20 @@
-# Mr. Weirdo Jobs — Maintainer Handoff (v2.1.7)
+# Mr. Weirdo Jobs — Maintainer Handoff (v2.2.0)
 
 Audience: a new maintainer (engineer or PM) inheriting this repo cold.
 Read this file end-to-end before touching anything. It is the single
 file you need open to get oriented; everything else is just code.
 
-Last updated: 2026-05-28, after Greenhouse dogfood fixes for
+Last updated: 2026-05-28, after Greenhouse end-to-end fixes for
 semester-only graduation selects, consent checkboxes, dead-job
 redirects, and CDP bootstrapping diagnostics. Same day: verified the
 role-type auto-apply gate (the fix for the 2026-05-27 full-time leak) —
 `auto_apply_queue.mjs` now returns 0 rows because every fit≥5 row left on
 Greenhouse/Ashby is `new_grad_FT` (correctly `role_type_not_allowed`) and
-every remaining internship is fit≤4; the on-target internship pool on
-supported ATS is exhausted. Also hardened `score_prompt.md` against
+every remaining internship is fit≤4; the current local history has no
+ready-to-submit supported-ATS internship rows. Also hardened `score_prompt.md` against
 role-type score inflation and added a `factual_gap_fields` taxonomy
-(below). Then ran a real refill loop: `discover_candidates.mjs --run`
+(below). Then ran a real realtime-discovery loop:
+`discover_candidates.mjs --run --source-window-size "${MRWEIRDO_SOURCE_WINDOW_SIZE:-1000}"`
 → scored 3 new on-target internships → 2 verified Ashby submissions
 (acorns Growth PM Intern, lambda Accounting AI Intern; confirmation
 screenshots in `log/screenshots/`) + 1 honest skip (fuel-cycle: required
@@ -39,20 +40,19 @@ from `essay_profile.json` rather than leaving them blank.
 
 Mr. Weirdo Jobs is the public project name and brand. The repo slug,
 skill prefixes, and local state directory remain `mrweirdo-jobs` /
-`mrweirdo-*` for compatibility. The tool started as a personal
-job-application automation stack and is being packaged as a Claude Code
+`mrweirdo-*` for compatibility. The tool is packaged as a Claude Code
 + Codex Skill collection plus a small Node 24 backend, installable on
 any macOS machine via one curl command.
 
 The pipeline is: resume PDF → AI-derived search intent + profile →
 cross-platform job discovery (Greenhouse / Ashby / Lever boards, plus
 RemoteOK and YC) → AI scoring → auto-apply on Greenhouse / Ashby,
-with per-company quota guards, a public-beta per-run cap, and a
+with per-company quota guards, a public-alpha per-run cap, and a
 Gmail-driven confirmation loop. The user must provide a resume, answer
 the short questionnaire, and explicitly confirm the parsed profile
 before the agent submits anything.
 
-Latest field data: the first post-readiness 10-row Greenhouse run
+Latest validation notes: the first post-readiness 10-row Greenhouse run
 produced 1 verified submission (`attentive` row 432) and a useful
 postmortem: most misses were unsupported custom questions, non-standard
 Greenhouse landing pages with no file input, and location/profile
@@ -69,14 +69,14 @@ users can now explicitly choose fixed metros, named metros, anywhere in
 the US, or any legally workable location across countries the user lists. The answer
 is stored as `relocation_policy`, `countries_open_to`, and
 `willing_to_relocate_for_internship` so discovery, scoring, and ATS
-answers share one source of truth. v2.1.7 aligns auto-apply with the
+answers share one source of truth. A later pass aligns auto-apply with the
 recall-first calibration: `fit_score >= 5` is eligible, while
 dedupe/quota/platform guards still apply.
 Expected cadence going forward: start external users with
 `/mrweirdo-doctor`, then one `/mrweirdo-onboard` run capped at 10
 auto-submits. Maintainers should raise `MRWEIRDO_MAX_AUTO_APPLY` only
 after the first run looks sane.
-The next Greenhouse dogfood pass exposed three more reusable lessons:
+The next Greenhouse validation pass exposed three more reusable lessons:
 some boards expose graduation choices only as semester-end dates
 (`June YYYY` / `December YYYY`), consent checkboxes may be visible while
 their inputs are hidden, and retired Greenhouse job IDs can 302 to a
@@ -100,7 +100,7 @@ The files a new maintainer must know about, in rough priority order:
   `~/.mrweirdo-jobs/repo`, symlinks `.claude/skills/*` into
   Claude Code + Codex skill locations, creates the user-state dir
   layout, and runs the install doctor. Idempotent.
-- `VERSION` — current release tag, `v2.1.7` as of this write.
+- `VERSION` — current release tag, currently `v2.2.0`.
 - `CHANGELOG.md` — version history. Read the top entries (v2.1, v1.3)
   for current state; older entries are historical.
 
@@ -113,7 +113,7 @@ The files a new maintainer must know about, in rough priority order:
   Greenhouse helper, called by onboard. Single URL in.
 - `.claude/skills/mrweirdo-ashby-auto/SKILL.md` — same for Ashby.
 - `.claude/skills/mrweirdo-lever-auto/SKILL.md` — preserved internal
-  helper for experimentation. Not part of public-beta batch auto-submit
+  helper for experimentation. Not part of public-alpha batch auto-submit
   until the Lever upload issue is fixed.
 - `.claude/skills/mrweirdo-confirm/SKILL.md` — Gmail confirmation
   loop; promotes ✅ 已投 rows to ✅ 已确认.
@@ -142,16 +142,16 @@ The files a new maintainer must know about, in rough priority order:
   network; `--run` writes `/tmp/mrweirdo-onboard/to_score.json`.
 - `shared/supervisor_status.mjs` — one-command local snapshot for
   maintainers. It reports CDP state, whether a real apply batch is ready,
-  latest report, DB status counts, ready queue size, capacity shortfall, and
+  latest report, DB status counts, ready row count, remaining target, and
   next safe commands. If CDP is down, the first next commands are the
   visible-terminal recovery commands to start Chrome CDP.
 - `shared/recompute_auto_apply_eligibility.mjs` — recalculates stale
   `auto_apply_eligible` flags from current role targets, fit threshold,
   platform support, and quota guards before Step 10 builds the queue.
-- `shared/apply_supervisor.mjs` — simplest CLI entrypoint for dogfood
+- `shared/apply_supervisor.mjs` — simplest CLI entrypoint for verification
   runs. `--dry-run` validates without submitting; `--real` verifies or
   launches Chrome CDP before delegating to `shared/apply_batch.mjs`.
-- `shared/apply_batch.mjs` — foreground supervisor runner for dogfood or
+- `shared/apply_batch.mjs` — foreground supervisor runner for verification or
   production batches. It runs preflight, builds the guarded queue, validates
   each row, runs the platform driver, calls the outcome recorder, paces rows,
   generates the final HTML report, and holds a local batch lock so concurrent
@@ -161,13 +161,14 @@ The files a new maintainer must know about, in rough priority order:
   boundary, or same company/title already submitted.
 - `shared/queue_review_report.mjs` — local HTML queue review for the user or
   maintainer. It separates ready-to-apply rows from fit-one-below-threshold
-  re-score candidates and unsupported-ATS expansion candidates.
+  rows to review and unsupported-ATS rows.
 - `shared/rescore_review.mjs` — local HTML/JSON/CSV review for
   fit-one-below-threshold rows. It never changes the DB unless the user
   supplies explicit IDs with `--promote ... --apply`.
-- `shared/apply_capacity_plan.mjs` — local HTML/JSON target-count plan. It
-  shows whether a requested batch size can be reached from ready rows,
-  human re-score candidates, ATS expansion, or additional sourcing.
+- `shared/apply_readiness_plan.mjs` — local HTML/JSON target-count readiness
+  report. It shows whether a requested batch size can be reached from ready
+  rows, rows to review, unsupported ATS rows, or the next realtime discovery
+  run. `shared/apply_capacity_plan.mjs` is kept only as a compatibility alias.
 - `shared/record_apply_outcome.mjs` — evidence-bound outcome recorder.
   Step 10 feeds it the per-row driver output; it marks `✅ 已投` only when
   the driver emitted `outcome:"submitted"`, otherwise it records a
@@ -193,8 +194,8 @@ The files a new maintainer must know about, in rough priority order:
   Do not share. Do not push.
 
 **Reference data**
-- `examples/lee_company_list.json` — author's curated 248-company list.
-  NOT used by default in v2; example only.
+- `examples/example_company_list.json` — optional company-list format example.
+  NOT used by default in v2.
 
 ---
 
@@ -206,7 +207,7 @@ The files a new maintainer must know about, in rough priority order:
    resume ingest, search intent inference, ABCD confirmation,
    cross-platform discovery, AI scoring, hard filter, dedupe,
    quota check, **auto-apply loop**, summary.
-3. Step 10 (auto-apply) is the heart of the system. Public beta caps
+3. Step 10 (auto-apply) is the heart of the system. Public alpha caps
    the queue at 10 rows per run by default. For each eligible row,
    the main agent invokes one of `mrweirdo-{greenhouse,ashby}-auto`
    which calls the matching `shared/<platform>_apply_driver.mjs`. The
@@ -336,7 +337,7 @@ CDP endpoint.
   the user upfront — never invent it. Onboard should batch-ask these before
   the apply loop so it does not re-stall mid-application. Rows 190/197/625
   are the worked examples.
-- **Per-company quota tuning**: edit `examples/lee_company_list.json`
+- **Per-company quota tuning**: edit `examples/example_company_list.json`
   as reference only; edit the user's `~/.mrweirdo-jobs/company_list.user.json`
   to adjust caps on specific employers for real runs.
 
@@ -394,21 +395,17 @@ In rough priority order:
 3. **Solve Lever anti-CDP file upload.** Today it is effectively
    broken. Either find the detection signal and bypass it, or
    replace `setFileInputFiles` with a drag-drop emulation.
-4. **Better discovery — now the immediate gating lever, not a v2.2
-   nice-to-have.** As of 2026-05-28 the supported-ATS (Greenhouse/Ashby)
-   internship pool is *exhausted*: `auto_apply_queue.mjs` returns 0 rows
+4. **Better discovery — now the immediate gating lever.** As of 2026-05-28 the current local history has no ready supported-ATS (Greenhouse/Ashby)
+   internship rows: `auto_apply_queue.mjs` returns 0 rows
    because all fit≥5 rows left are full-time (gate-blocked) and all
-   remaining internships are fit≤4 off-target crafts. The only fit≥5
-   on-target internships left sit on Lever (broken upload) or YC-WaaS rows
-   with no captured apply URL. A real apply run cannot happen again until
-   discovery refills the on-target supported-ATS pool. The two YC-WaaS gaps
-   to fix: rows are stored with `NO_URL:yc_waas:<id>` placeholders and
-   `company='(unknown)'` — the YC sourcing client must resolve a real apply
-   URL + company name or those rows are dead weight. Today's pool was 813
-   jobs of which only ~30 were actionable. Sources skew remote-tech-heavy.
-   v2.2 should add YC Work-At-A-Startup, Wellfound, and at least one
-   industry-specific
-   board (healthcare, education).
+   remaining internships are fit≤4 off-target crafts. The old
+   `NO_URL:yc_waas:<id>` dead rows are now filtered before scoring and pruned
+   from the local history. A real apply run still cannot happen again
+   until the next realtime discovery/scoring run finds new on-target
+   supported-ATS rows. Source-windowed
+   discovery now rotates through public board lists; next work should improve
+   Greenhouse/Ashby yield for US student roles and add at least one
+   industry-specific board (healthcare, education).
 5. **Profile asset gaps.** GPA, SAT/ACT, 1-minute intro video, official
    transcript — roughly 3 high-fit jobs per session require these and
    are skipped. Either prompt the user to provide them at onboard time
@@ -418,7 +415,6 @@ In rough priority order:
 
 ## 9. Contact + getting unstuck
 
-The original author is Lee Lin (GitHub: `glin23`). The CHANGELOG is
-the project's narrative memory — when something looks wrong, read the
-relevant version entry first; the rationale for almost every weird
+The CHANGELOG is the project's narrative memory — when something looks wrong,
+read the relevant version entry first; the rationale for almost every weird
 choice is in there.

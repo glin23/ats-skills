@@ -7,11 +7,12 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir, platform } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || resolve(__dirname, '..');
-const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 const argv = process.argv.slice(2);
 const args = new Set(argv);
 const json = args.has('--json');
@@ -223,12 +224,12 @@ function checkSupervisorStatus() {
   const queueReady = Number(status.queue?.ready_for_requested_batch || 0);
   const requested = Number(status.queue?.requested || supervisorMax);
   if (queueReady >= requested) {
-    pass('Apply queue', `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`);
+    pass('Ready rows', `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`);
   } else {
     warn(
-      'Apply queue',
+      'Ready rows',
       `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`,
-      'Review fit-4 candidates or run supported-ATS discovery before scaling.'
+      'Review fit-4 rows or run realtime supported-ATS discovery before scaling.'
     );
   }
 
@@ -236,15 +237,15 @@ function checkSupervisorStatus() {
   if (capacity) {
     const readyNow = Number(capacity.ready_now || 0);
     const target = Number(capacity.target_applications || supervisorTarget);
-    const shortfall = Number(capacity.shortfall_now || 0);
-    if (shortfall > 0) {
+    const remaining = Number(capacity.remaining_now ?? capacity.shortfall_now ?? 0);
+    if (remaining > 0) {
       warn(
-        'Apply capacity',
-        `${readyNow}/${target} ready now; shortfall ${shortfall}.`,
-        'Use rescore_review for fit-4 rows, then discover more supported ATS rows.'
+        'Run readiness',
+        `${readyNow}/${target} ready now; remaining ${remaining}.`,
+        'Use rescore_review for fit-4 rows, then run realtime supported-ATS discovery.'
       );
     } else {
-      pass('Apply capacity', `${readyNow}/${target} ready now.`);
+      pass('Run readiness', `${readyNow}/${target} ready now.`);
     }
   }
 

@@ -4,14 +4,14 @@
 // Used by mrweirdo-jobs (Greenhouse / Ashby / Lever apply skills).
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, resolve as pathResolve } from 'node:path';
+import { atsHome } from './paths.mjs';
 
 function resolveCdpHost() {
   if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
   if (process.env.ATS_CDP_PORT) return `localhost:${process.env.ATS_CDP_PORT}`;
   try {
-    const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+    const home = atsHome();
     const fromFile = readFileSync(join(home, 'cdp_host'), 'utf8').trim();
     if (fromFile) return fromFile.replace(/^https?:\/\//, '');
   } catch {

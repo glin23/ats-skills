@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
-const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+const home = atsHome();
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);

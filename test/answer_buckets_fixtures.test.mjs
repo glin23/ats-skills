@@ -19,7 +19,7 @@ const FIXTURES = JSON.parse(readFileSync(join(HERE, 'fixtures/ashby_questions.js
 
 const CTX = {
   PROFILE: {
-    personal: { first_name: 'Lee', last_name: 'Lin', full_name: 'Lee Lin', preferred_name: 'Lee' },
+    personal: { first_name: 'Alex', last_name: 'Chen', full_name: 'Alex Chen', preferred_name: 'Alex' },
     education: { school: 'Babson College', degree: 'Bachelor of Science', major: 'Business' },
   },
   authorizedAns: 'Yes',
@@ -31,7 +31,7 @@ const CTX = {
   disabilityAns: 'I do not want to answer',
   cityFull: 'Boston, Massachusetts, United States',
   compensationExpectation: 'Open to discussion based on the role.',
-  linkedin: 'https://linkedin.com/in/leelin',
+  linkedin: 'https://linkedin.com/in/alexchen',
   graduationDate: 'May 2027',
   pna: PNA,
 };

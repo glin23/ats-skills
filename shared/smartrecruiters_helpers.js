@@ -1,7 +1,7 @@
 /**
  * smartrecruiters_helpers.js — SmartRecruiters ATS form helpers (v0.8 BETA)
  *
- * ⚠️  v0.8 beta — needs dogfood ⚠️
+ * ⚠️  v0.8 beta — needs live verification ⚠️
  * SmartRecruiters is being migrated to SAP SuccessFactors. Selectors and form
  * mechanics described here are best-guess based on the current jobs.smartrecruiters.com
  * apply flow. They have NOT been verified against a live submit. Expect:
@@ -237,7 +237,7 @@
    * SR.findEmptyRequired()
    *
    * Walk visible required fields and return {id, selector, label, type, currentValue}
-   * for each that is still empty. Best-effort; expect to refine after dogfood.
+   * for each that is still empty. Best-effort; expect to refine after live verification.
    *
    * Heuristics (in priority order):
    *   1. HTML `required` attribute
@@ -359,7 +359,7 @@
    *   - select   (native <select> via SR.pickSelect)
    *   - upload   (cdp.mjs upload)
    *
-   * v0.8: no Yes/No or date widgets yet — add after first dogfood reveals what
+   * v0.8: no Yes/No or date widgets yet — add after first live verification reveals what
    * the real form looks like.
    */
   SR.fillForm = function (profile) {
@@ -369,7 +369,7 @@
     }
     const plan = [];
 
-    // SmartRecruiters typical field id/name patterns (best guess pre-dogfood):
+    // SmartRecruiters typical field id/name patterns (best guess pre-verification):
     //   firstName / lastName / email / phone, resume input near top of form.
     const tryField = (selectors, value, label) => {
       if (!value) return;

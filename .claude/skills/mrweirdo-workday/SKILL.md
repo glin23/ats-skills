@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-workday
-description: "v0.7 stretch — config-driven Workday ATS submission. NOT a generic Workday solver. Each company needs its own JSON config under shared/workday/companies/<slug>.json describing each wizard step's fields. Pure-DOM heuristics yield <60% coverage across Workday tenants because of variant 'Application Questions' selects, demographic option lists, and tenant-specific data-automation-id naming; per-company config is the practical workaround. Trigger with '投这个 Workday URL：<url>' or `/mrweirdo-workday <url>`. User must explicitly authorize Submit per harness classifier rules. Dogfood pending."
+description: "v0.7 stretch — config-driven Workday ATS submission. NOT a generic Workday solver. Each company needs its own JSON config under shared/workday/companies/<slug>.json describing each wizard step's fields. Pure-DOM heuristics yield <60% coverage across Workday tenants because of variant 'Application Questions' selects, demographic option lists, and tenant-specific data-automation-id naming; per-company config is the practical workaround. Trigger with '投这个 Workday URL：<url>' or `/mrweirdo-workday <url>`. User must explicitly authorize Submit per harness classifier rules. Live verification pending."
 ---
 
 # Workday ATS 投递 skill (v0.7 stretch, config-driven)
@@ -18,7 +18,7 @@ Workday tenant variant 太多 — 同样一份 "Application Questions" step，Le
    ```bash
    ./shared/chrome-cdp-launcher.sh
    ```
-2. **`profile.json` 已填**（仓库根）— personal.first_name / last_name / email / address.* / phone / linkedin
+2. **`~/.mrweirdo-jobs/profile.json` 已填** — personal.first_name / last_name / email / address.* / phone / linkedin
 3. **简历 PDF 存在** — 路径在 `~/.mrweirdo-jobs/config.json.resume_path`（由 `/mrweirdo-onboard` 设置）
 4. **公司 config 存在** — `shared/workday/companies/<slug>.json`，schema 见 `_template.json`
 5. **Node 24+**
@@ -50,14 +50,14 @@ echo "tenant=$TENANT slug=$SLUG"
 ```bash
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
-PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || PROFILE="$MRWEIRDO_REPO_ROOT/shared/profile.json"
+PROFILE="$MRWEIRDO_HOME/profile.json"; [ -f "$PROFILE" ] || { echo "missing profile.json — run /mrweirdo-onboard"; exit 1; }
 RESUME=$(jq -r .resume_path "$MRWEIRDO_HOME/config.json" 2>/dev/null || jq -r .resume_path "$PROFILE")
 CONFIG="$MRWEIRDO_REPO_ROOT/shared/workday/companies/${SLUG}.json"
 test -f "$CONFIG" || { echo "ERROR: No config for $SLUG. Copy $MRWEIRDO_REPO_ROOT/shared/workday/companies/_template.json to $CONFIG and fill in step_definitions. See SKILL.md 'How to add a new company'."; exit 1; }
 test -f "$PROFILE" || { echo "ERROR: missing profile.json — run /mrweirdo-onboard"; exit 1; }
 test -f "$RESUME" || { echo "ERROR: resume PDF missing: $RESUME"; exit 1; }
 curl -s http://localhost:9222/json/version > /dev/null || bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
-jq -e '._meta.last_verified != null' "$CONFIG" > /dev/null || echo "WARN: config $SLUG never dogfooded (last_verified=null). Proceeding but expect failures."
+jq -e '._meta.last_verified != null' "$CONFIG" > /dev/null || echo "WARN: config $SLUG never live-verified (last_verified=null). Proceeding but expect failures."
 ```
 
 ### 3. Navigate
@@ -199,11 +199,11 @@ This is the contribution flow. Expect ~30 min per company the first time.
 5. **Copy `_template.json` → `companies/<slug>.json`** and fill:
    - `_meta.company` — human-readable name
    - `_meta.tenant_subdomain`, `_meta.wd_instance`, `_meta.board_slug`
-   - `_meta.last_verified` — keep `null` until you've dogfooded an actual submission
+   - `_meta.last_verified` — keep `null` until you've live-verified an actual submission
    - `step_definitions` — each step's `fields[]`, with `automation_id` + `profile_path` + `type` + `required`
    - For `select` fields with non-obvious option text, populate `options_to_value_map` so `profile.standard_answers.work_authorized = "Yes"` maps to whatever Workday shows ("Yes — I am authorized").
 
-6. **Dogfood + iterate.**
+6. **Live-verify + iterate.**
    Run `/mrweirdo-workday <URL>` against a real low-stakes job posting. Every time something fails, update the config. Once a full submission succeeds, set `_meta.last_verified` to today's date.
 
 7. **PR to mrweirdo-jobs repo** so the community can reuse the config. Strip anything tenant-private before pushing.
@@ -233,4 +233,4 @@ This is the contribution flow. Expect ~30 min per company the first time.
 
 ## Status
 
-**v0.7 stretch — unit-shape sanity-checked, dogfood pending.** The helpers compile and inject cleanly. Real-world end-to-end submission against a live Workday tenant has not yet been verified. Treat each company's first submission as a manual-supervised dogfood until `_meta.last_verified` is set.
+**v0.7 stretch — unit-shape sanity-checked, live verification pending.** The helpers compile and inject cleanly. Real-world end-to-end submission against a live Workday tenant has not yet been verified. Treat each company's first submission as a manual-supervised live verification until `_meta.last_verified` is set.

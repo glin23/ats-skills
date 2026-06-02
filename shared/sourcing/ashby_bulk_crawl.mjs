@@ -36,7 +36,7 @@
  *   node shared/sourcing/ashby_bulk_crawl.mjs \
  *     --keywords "Product Manager Intern,APM,Operations Intern" \
  *     --concurrency 10 \
- *     --tenant-limit 100      # only crawl first N tenants (debugging)
+ *     --tenant-limit 100      # crawl a window of N tenants (debugging)
  *
  *   # Summary → stderr, JSON jobs array → stdout (pipe to jq / file).
  *
@@ -51,6 +51,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { fetchJobs } from './ashby_board_api.mjs';
+import { sourceWindow } from './source_window.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TENANTS_PATH = join(__dirname, 'data', 'ashby_tenants.json');
@@ -129,7 +130,8 @@ async function runPool(items, concurrency, worker) {
  * @param {number}   [opts.concurrency] Max in-flight requests (default 10).
  * @param {number}   [opts.limit]       Hard cap on returned jobs (default 5000).
  * @param {string[]} [opts.tenants]     Override tenant list (test/debug).
- * @param {number}   [opts.tenantLimit] Only crawl first N tenants (debug).
+ * @param {number}   [opts.tenantLimit] Crawl a window of N tenants (debug/refresh).
+ * @param {number}   [opts.tenantOffset] Offset into tenant list when tenantLimit is set.
  * @param {(done:number,total:number,tenant:string)=>void} [opts.onProgress]
  *
  * @returns {Promise<{
@@ -145,12 +147,13 @@ export async function bulkFetchAshby({
   limit = 5000,
   tenants: tenantsOverride,
   tenantLimit,
+  tenantOffset = 0,
   onProgress,
 } = {}) {
   const tenants = tenantsOverride
     ? tenantsOverride.slice()
     : (await loadTenants()).tenants.slice();
-  const slice = tenantLimit ? tenants.slice(0, tenantLimit) : tenants;
+  const slice = sourceWindow(tenants, { limit: tenantLimit, offset: tenantOffset });
 
   const matchers = compileKeywordMatchers(keywords);
   const jobs = [];
@@ -220,6 +223,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .filter(Boolean);
   const concurrency = parseInt(flag('concurrency', '10'), 10);
   const tenantLimit = flag('tenant-limit') ? parseInt(flag('tenant-limit'), 10) : undefined;
+  const tenantOffset = flag('tenant-offset') ? parseInt(flag('tenant-offset'), 10) : 0;
   const limit = parseInt(flag('limit', '5000'), 10);
 
   const t0 = Date.now();
@@ -229,6 +233,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     concurrency,
     limit,
     tenantLimit,
+    tenantOffset,
     onProgress: (d, total, _tenant) => {
       const now = Date.now();
       if (now - lastProgress > 1000 || d === total) {

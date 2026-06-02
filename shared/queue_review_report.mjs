@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 
-const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const HOME = atsHome();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
 
@@ -154,13 +155,13 @@ const html = `<!doctype html>
   </header>
   <div class="summary">
     <div class="metric"><strong>${ready.length}</strong><span>Ready to auto-apply</span></div>
-    <div class="metric"><strong>${rescore.length}</strong><span>Fit ${MIN_FIT - 1} review candidates</span></div>
-    <div class="metric"><strong>${platformExpansion.length}</strong><span>ATS expansion candidates</span></div>
+    <div class="metric"><strong>${rescore.length}</strong><span>Fit ${MIN_FIT - 1} rows to review</span></div>
+    <div class="metric"><strong>${platformExpansion.length}</strong><span>Unsupported ATS rows</span></div>
   </div>
   <main>
     ${section('Ready To Auto-Apply', 'These pending rows meet role, fit, ATS, quota, and duplicate guards.', ready, () => 'Eligible now')}
-    ${section(`Review: Fit ${MIN_FIT - 1} Candidates`, `These rows would enter the queue if a human agrees they should be re-scored to ${MIN_FIT}.`, rescore, () => 'Needs human re-score')}
-    ${section('ATS Expansion Candidates', 'These rows fit the target role and score threshold but are blocked by unsupported ATS automation.', platformExpansion, (row) => `Unsupported ATS: ${row.ats_platform || 'unknown'}`)}
+    ${section(`Review: Fit ${MIN_FIT - 1} Rows`, `These rows would enter the queue if a human agrees they should be re-scored to ${MIN_FIT}.`, rescore, () => 'Needs human re-score')}
+    ${section('Unsupported ATS Rows', 'These rows fit the target role and score threshold but are blocked by unsupported ATS automation.', platformExpansion, (row) => `Unsupported ATS: ${row.ats_platform || 'unknown'}`)}
   </main>
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
   "_notes": [
-    "Copy of this file lives at shared/profile.json after setup.sh runs.",
-    "profile.json is gitignored. Never commit your real profile.",
+    "Runtime profile lives at ~/.mrweirdo-jobs/profile.json after /mrweirdo-onboard runs.",
+    "profile.json is local user state. Never commit a real profile.",
     "Field names match what real Greenhouse + Ashby forms expect.",
     "Leave a field as the placeholder if you do not want the skill to touch it."
   ],
@@ -95,10 +95,10 @@
     "visa_must_sponsor": false,
 
     "batch_pace": "slow",
-    "_batch_pace_options": "fast | normal | slow | stealth — see mrweirdo-jobs SKILL.md for per-pace timing + public-beta per-run cap. Default 'slow' for human-pacing (2-5 min jitter, 10/run public-beta default).",
+    "_batch_pace_options": "fast | normal | slow | stealth — see mrweirdo-jobs SKILL.md for per-pace timing + public-alpha per-run cap. Default 'slow' for human-pacing (2-5 min jitter, 10/run public-alpha default).",
 
     "max_auto_apply_per_run": 10,
-    "_max_auto_apply_per_run_notes": "Public-beta default. Raise deliberately with MRWEIRDO_MAX_AUTO_APPLY only after the user asks for a larger batch."
+    "_max_auto_apply_per_run_notes": "Public-alpha default. Raise deliberately with MRWEIRDO_MAX_AUTO_APPLY only after the user asks for a larger batch."
   },
 
   "social_accounts_to_skip": [

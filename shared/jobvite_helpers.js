@@ -1,7 +1,7 @@
 /**
  * jobvite_helpers.js — JobVite ATS form helpers (v0.8 ALPHA, best-guess scaffold)
  *
- * ⚠️  v0.8 ALPHA DISCLAIMER — NOT DOGFOOD-VERIFIED.
+ * ⚠️  v0.8 ALPHA DISCLAIMER — NOT LIVE-VERIFIED.
  *
  * 用户 has NOT yet successfully run a real JobVite submission with these helpers.
  * Selectors / field semantics below are inferred from:
@@ -13,7 +13,7 @@
  * Every selector marked `// TODO-verify` MUST be confirmed against the live
  * DOM on first real submission and adjusted in place.
  *
- * Architectural assumptions (verify on first dogfood):
+ * Architectural assumptions (verify on first live verification):
  *   1. JobVite apply page is a React SPA (`.jv-careersite` mount point).
  *      Newer tenants likely use react-hook-form — treat text fields as
  *      `isTrusted`-required (prefer CDP `Input.insertText` via cdp.mjs typetext).
@@ -309,7 +309,7 @@
   /**
    * JobVite.normalizeProfile(raw)
    *
-   * Maps 用户's profile.json shape to JobVite standard field IDs (sans
+   * Maps the local profile.json shape to JobVite standard field IDs (sans
    * `jv-field-` prefix — setVal tries both variants).
    */
   JobVite.normalizeProfile = function (raw) {
@@ -524,7 +524,7 @@
     return {
       ok: true,
       plan,
-      _disclaimer: 'v0.8 alpha — best-guess; verify each field on first dogfood',
+      _disclaimer: 'v0.8 alpha — best-guess; verify each field on first live verification',
     };
   };
 

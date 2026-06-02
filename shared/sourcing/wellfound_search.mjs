@@ -95,7 +95,7 @@
  *  FUTURE COMPUTER-USE IMPLEMENTATION (the contract for v0.9 → v1.0)
  * ─────────────────────────────────────────────────────────────────────────
  *
- * Concrete steps when the orchestrator is ready to dogfood:
+ * Concrete steps when the orchestrator is ready for live verification:
  *
  *   1. Caller ensures the Lily Chrome profile is running:
  *        sh shared/chrome-cdp-launcher.sh   (already in repo)
@@ -169,7 +169,7 @@ const NEXT_STEP =
   'Lily profile (Profile 7, port 9222). Read window.__NEXT_DATA__ from ' +
   'https://wellfound.com/jobs?keywords=<kw>, unpack the Apollo graph, map ' +
   'JobListingSearchResult nodes to the unified job shape. Full step-by-step ' +
-  'in this file header. Estimated 2–3h to dogfood once 用户 logs in once.';
+  'in this file header. Estimated 2–3h to live-verify once 用户 logs in once.';
 
 let _lastStatus = {
   implemented: false,

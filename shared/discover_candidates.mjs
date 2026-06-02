@@ -2,10 +2,27 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { discoverAll, DEFAULT_SOURCES } from './sourcing/dispatcher.mjs';
+import { discoveryApplyBucket, isAutoSupportedCandidate } from './sourcing/apply_url_classification.mjs';
+import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { passesAllowedRoleType, roleTypesFromSearchIntent, roleTypeConflict } from './role_types.mjs';
+import { atsHome } from './paths.mjs';
 
-const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const HOME = atsHome();
 const TMP_DIR = '/tmp/mrweirdo-onboard';
+const DEFAULT_EXCLUDE_ROLE_KEYWORDS = [
+  'BCBA',
+  'occupational therapist',
+  'physical therapist',
+  'speech therapist',
+  'therapist',
+  'clinician',
+  'clinical supervisor',
+  'registered nurse',
+  'nurse',
+  'pharmacist',
+  'physician',
+  'veterinarian',
+];
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -16,12 +33,23 @@ function hasArg(name) {
   return process.argv.includes(name);
 }
 
+function parseNonNegativeInt(value, fallback = null) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
+}
+
 function readJson(file, fallback) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
     return fallback;
   }
+}
+
+function writeJson(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
 function escapeRegex(value) {
@@ -102,9 +130,13 @@ function passesLocation(loc, intent) {
 }
 
 function hardFilter(jobs, intent, roleTypes) {
-  const excludes = (intent.exclude_role_keywords || []).map((s) => String(s).toLowerCase());
+  const excludes = [
+    ...DEFAULT_EXCLUDE_ROLE_KEYWORDS,
+    ...(intent.exclude_role_keywords || []),
+  ].map((s) => String(s).toLowerCase());
   return jobs.filter((job) => (
-    passesExclude(job.title, excludes)
+    hasUsableApplyUrl(job)
+    && passesExclude(job.title, excludes)
     && passesLocation(job.location, intent)
     && passesAllowedRoleType(job, roleTypes)
   ));
@@ -137,18 +169,43 @@ const outputDir = argValue('--output-dir', TMP_DIR);
 const limitPerSource = Math.max(1, Number(argValue('--limit-per-source', '500')));
 const concurrency = Math.max(1, Number(argValue('--concurrency', '10')));
 const capToScore = Math.max(1, Number(argValue('--cap-to-score', '300')));
+const runId = argValue('--run-id', process.env.RUN_ID || `discovery-${new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15)}Z`);
+const sourceCursorFile = path.join(HOME, 'source_cursor.json');
+const sourceWindowSizeRaw = argValue('--source-window-size', process.env.MRWEIRDO_SOURCE_WINDOW_SIZE || '1000');
+const sourceWindowSize = parseNonNegativeInt(sourceWindowSizeRaw, 1000);
+const explicitSourceWindowOffset = argValue('--source-window-offset', process.env.MRWEIRDO_SOURCE_WINDOW_OFFSET || null);
+const sourceCursor = readJson(sourceCursorFile, {});
+const sourceWindowEnabled = sourceWindowSize > 0;
+const sourceWindowOffset = sourceWindowEnabled
+  ? parseNonNegativeInt(explicitSourceWindowOffset ?? sourceCursor.next_offset ?? 0, 0)
+  : null;
+const sourceWindowOffsetSource = !sourceWindowEnabled
+  ? 'disabled'
+  : explicitSourceWindowOffset != null
+    ? 'explicit'
+    : 'local_cursor';
 
 const plan = {
+  run_id: runId,
   role_type_targets: roleTypes,
   keywords,
   sources,
   limit_per_source: limitPerSource,
   concurrency_per_source: concurrency,
+  source_window: {
+    enabled: sourceWindowEnabled,
+    size: sourceWindowEnabled ? sourceWindowSize : null,
+    offset: sourceWindowOffset,
+    offset_source: sourceWindowOffsetSource,
+    cursor_file: sourceCursorFile,
+    advances_cursor_on_run: sourceWindowEnabled && explicitSourceWindowOffset == null,
+  },
   output_dir: outputDir,
   output_files: {
     discovered: path.join(outputDir, 'discovered.json'),
     filtered: path.join(outputDir, 'filtered.json'),
     to_score: path.join(outputDir, 'to_score.json'),
+    manual_or_unsupported: path.join(outputDir, 'manual_or_unsupported.json'),
   },
 };
 
@@ -156,8 +213,12 @@ if (hasArg('--help') || hasArg('-h')) {
   console.log(`Usage:
   node shared/discover_candidates.mjs --plan
   node shared/discover_candidates.mjs --run --sources greenhouse_bulk,ashby_bulk --limit-per-source 500
+  node shared/discover_candidates.mjs --run --source-window-size 1000
+  node shared/discover_candidates.mjs --run --source-window-size 0 # full source lists
+  node shared/discover_candidates.mjs --run --run-id "$RUN_ID"
 
-Defaults read ~/.mrweirdo-jobs/search_intent.json and preserve the selected role boundary.`);
+Defaults read ~/.mrweirdo-jobs/search_intent.json and preserve the selected role boundary.
+Bulk sources use a local rotating source window by default so each run crawls a new slice.`);
   process.exit(0);
 }
 
@@ -173,32 +234,57 @@ const result = await discoverAll({
   sources,
   concurrency_per_source: concurrency,
   limit_per_source: limitPerSource,
+  source_window_size: sourceWindowEnabled ? sourceWindowSize : null,
+  source_window_offset: sourceWindowEnabled ? sourceWindowOffset : 0,
   onProgress: (src, count) => console.error(`  [${src}] ${count} jobs`),
 });
 
-const filtered = hardFilter(result.jobs, intent, roleTypes);
+const discovered = result.jobs.map((job) => ({ ...job, discovery_run_id: runId }));
+const unusableApplyUrlDropped = discovered.filter((job) => !hasUsableApplyUrl(job)).length;
+const filtered = hardFilter(discovered, intent, roleTypes);
 const roleTypeConflicts = annotateRoleTypeConflicts(filtered);
 if (roleTypeConflicts > 0) {
   console.error(`[discover-candidates] role_type_conflicts=${roleTypeConflicts} (intern-titled rows with permanent-looking employment_type; flagged via bot_note, still eligible — human glance advised)`);
 }
-let toScore = filtered.slice();
+const manualOrUnsupported = filtered
+  .filter((job) => !isAutoSupportedCandidate(job))
+  .map((job) => ({ ...job, discovery_apply_bucket: discoveryApplyBucket(job) }));
+let toScore = filtered
+  .filter((job) => isAutoSupportedCandidate(job))
+  .map((job) => ({ ...job, discovery_apply_bucket: 'auto_supported' }));
 if (toScore.length > capToScore) {
   toScore.sort((a, b) => (b.description?.length || 0) - (a.description?.length || 0));
   toScore = toScore.slice(0, capToScore);
 }
 
-fs.writeFileSync(plan.output_files.discovered, JSON.stringify(result.jobs, null, 2));
+fs.writeFileSync(plan.output_files.discovered, JSON.stringify(discovered, null, 2));
 fs.writeFileSync(plan.output_files.filtered, JSON.stringify(filtered, null, 2));
 fs.writeFileSync(plan.output_files.to_score, JSON.stringify(toScore, null, 2));
+fs.writeFileSync(plan.output_files.manual_or_unsupported, JSON.stringify(manualOrUnsupported, null, 2));
+
+let nextSourceWindowOffset = null;
+if (sourceWindowEnabled && explicitSourceWindowOffset == null) {
+  nextSourceWindowOffset = sourceWindowOffset + sourceWindowSize;
+  writeJson(sourceCursorFile, {
+    next_offset: nextSourceWindowOffset,
+    last_offset: sourceWindowOffset,
+    window_size: sourceWindowSize,
+    last_run_id: runId,
+    updated_at: new Date().toISOString(),
+  });
+}
 
 console.log(JSON.stringify({
   ok: true,
   mode: 'run',
   ...plan,
-  discovered: result.jobs.length,
+  discovered: discovered.length,
   filtered: filtered.length,
   to_score: toScore.length,
+  manual_or_unsupported: manualOrUnsupported.length,
+  unusable_apply_url_dropped: unusableApplyUrlDropped,
   role_type_conflicts: roleTypeConflicts,
   by_source: result.by_source,
   errors: result.errors,
+  source_window_cursor_next_offset: nextSourceWindowOffset,
 }, null, 2));

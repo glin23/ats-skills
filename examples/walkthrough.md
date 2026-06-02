@@ -1,6 +1,6 @@
-# mrweirdo-jobs Historical Walkthrough — Real Dogfood (v0.2 era)
+# mrweirdo-jobs Historical Walkthrough — Real End-to-End Run (v0.2 era)
 
-This is a real dogfood log from May 23, 2026 (when the project was still
+This is a real verification log from May 23, 2026 (when the project was still
 called `ats-skills` and at v0.2). Names + URLs are kept; resume + profile
 details are generic placeholders for privacy.
 
@@ -27,7 +27,7 @@ The rest of this walkthrough shows the old manual single-URL path.
 
 ## Run 1: NiCE SDR Intern Sandy UT (Greenhouse)
 
-Single-URL `/mrweirdo-greenhouse` flow. First helper-set dogfood.
+Single-URL `/mrweirdo-greenhouse` flow. First helper-set live verification.
 
 Steps:
 1. `cdp.mjs goto` → navigate to NiCE job board apply URL.
@@ -46,7 +46,7 @@ Lessons:
 - 12 required fields filled in ~2 minutes total.
 - Picker out-of-viewport bug surfaced here — `openPicker()` had to `scrollIntoView({block: 'center'})` before option list renders (logged + fixed in v0.2).
 
-## Run 2 (v0.2 batch dogfood): 6 URLs
+## Run 2 (v0.2 batch live verification): 6 URLs
 
 Triggered `/mrweirdo-jobs` with an inline list of 6 URLs (no auto-load this run; explicit URLs). Single upfront authorization gate.
 

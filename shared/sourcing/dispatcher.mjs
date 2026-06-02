@@ -15,6 +15,8 @@
 //     sources: ['remoteok', 'greenhouse_bulk', 'ashby_bulk', 'lever_bulk', 'yc_waas'],
 //     concurrency_per_source: 10,
 //     limit_per_source: 500,
+//     source_window_size: 1000,
+//     source_window_offset: 0,
 //     onProgress: (src, count) => console.error(`[${src}] ${count}`),
 //   });
 //   // result.jobs = merged + deduped unified jobs
@@ -39,12 +41,14 @@ const ADAPTERS = {
 
   greenhouse_bulk: {
     module: '../sourcing/greenhouse_bulk_crawl.mjs',
-    async fetch({ keywords, concurrency, limit }) {
+    async fetch({ keywords, concurrency, limit, sourceWindowSize, sourceWindowOffset }) {
       const m = await import('./greenhouse_bulk_crawl.mjs');
       const { jobs } = await m.bulkFetchGreenhouse({
         keywords,
         concurrency,
         limit,
+        maxCompanies: sourceWindowSize,
+        companyOffset: sourceWindowOffset,
       });
       return jobs;
     },
@@ -52,12 +56,14 @@ const ADAPTERS = {
 
   ashby_bulk: {
     module: '../sourcing/ashby_bulk_crawl.mjs',
-    async fetch({ keywords, concurrency, limit }) {
+    async fetch({ keywords, concurrency, limit, sourceWindowSize, sourceWindowOffset }) {
       const m = await import('./ashby_bulk_crawl.mjs');
       const { jobs } = await m.bulkFetchAshby({
         keywords,
         concurrency,
         limit,
+        tenantLimit: sourceWindowSize,
+        tenantOffset: sourceWindowOffset,
       });
       return jobs;
     },
@@ -65,12 +71,14 @@ const ADAPTERS = {
 
   lever_bulk: {
     module: '../sourcing/lever_bulk_crawl.mjs',
-    async fetch({ keywords, concurrency, limit }) {
+    async fetch({ keywords, concurrency, limit, sourceWindowSize, sourceWindowOffset }) {
       const m = await import('./lever_bulk_crawl.mjs');
       const { jobs } = await m.bulkFetchLever({
         keywords,
         concurrency,
         limit,
+        maxTenants: sourceWindowSize,
+        tenantOffset: sourceWindowOffset,
       });
       return jobs;
     },
@@ -129,6 +137,8 @@ export async function discoverAll({
   sources = DEFAULT_SOURCES,
   concurrency_per_source = 10,
   limit_per_source = 500,
+  source_window_size = null,
+  source_window_offset = 0,
   onProgress = null,
 } = {}) {
   const t0 = Date.now();
@@ -147,6 +157,8 @@ export async function discoverAll({
           intent,
           concurrency: concurrency_per_source,
           limit: limit_per_source,
+          sourceWindowSize: source_window_size,
+          sourceWindowOffset: source_window_offset,
         });
         if (onProgress) onProgress(sourceName, jobs.length);
         return { source: sourceName, ok: true, jobs: jobs || [] };

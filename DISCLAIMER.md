@@ -4,7 +4,7 @@ Read this **completely** before installing or using `mrweirdo-jobs`. The tool ca
 
 ## Purpose
 
-`mrweirdo-jobs` is a personal tool that automates the mechanical parts of US job applications — discovering openings, filling out application forms, and submitting them. It exists because the author was applying to many roles by hand and wanted to spend less time on repetitive fields. It is shared publicly so others can do the same for themselves.
+`mrweirdo-jobs` is a local skill bundle that automates the mechanical parts of US job applications — discovering openings, filling out application forms, and submitting them. It is shared publicly so students can run it for their own job search on their own machine.
 
 It is **not** a commercial product. It is **not** a hosted service. There is **no business model** behind it.
 
@@ -21,7 +21,7 @@ When you install `mrweirdo-jobs` and run `/mrweirdo-onboard`, the tool will:
    - Fill out the application form using your resume + answered questions.
    - **Click Submit automatically** without asking you again.
 
-Lever is discoverable and still has manual/single-URL helpers, but it is not part of the stable public-beta batch auto-submit path because CDP file upload can trigger a bogus "100MB" error on some Lever tenants.
+Lever is discoverable and still has manual/single-URL helpers, but it is not part of the stable public-alpha batch auto-submit path because CDP file upload can trigger a bogus "100MB" error on some Lever tenants.
 
 The user's required actions are: (a) uploading the resume, (b) answering the short questionnaire, (c) explicitly confirming the parsed profile/search intent before discovery and auto-apply begins, and (d) later checking their email for confirmation messages from companies.
 
@@ -48,8 +48,8 @@ If you are not willing to accept these risks for any reason — including being 
 The v2 tool includes several safety nets, none of which eliminates the risks above; they reduce blast radius:
 
 - **Resume-verbatim filling.** The tool fills fields directly from your resume without inventing answers. If a field isn't on your resume, the tool leaves it blank or skips the application.
-- **Hard fit-score threshold.** Only listings with `fit_score >= 7` (configurable) are auto-applied.
-- **Public-beta per-run cap.** `/mrweirdo-onboard` processes at most 10 auto-submit rows per run by default. A technical user can deliberately raise this with `MRWEIRDO_MAX_AUTO_APPLY`, but the default public path is small-batch first.
+- **Hard fit-score threshold.** Only listings with `fit_score >= 5` by default (configurable) are auto-applied.
+- **Public-alpha per-run cap.** `/mrweirdo-onboard` processes at most 10 auto-submit rows per run by default. A technical user can deliberately raise this with `MRWEIRDO_MAX_AUTO_APPLY`, but the default public path is small-batch first.
 - **Large-company quota guard.** ~25 large companies (Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, FAANG, top banks, etc.) are deliberately skipped from auto-apply because each has a hard submission cap per cycle. To apply to one of these, you run `/mrweirdo-cherry-pick` manually; that skill **preserves** the v1 Submit gate for large companies.
 - **CAPTCHA detection.** If a form shows a CAPTCHA / "verify you are human" widget, the tool skips that application rather than attempting to bypass.
 - **Per-application screenshots.** Pre-submit and post-submit screenshots are saved to `~/.mrweirdo-jobs/log/screenshots/` for forensic audit. You can review what was submitted on your behalf after the fact.
@@ -62,7 +62,7 @@ The v2 tool will **not** do these. This is non-negotiable and is enforced in the
 - **No automation on LinkedIn.** LinkedIn Easy Apply, LinkedIn job search scraping, LinkedIn messaging — none of it. Use LinkedIn manually.
 - **No automation on Indeed or Glassdoor.** Same reason as LinkedIn.
 - **No CAPTCHA solving.** The tool detects CAPTCHAs and stops; it does not try to defeat them.
-- **No mass-submission rate.** Default pacing is 30–90 seconds between submissions, and public-beta onboarding defaults to a small per-run batch. This is also enforced in the Skill instructions.
+- **No mass-submission rate.** Default pacing is 30–90 seconds between submissions, and public-alpha onboarding defaults to a small per-run batch. This is also enforced in the Skill instructions.
 - **No financial actions on your behalf.** The tool only submits free job applications. It does not pay fees, accept terms involving money, or sign agreements outside the scope of a normal application form.
 
 ## Your responsibilities as the user
@@ -88,13 +88,13 @@ If a platform's Terms change after you install the tool, the new Terms apply, ev
 
 If Greenhouse, Ashby, Lever, or any other ATS contacts you and asks you to stop using automation against their service, **stop**. Uninstall the tool. Open an issue on this repository so other users know.
 
-The author will also stop development of automation against that platform if asked by an affected platform.
+Project maintainers will also stop development of automation against that platform if asked by an affected platform.
 
 ## No warranty
 
 This software is provided "as is", without warranty of any kind. See [LICENSE](LICENSE) for the full text.
 
-The author makes no guarantees that:
+Project maintainers make no guarantees that:
 
 - The tool will correctly fill any given application.
 - Submitted applications will be received by, or considered by, the employer.
@@ -102,7 +102,7 @@ The author makes no guarantees that:
 - The AI-derived search intent or scoring is correct for your career goals.
 - Future versions will be backward-compatible with your current data.
 
-If something goes wrong with your application or your account on an ATS platform because of this tool, **that is on you, not on the author**.
+If something goes wrong with your application or your account on an ATS platform because of this tool, **that is on you, not on the project maintainers**.
 
 ## Misuse
 

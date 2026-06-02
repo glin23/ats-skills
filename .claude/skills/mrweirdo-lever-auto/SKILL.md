@@ -73,7 +73,7 @@ PROFILE=$(cat "$MRWEIRDO_HOME/profile.json")
 FILL_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(async () => await Lever.fillForm($PROFILE))()")
 ```
 
-Parse `$FILL_RESULT` for `{filled, errors}`. Prior Lever dogfood surfaced 5 gotchas — most are now handled inside `lever_helpers.js`, but errors can still occur. If `errors` present:
+Parse `$FILL_RESULT` for `{filled, errors}`. Prior Lever live verification surfaced 5 gotchas — most are now handled inside `lever_helpers.js`, but errors can still occur. If `errors` present:
 
 - Run `Lever.findEmptyRequired()` to get the remaining required fields
 - Main Claude (you) reasons over profile.json to fill them semantically (one pass)

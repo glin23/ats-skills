@@ -18,7 +18,7 @@
 //    Copy the secret token (starts with `secret_...` or `ntn_...`).
 // 2. Share your "📋 岗位追踪" database with the integration (Share → Invite).
 // 3. Export NOTION_API_KEY=<your-token>  (setup.sh will help you persist this)
-// 4. (Optional) Override NOTION_JOB_DB_ID if your DB id differs from the default.
+// 4. Export NOTION_JOB_DB_ID=<your-database-id>. There is no default database.
 //
 // 5. Manually add these properties to the Notion DB — this script will NOT
 //    create them for you (Notion API can but we skip that until v0.4):
@@ -35,7 +35,7 @@
 //      • "🤖 AI sourced"
 //      • "✅ Approved"
 //
-//    v0.8 additions (salary / comp tracking — required for 用户's 2026-05-23 vision):
+//    v0.8 additions (salary / comp tracking):
 //
 //      • salary_min         (Number)            — lower bound of comp band
 //      • salary_max         (Number)            — upper bound of comp band
@@ -48,7 +48,7 @@
 // Notion telling you which property is unknown — add it and retry.
 // =============================================================================
 
-import { notionDbId, notionDataSourceId, notionViewId, loadEnv } from './paths.mjs';
+import { notionDbId, loadEnv } from './paths.mjs';
 
 // load ~/.mrweirdo-jobs/.env into process.env on import (no-op if already set)
 loadEnv();
@@ -57,6 +57,15 @@ const NOTION_API_KEY = process.env.NOTION_API_KEY;
 const DATABASE_ID = notionDbId();
 const NOTION_VERSION = '2022-06-28';
 const API_BASE = 'https://api.notion.com/v1';
+
+function notionDatabaseId() {
+  if (!DATABASE_ID) {
+    throw new Error(
+      'NOTION_JOB_DB_ID is not set. Notion is optional; configure your own Notion database ID in ~/.mrweirdo-jobs/.env only if you want a mirror.'
+    );
+  }
+  return DATABASE_ID;
+}
 
 // Notion published rate limit is ~3 req/sec average. We throttle to that.
 const RATE_LIMIT_RPS = 3;
@@ -229,7 +238,7 @@ function buildProperties(job, { forCreate = false } = {}) {
 
 async function findByUrl(url) {
   if (!url) return null;
-  const data = await notionFetch('POST', `databases/${DATABASE_ID}/query`, {
+  const data = await notionFetch('POST', `databases/${notionDatabaseId()}/query`, {
     filter: { property: 'Apply URL', url: { equals: url } },
     page_size: 1,
   });
@@ -245,7 +254,7 @@ async function queryByStatus(statusName, { pageSize = 100 } = {}) {
       page_size: pageSize,
     };
     if (cursor) body.start_cursor = cursor;
-    const data = await notionFetch('POST', `databases/${DATABASE_ID}/query`, body);
+    const data = await notionFetch('POST', `databases/${notionDatabaseId()}/query`, body);
     for (const row of data.results || []) {
       const p = row.properties || {};
       out.push({
@@ -274,7 +283,7 @@ export async function upsertJob(jobScored, _opts = {}) {
     const existing = await findByUrl(jobScored.url);
     if (existing) {
       const props = buildProperties(jobScored, { forCreate: false });
-      // Don't clobber 状态 on existing rows — preserve 用户's manual edits
+      // Don't clobber status on existing rows; the local user owns manual edits.
       // (e.g. ✅ Approved, ✅ 已投, ⚠️ 跳过未投).
       delete props['状态'];
       const updated = await notionFetch('PATCH', `pages/${existing.id}`, {
@@ -284,7 +293,7 @@ export async function upsertJob(jobScored, _opts = {}) {
     }
     const props = buildProperties(jobScored, { forCreate: true });
     const created = await notionFetch('POST', 'pages', {
-      parent: { database_id: DATABASE_ID },
+      parent: { database_id: notionDatabaseId() },
       properties: props,
     });
     return { ok: true, page_id: created.id, created: true };
@@ -377,7 +386,7 @@ export async function markConfirmed(pageId, info = {}) {
 // Query rows recently marked "✅ 已投" (last N days) for confirmation matching.
 export async function queryRecentlyApplied(days = 14) {
   const sinceIso = new Date(Date.now() - days * 86400 * 1000).toISOString();
-  const result = await notionFetch('POST', `databases/${DATABASE_ID}/query`, {
+  const result = await notionFetch('POST', `databases/${notionDatabaseId()}/query`, {
     filter: {
       and: [
         { property: '状态', select: { equals: '✅ 已投' } },
@@ -430,7 +439,7 @@ if (isCli) {
   const cmd = process.argv[2];
   try {
     if (cmd === 'ping') {
-      const data = await notionFetch('GET', `databases/${DATABASE_ID}`);
+      const data = await notionFetch('GET', `databases/${notionDatabaseId()}`);
       console.log(JSON.stringify({ ok: true, title: data?.title?.[0]?.plain_text || '(untitled)', id: data?.id }, null, 2));
     } else if (cmd === 'approved') {
       const rows = await queryApprovedView();

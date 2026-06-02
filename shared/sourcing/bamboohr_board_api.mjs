@@ -152,7 +152,7 @@ function parseJson(body, tenant) {
  * Parse HTML list-page fallback. Two patterns seen in the wild:
  *   - <li class="BambooHR-ATS-Jobs-Item"><a href="/careers/123">Title</a>...
  *   - Inline `<script>var jobs = [...]</script>` (rare; not handled here —
- *     punt to dogfood feedback).
+ *     punt to verification feedback).
  */
 function parseHtml(body, tenant) {
   const jobs = [];

@@ -3,10 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
+import { KNOWN_UNSUPPORTED_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
 
-const HOME = process.env.MRWEIRDO_HOME || path.join(process.env.HOME || '', '.mrweirdo-jobs');
+const HOME = atsHome();
 const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
@@ -48,6 +50,8 @@ function exampleShape(r) {
     company: r.company,
     title: r.title,
     ats_platform: r.ats_platform,
+    search_source: r.search_source,
+    discovery_apply_bucket: discoveryApplyBucket(r),
     fit_score: r.fit_score,
     role_type_match: r.role_type_match,
     derived_role_type: deriveRoleTypeFromJob(r),
@@ -77,7 +81,7 @@ const submittedKeys = new Set(
 );
 
 const rows = db.prepare(`
-  SELECT id, company, title, apply_url, ats_platform, status, fit_score,
+  SELECT id, company, title, apply_url, ats_platform, search_source, status, fit_score,
          role_type_match, apply_quota_limit, auto_apply_eligible, updated_at
     FROM jobs
    WHERE fit_score IS NOT NULL
@@ -96,7 +100,15 @@ const rescoreCandidates = pendingRows.filter((row) => {
 });
 const platformExpansionCandidates = pendingRows.filter((row) => {
   const roleType = deriveRoleTypeFromJob(row);
-  return !SUPPORTED_AUTO.has(row.ats_platform)
+  return KNOWN_UNSUPPORTED_PLATFORMS.has(row.ats_platform)
+    && row.apply_quota_limit == null
+    && allowedRoleTypes.includes(roleType)
+    && !isAlreadySubmitted(row, submittedKeys)
+    && (row.fit_score ?? 0) >= MIN_FIT;
+});
+const manualOnlyCandidates = pendingRows.filter((row) => {
+  const roleType = deriveRoleTypeFromJob(row);
+  return ['manual_only', 'unknown_or_custom_platform'].includes(discoveryApplyBucket(row))
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
@@ -117,19 +129,26 @@ const summary = {
   examples: {},
   near_misses: {
     rescore_candidates_fit_one_below: {
-      description: `Pending rows that would enter the auto-apply pool if manually re-scored from ${MIN_FIT - 1} to ${MIN_FIT}.`,
+      description: `Pending rows that would become ready-to-submit if manually re-scored from ${MIN_FIT - 1} to ${MIN_FIT}.`,
       count: rescoreCandidates.length,
       examples: examplesForRows(rescoreCandidates, 12),
     },
     platform_expansion_candidates: {
-      description: 'Pending rows with allowed role type and sufficient fit score, blocked only because the ATS platform is not auto-supported.',
+      description: 'Pending rows with allowed role type and sufficient fit score on a known ATS whose auto-submit driver is not enabled.',
       count: platformExpansionCandidates.length,
       by_platform: {},
       examples: examplesForRows(platformExpansionCandidates, 12),
     },
+    manual_or_unknown_platform_candidates: {
+      description: 'Pending rows with allowed role type and sufficient fit score that are manual-only, aggregators, or unknown/custom platforms. They are visible for review but are not counted as auto-submit-ready rows.',
+      count: manualOnlyCandidates.length,
+      by_bucket: {},
+      examples: examplesForRows(manualOnlyCandidates, 12),
+    },
   },
 };
 summary.shortfall = Math.max(0, MAX_ROWS - summary.eligible);
+summary.remaining_to_requested_batch = summary.shortfall;
 
 for (const row of annotated) {
   bump(summary.by_reason, row.reason);
@@ -140,6 +159,9 @@ for (const row of annotated) {
 for (const row of platformExpansionCandidates) {
   bump(summary.near_misses.platform_expansion_candidates.by_platform, row.ats_platform);
 }
+for (const row of manualOnlyCandidates) {
+  bump(summary.near_misses.manual_or_unknown_platform_candidates.by_bucket, discoveryApplyBucket(row));
+}
 
 for (const reason of Object.keys(summary.by_reason)) {
   if (reason !== 'eligible') summary.examples[reason] = examplesFor(annotated, reason);
@@ -148,11 +170,11 @@ for (const reason of Object.keys(summary.by_reason)) {
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(summary, null, 2));
 } else {
-  console.log(`queue diagnostics: eligible=${summary.eligible}, requested=${MAX_ROWS}, shortfall=${summary.shortfall}`);
+  console.log(`queue diagnostics: eligible=${summary.eligible}, requested=${MAX_ROWS}, remaining=${summary.remaining_to_requested_batch}`);
   for (const [reason, count] of Object.entries(summary.by_reason).sort((a, b) => b[1] - a[1])) {
     console.log(`- ${reason}: ${count}`);
   }
   console.log(`near misses:`);
-  console.log(`- rescore_candidates_fit_one_below: ${summary.near_misses.rescore_candidates_fit_one_below.count}`);
-  console.log(`- platform_expansion_candidates: ${summary.near_misses.platform_expansion_candidates.count}`);
+  console.log(`- rows_to_review_fit_one_below: ${summary.near_misses.rescore_candidates_fit_one_below.count}`);
+  console.log(`- unsupported_ats_rows: ${summary.near_misses.platform_expansion_candidates.count}`);
 }

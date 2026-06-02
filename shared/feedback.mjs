@@ -9,10 +9,10 @@
 // user_note is freeform explanation.
 
 import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { atsHome } from './paths.mjs';
 
-const FEEDBACK_PATH = join(homedir(), '.mrweirdo-jobs', 'feedback.jsonl');
+const FEEDBACK_PATH = join(atsHome(), 'feedback.jsonl');
 
 export function getFeedbackPath() {
   return FEEDBACK_PATH;

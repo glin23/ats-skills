@@ -7,7 +7,7 @@
   "properties": {
     "user_summary": {
       "type": "object",
-      "description": "Structured profile facts pulled from the resume that the search needs. Distinct from shared/profile.json (which is form-fill data); this is search-relevant facts only.",
+      "description": "Structured profile facts pulled from the resume that the search needs. Distinct from ~/.mrweirdo-jobs/profile.json (which is form-fill data); this is search-relevant facts only.",
       "required": ["education_level", "field_of_study", "school"],
       "properties": {
         "education_level": {

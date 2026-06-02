@@ -21,7 +21,7 @@
  * the re-inject loop. detectStep() returns the current step so the orchestrator
  * can look up the right slice of the company config.
  *
- * v0.7 status: stretch / placeholder. Unit-shape sanity-checked, dogfood pending.
+ * v0.7 status: stretch / placeholder. Unit-shape sanity-checked, live verification pending.
  */
 (function () {
   const Workday = {};
@@ -334,7 +334,7 @@
    * actually type text — text goes through cdp.mjs typetext (real keyboard).
    *
    * @param {object} config — loaded from companies/<slug>.json
-   * @param {object} profile — loaded from shared/profile.json
+   * @param {object} profile — loaded from ~/.mrweirdo-jobs/profile.json
    * @returns {{ step: object, plan: Array }}
    */
   Workday.applyCompanyConfig = function (config, profile) {

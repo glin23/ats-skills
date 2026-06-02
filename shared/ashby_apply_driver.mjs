@@ -27,9 +27,9 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
 import {
   isSpecificCityLogisticsFact as routingIsSpecificCityFact,
@@ -43,7 +43,7 @@ import { matchAnswerBucket } from './answer_buckets.mjs';
 // ============================================================
 // CLI dispatcher — handle --list-pending-essays before anything else.
 // ============================================================
-const HOME = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+const HOME = atsHome();
 const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const CDP = join(REPO, 'shared/cdp.mjs');
 const ANSWER_BANK_PATH = join(REPO, 'shared/answer_bank.json');
