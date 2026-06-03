@@ -212,6 +212,9 @@ When `--source-window-offset` is omitted, discovery uses the user's local
 `source_cursor.json` and advances it only after a run finishes. The cursor is
 not shared. `to_score.json` contains currently auto-supported job rows only;
 manual or unsupported URLs are written to `manual_or_unsupported.json`.
+Discovery also writes `/tmp/mrweirdo-onboard/discovery_funnel.json`, which
+summarizes raw discovery, hard-filter drops, auto-supported rows, manual rows,
+and score-cap drops for the current run.
 
 Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
 `shared/scoring/score_prompt.md`, then write merged scoring results to:
@@ -219,6 +222,11 @@ Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
 ```text
 /tmp/mrweirdo-onboard/scored.json
 ```
+
+Do not continue until every usable row in `to_score.json` has a complete score
+object in `scored.json` (`apply_url`, numeric `fit_score`, boolean
+`recommended`, and `role_type_match`). If scoring was interrupted, finish the
+missing rows first; do not store partial scoring output.
 
 Store the scored job rows:
 

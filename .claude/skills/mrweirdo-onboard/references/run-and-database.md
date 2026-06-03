@@ -53,6 +53,15 @@ Scoring is done by the main agent using `shared/scoring/score_prompt.md` over
 auto-supported Greenhouse/Ashby job rows. Manual-only and unsupported URLs
 are kept in `/tmp/mrweirdo-onboard/manual_or_unsupported.json` for review, but
 they do not consume the batch auto-apply scoring budget.
+Discovery also writes `/tmp/mrweirdo-onboard/discovery_funnel.json`, which
+shows the run's raw discovery count, hard-filter drops, auto-supported rows,
+manual rows, and score-cap drops.
+
+Before storing, make sure every usable row in `to_score.json` has one complete
+score object in `scored.json`: `apply_url`, numeric `fit_score`, boolean
+`recommended`, and `role_type_match`. If scoring was interrupted, finish the
+missing rows first. The store script intentionally fails on partial scoring
+unless `--allow-partial-scores` is passed for an explicit debug run.
 
 Store scored job rows and recompute eligibility:
 

@@ -9,19 +9,126 @@ import { atsHome } from './paths.mjs';
 
 const HOME = atsHome();
 const TMP_DIR = '/tmp/mrweirdo-onboard';
-const DEFAULT_EXCLUDE_ROLE_KEYWORDS = [
+const ALWAYS_EXCLUDE_ROLE_KEYWORDS = [
   'BCBA',
-  'occupational therapist',
-  'physical therapist',
-  'speech therapist',
-  'therapist',
-  'clinician',
-  'clinical supervisor',
-  'registered nurse',
-  'nurse',
-  'pharmacist',
-  'physician',
-  'veterinarian',
+  'cashier',
+  'barista',
+  'server',
+  'waiter',
+  'waitress',
+  'bartender',
+  'line cook',
+  'cook',
+  'driver',
+  'delivery driver',
+  'warehouse associate',
+  'picker',
+  'packer',
+];
+const CONTEXTUAL_EXCLUDE_ROLE_GROUPS = [
+  {
+    name: 'licensed_clinical',
+    allowWhen: [
+      /\bnursing\b/i,
+      /\bpre[-\s]?med\b/i,
+      /\bmedicine\b/i,
+      /\bmedical school\b/i,
+      /\bclinical\b/i,
+      /\btherapy\b/i,
+      /\btherapist\b/i,
+      /\bphysical therapy\b/i,
+      /\boccupational therapy\b/i,
+      /\bpharmacy\b/i,
+      /\bveterinary\b/i,
+      /\bdental\b/i,
+    ],
+    keywords: [
+      'CNA',
+      'LPN',
+      'RN',
+      'medical assistant',
+      'dental assistant',
+      'occupational therapist',
+      'physical therapist',
+      'speech therapist',
+      'therapist',
+      'clinician',
+      'clinical supervisor',
+      'registered nurse',
+      'nurse',
+      'pharmacist',
+      'physician',
+      'veterinarian',
+      'sonographer',
+      'radiologic technologist',
+    ],
+  },
+  {
+    name: 'education_care',
+    allowWhen: [
+      /\beducation\b/i,
+      /\bteaching\b/i,
+      /\bteacher\b/i,
+      /\btutor\b/i,
+      /\bpedagogy\b/i,
+      /\bchildhood\b/i,
+    ],
+    keywords: [
+      'teacher',
+      'assistant teacher',
+      'substitute teacher',
+      'tutor',
+      'coach',
+      'after school',
+      'childcare',
+      'caregiver',
+      'counselor',
+      'social worker',
+      'LCSW',
+      'LPCC',
+      'residential rehabilitation',
+      'rehabilitation educator',
+    ],
+  },
+  {
+    name: 'retail_service',
+    allowWhen: [
+      /\bretail\b/i,
+      /\bhospitality\b/i,
+      /\brestaurant\b/i,
+      /\bfashion merchandising\b/i,
+      /\bstore operations\b/i,
+      /\bfood service\b/i,
+    ],
+    keywords: [
+      'retail sales',
+      'retail associate',
+      'store associate',
+      'sales associate',
+      'front desk',
+      'receptionist',
+      'stylist',
+      'merchandiser',
+      'brand ambassador',
+    ],
+  },
+  {
+    name: 'security_legal',
+    allowWhen: [
+      /\bcriminal justice\b/i,
+      /\blaw\b/i,
+      /\blegal\b/i,
+      /\bparalegal\b/i,
+      /\bsecurity\b/i,
+    ],
+    keywords: [
+      'security guard',
+      'security officer',
+      'police',
+      'attorney',
+      'paralegal',
+    ],
+  },
 ];
 
 function argValue(name, fallback = null) {
@@ -56,9 +163,66 @@ function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function derivedKeywords(roleTypes) {
+function collectStrings(value, out = []) {
+  if (typeof value === 'string') {
+    out.push(value);
+    return out;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, out);
+    return out;
+  }
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value)) collectStrings(item, out);
+  }
+  return out;
+}
+
+function intentText(intentDoc = {}) {
+  return collectStrings(intentDoc).join(' ').toLowerCase();
+}
+
+function profileAllows(intentDoc, patterns) {
+  const text = intentText(intentDoc);
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function cleanRoleCategoryKeyword(value) {
+  return String(value || '')
+    .replace(/\b(internship|intern|co-?op|part[\s-]?time|working student|student assistant|new\s?grad|new\s?graduate|early career|associate)\b/ig, ' ')
+    .replace(/[()[\]{}*+?|^$\\.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function roleCategoryBases(intentDoc = {}) {
+  const searchIntent = intentDoc.search_intent || intentDoc || {};
+  const categories = Array.isArray(searchIntent.role_categories) ? searchIntent.role_categories : [];
+  const bases = [];
+  for (const category of categories) {
+    const base = cleanRoleCategoryKeyword(category?.title_pattern);
+    if (base && base.length >= 3) bases.push(base);
+  }
+  return [...new Set(bases)].slice(0, 10);
+}
+
+function derivedKeywords(roleTypes, intentDoc = {}) {
   const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM Intern', 'Summer'];
-  const partTimeKws = ['Part-time', 'Part time', 'Working Student', 'Student Assistant'];
+  const bases = roleCategoryBases(intentDoc);
+  const profilePartTimeKws = bases.flatMap((base) => [
+    `${base} Part-time`,
+    `Part-time ${base}`,
+    `${base} Contractor`,
+    `${base} Assistant`,
+  ]);
+  const partTimeKws = [
+    'Working Student',
+    'Student Assistant',
+    ...profilePartTimeKws,
+    ...((bases.length === 0 || process.env.MRWEIRDO_BROAD_PART_TIME === '1')
+      ? ['Part-time', 'Part time']
+      : []),
+  ];
   const fullTimeKws = ['New Grad', 'New Graduate', 'Early Career', 'Associate', 'Graduate'];
   return [
     ...(roleTypes.includes('intern') ? internKws : []),
@@ -67,9 +231,24 @@ function derivedKeywords(roleTypes) {
   ];
 }
 
-function passesExclude(title, excludes) {
+function excludeKeywordsForIntent(intent = {}, intentDoc = {}) {
+  const keywords = [
+    ...ALWAYS_EXCLUDE_ROLE_KEYWORDS,
+    ...(intent.exclude_role_keywords || []),
+  ];
+  for (const group of CONTEXTUAL_EXCLUDE_ROLE_GROUPS) {
+    if (!profileAllows(intentDoc, group.allowWhen)) keywords.push(...group.keywords);
+  }
+  return [...new Set(keywords.map((s) => String(s).toLowerCase()).filter(Boolean))];
+}
+
+function excludeKeywordMatch(title, excludes) {
   const t = String(title || '');
-  return !excludes.some((kw) => new RegExp(`\\b${escapeRegex(kw)}\\b`, 'i').test(t));
+  return excludes.find((kw) => new RegExp(`\\b${escapeRegex(kw)}\\b`, 'i').test(t)) || null;
+}
+
+function passesExclude(title, excludes) {
+  return !excludeKeywordMatch(title, excludes);
 }
 
 function passesLocation(loc, intent) {
@@ -129,17 +308,40 @@ function passesLocation(loc, intent) {
   return true;
 }
 
-function hardFilter(jobs, intent, roleTypes) {
-  const excludes = [
-    ...DEFAULT_EXCLUDE_ROLE_KEYWORDS,
-    ...(intent.exclude_role_keywords || []),
-  ].map((s) => String(s).toLowerCase());
-  return jobs.filter((job) => (
-    hasUsableApplyUrl(job)
-    && passesExclude(job.title, excludes)
-    && passesLocation(job.location, intent)
-    && passesAllowedRoleType(job, roleTypes)
-  ));
+function filterWithReasons(jobs, intent, roleTypes, intentDoc = {}) {
+  const excludes = excludeKeywordsForIntent(intent, intentDoc);
+  const kept = [];
+  const dropped = [];
+
+  for (const job of jobs) {
+    let reason = null;
+    if (!hasUsableApplyUrl(job)) {
+      reason = 'unusable_apply_url';
+    } else {
+      const excludedKeyword = excludeKeywordMatch(job.title, excludes);
+      if (excludedKeyword) reason = `excluded_title_keyword:${excludedKeyword}`;
+      else if (!passesLocation(job.location, intent)) reason = 'location_mismatch';
+      else if (!passesAllowedRoleType(job, roleTypes)) reason = 'role_type_not_allowed';
+    }
+
+    if (reason) {
+      dropped.push({
+        reason,
+        company: job.company || '(unknown)',
+        title: job.title || '(untitled)',
+        apply_url: job.apply_url || job.url || '',
+        source: job._discovery_source || job.search_source || job.source || 'unknown',
+      });
+    } else {
+      kept.push(job);
+    }
+  }
+
+  return { kept, dropped, excludes };
+}
+
+function hardFilter(jobs, intent, roleTypes, intentDoc = {}) {
+  return filterWithReasons(jobs, intent, roleTypes, intentDoc).kept;
 }
 
 // Annotate (but never drop) intern-titled candidates whose structured
@@ -160,10 +362,19 @@ function annotateRoleTypeConflicts(jobs) {
   return conflictCount;
 }
 
+function countBy(items, getKey) {
+  const counts = {};
+  for (const item of items || []) {
+    const key = String(getKey(item) || 'unknown');
+    counts[key] = (counts[key] || 0) + 1;
+  }
+  return counts;
+}
+
 const intentDoc = readJson(path.join(HOME, 'search_intent.json'), { search_intent: { seniority: 'intern' } });
 const intent = intentDoc.search_intent || {};
 const roleTypes = roleTypesFromSearchIntent(intent);
-const keywords = derivedKeywords(roleTypes);
+const keywords = derivedKeywords(roleTypes, intentDoc);
 const sources = (argValue('--sources') || DEFAULT_SOURCES.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 const outputDir = argValue('--output-dir', TMP_DIR);
 const limitPerSource = Math.max(1, Number(argValue('--limit-per-source', '500')));
@@ -206,6 +417,7 @@ const plan = {
     filtered: path.join(outputDir, 'filtered.json'),
     to_score: path.join(outputDir, 'to_score.json'),
     manual_or_unsupported: path.join(outputDir, 'manual_or_unsupported.json'),
+    discovery_funnel: path.join(outputDir, 'discovery_funnel.json'),
   },
 };
 
@@ -240,8 +452,9 @@ const result = await discoverAll({
 });
 
 const discovered = result.jobs.map((job) => ({ ...job, discovery_run_id: runId }));
-const unusableApplyUrlDropped = discovered.filter((job) => !hasUsableApplyUrl(job)).length;
-const filtered = hardFilter(discovered, intent, roleTypes);
+const hardFilterResult = filterWithReasons(discovered, intent, roleTypes, intentDoc);
+const filtered = hardFilterResult.kept;
+const unusableApplyUrlDropped = hardFilterResult.dropped.filter((row) => row.reason === 'unusable_apply_url').length;
 const roleTypeConflicts = annotateRoleTypeConflicts(filtered);
 if (roleTypeConflicts > 0) {
   console.error(`[discover-candidates] role_type_conflicts=${roleTypeConflicts} (intern-titled rows with permanent-looking employment_type; flagged via bot_note, still eligible — human glance advised)`);
@@ -249,18 +462,46 @@ if (roleTypeConflicts > 0) {
 const manualOrUnsupported = filtered
   .filter((job) => !isAutoSupportedCandidate(job))
   .map((job) => ({ ...job, discovery_apply_bucket: discoveryApplyBucket(job) }));
-let toScore = filtered
+const autoSupported = filtered
   .filter((job) => isAutoSupportedCandidate(job))
   .map((job) => ({ ...job, discovery_apply_bucket: 'auto_supported' }));
+let toScore = autoSupported.slice();
 if (toScore.length > capToScore) {
   toScore.sort((a, b) => (b.description?.length || 0) - (a.description?.length || 0));
   toScore = toScore.slice(0, capToScore);
 }
+const scoreCapDropped = Math.max(0, autoSupported.length - toScore.length);
+const discoveryFunnel = {
+  run_id: runId,
+  role_type_targets: roleTypes,
+  keywords,
+  counts: {
+    discovered: discovered.length,
+    hard_filter_kept: filtered.length,
+    hard_filter_dropped: hardFilterResult.dropped.length,
+    auto_supported: autoSupported.length,
+    to_score: toScore.length,
+    score_cap_dropped: scoreCapDropped,
+    manual_or_unsupported: manualOrUnsupported.length,
+    unusable_apply_url_dropped: unusableApplyUrlDropped,
+    role_type_conflicts: roleTypeConflicts,
+  },
+  hard_filter_dropped_by_reason: countBy(hardFilterResult.dropped, (row) => row.reason),
+  hard_filter_drop_examples: hardFilterResult.dropped.slice(0, 10),
+  manual_or_unsupported_by_bucket: countBy(manualOrUnsupported, (job) => job.discovery_apply_bucket),
+  to_score_by_source: countBy(toScore, (job) => job._discovery_source || job.search_source || job.source),
+  to_score_by_role_type: countBy(toScore, (job) => job.role_type),
+  discovered_by_source: countBy(discovered, (job) => job._discovery_source || job.search_source || job.source),
+  raw_by_source: result.by_source,
+  errors: result.errors,
+  output_files: plan.output_files,
+};
 
 fs.writeFileSync(plan.output_files.discovered, JSON.stringify(discovered, null, 2));
 fs.writeFileSync(plan.output_files.filtered, JSON.stringify(filtered, null, 2));
 fs.writeFileSync(plan.output_files.to_score, JSON.stringify(toScore, null, 2));
 fs.writeFileSync(plan.output_files.manual_or_unsupported, JSON.stringify(manualOrUnsupported, null, 2));
+fs.writeFileSync(plan.output_files.discovery_funnel, JSON.stringify(discoveryFunnel, null, 2));
 
 let nextSourceWindowOffset = null;
 if (sourceWindowEnabled && explicitSourceWindowOffset == null) {
@@ -284,6 +525,11 @@ console.log(JSON.stringify({
   manual_or_unsupported: manualOrUnsupported.length,
   unusable_apply_url_dropped: unusableApplyUrlDropped,
   role_type_conflicts: roleTypeConflicts,
+  score_cap_dropped: scoreCapDropped,
+  discovery_funnel: plan.output_files.discovery_funnel,
+  hard_filter_dropped_by_reason: discoveryFunnel.hard_filter_dropped_by_reason,
+  manual_or_unsupported_by_bucket: discoveryFunnel.manual_or_unsupported_by_bucket,
+  to_score_by_source: discoveryFunnel.to_score_by_source,
   by_source: result.by_source,
   errors: result.errors,
   source_window_cursor_next_offset: nextSourceWindowOffset,

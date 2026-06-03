@@ -12,6 +12,10 @@ function argValue(name, fallback = null) {
   return idx >= 0 ? process.argv[idx + 1] : fallback;
 }
 
+function hasArg(name) {
+  return process.argv.includes(name);
+}
+
 function readJson(file, fallback = null) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -26,6 +30,7 @@ const threshold = Math.max(0, Number(argValue('--threshold', process.env.MRWEIRD
 const toScorePath = argValue('--to-score', '/tmp/mrweirdo-onboard/to_score.json');
 const scoredPath = argValue('--scored', '/tmp/mrweirdo-onboard/scored.json');
 const quotaPath = argValue('--company-list', path.join(HOME, 'company_list.user.json'));
+const allowPartialScores = hasArg('--allow-partial-scores') || process.env.MRWEIRDO_ALLOW_PARTIAL_SCORES === '1';
 const supportedAuto = new Set((argValue('--supported-auto', 'greenhouse,ashby') || '')
   .split(',')
   .map((s) => s.trim())
@@ -38,7 +43,20 @@ const scored = readJson(scoredPath, []);
 if (!Array.isArray(candidates)) throw new Error(`${toScorePath} must contain a JSON array`);
 if (!Array.isArray(scored)) throw new Error(`${scoredPath} must contain a JSON array`);
 
-const byUrl = new Map(scored.map((s) => [s.apply_url, s]));
+function rowUrl(row = {}) {
+  return row.apply_url || row.url || '';
+}
+
+function hasCompleteScore(score = {}) {
+  return typeof score.fit_score === 'number' && Number.isFinite(score.fit_score) &&
+    typeof score.recommended === 'boolean' &&
+    typeof score.role_type_match === 'string' &&
+    score.role_type_match.length > 0;
+}
+
+const byUrl = new Map(scored
+  .map((s) => [rowUrl(s), s])
+  .filter(([url]) => Boolean(url)));
 const companyList = readJson(quotaPath, { companies: [] }) || { companies: [] };
 const cappedNames = new Set();
 for (const c of (companyList.companies || [])) {
@@ -48,17 +66,43 @@ for (const c of (companyList.companies || [])) {
 const intentDoc = readJson(path.join(HOME, 'search_intent.json'), { search_intent: { seniority: 'intern' } });
 const wantedRoleTypes = new Set(roleTypesFromSearchIntent(intentDoc.search_intent || intentDoc || {}));
 
+const usableCandidates = candidates.filter((job) => hasUsableApplyUrl(job));
+const scoreMissing = usableCandidates
+  .filter((job) => !hasCompleteScore(byUrl.get(rowUrl(job))))
+  .map((job) => ({
+    company: job.company || '(unknown)',
+    title: job.title || '(untitled)',
+    apply_url: rowUrl(job),
+  }));
+
 const summary = {
   run_id: runId,
   threshold,
   candidate_count: candidates.length,
   scored_count: scored.length,
+  usable_candidate_count: usableCandidates.length,
+  score_missing_count: scoreMissing.length,
+  score_coverage: usableCandidates.length
+    ? Number(((usableCandidates.length - scoreMissing.length) / usableCandidates.length).toFixed(4))
+    : 1,
+  allow_partial_scores: allowPartialScores,
+  missing_score_examples: scoreMissing.slice(0, 5),
   stored: 0,
   eligible: 0,
   by_platform: {},
   by_ineligible_reason: {},
   skipped_unusable_apply_url: 0,
 };
+
+if (scoreMissing.length > 0 && !allowPartialScores) {
+  const message = [
+    `Refusing to store partial scoring: ${scoreMissing.length} of ${usableCandidates.length} usable candidates have no complete score.`,
+    `Score every row in ${toScorePath} and write complete results to ${scoredPath}.`,
+    'For a deliberate debug-only run, pass --allow-partial-scores or set MRWEIRDO_ALLOW_PARTIAL_SCORES=1.',
+  ].join(' ');
+  console.error(JSON.stringify({ ok: false, error: message, ...summary }, null, 2));
+  process.exit(1);
+}
 
 function bump(obj, key) {
   const k = String(key || 'unknown');
@@ -72,7 +116,7 @@ for (const job of candidates) {
   }
   // hasUsableApplyUrl() accepts a row whose only URL is `url` (no `apply_url`),
   // so resolve the apply URL the same way to avoid upsertJob's "apply_url required".
-  const applyUrl = job.apply_url || job.url;
+  const applyUrl = rowUrl(job);
   const score = byUrl.get(applyUrl) || {};
   const platform = platformFromUrl(applyUrl);
   const capped = cappedNames.has(String(job.company || '').toLowerCase());
