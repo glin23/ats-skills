@@ -37,7 +37,7 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
   const education = PROFILE.education || {};
 
   return [
-    { match: /^phone|phone number|mobile/i, action: 'fill_phone' },
+    { match: /phone|mobile|telephone|cell ?phone/i, action: 'fill_phone', q: missingLabel },
     { match: /^resume$|upload.{0,10}resume/i, action: 'upload_resume' },
     { match: /start date|earliest start|when can you start|when could you start/i, action: 'fill_text_in_question', q: missingLabel, value: '06/01/2026' },
     { match: /marketing funnel|email marketing|a\/b testing|ab testing|heard of.{0,20}testing/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
@@ -51,6 +51,10 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No - I am authorized to work in the U.S. without employer sponsorship', fallback: 'No' },
     { match: /require.{0,5}sponsor|need.{0,5}sponsor|sponsorship/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     { match: /work auth|visa/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
+    // Remote-comfort questions ("Are you comfortable working remote?") — the user
+    // is remote-acceptable, so answer Yes. Kept narrow to remote-positive phrasings
+    // so it never collides with onsite/RTO willingness questions below.
+    { match: /comfortable.{0,25}(working )?remote|able to work.{0,15}remote|work(ing)?.{0,10}(fully )?remote|fully remote|remote work|work from home/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: pna },
     {
       match: /currently located.{0,40}(san francisco|sf bay|bay area)|sf bay area/i,
       action: 'click_radio_in_question',
@@ -77,6 +81,10 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /veteran/i, action: 'click_radio_in_question', q: missingLabel, choice: veteranAns, fallback: pna },
     { match: /disab/i, action: 'click_radio_in_question', q: missingLabel, choice: disabilityAns, fallback: pna },
     { match: /current location|^location$|where are you located|where are you currently based|currently based|where.*based/i, action: 'fill_location_combobox', q: missingLabel, value: cityFull },
+    // Work-location plan ("From which city/state are you planning to work?") — NOT a
+    // residence/transport fact (isSpecificCityLogisticsFact lets it through), so answer
+    // with the user's base city. fill_location_combobox falls back to a text fill.
+    { match: /which (city|state).{0,40}(work|plan)|city\s*\/\s*state.{0,25}(work|plan|based)|city and state.{0,25}(work|plan|based)|where.{0,20}plan.{0,15}work/i, action: 'fill_location_combobox', q: missingLabel, value: cityFull },
     { match: /compensation|salary|pay expectation|expected pay|expected compensation/i, action: 'fill_text_in_question', q: missingLabel, value: compensationExpectation },
     { match: /linkedin/i, action: 'fill_text_in_question', q: missingLabel, value: linkedin },
     { match: /portfolio|website/i, action: 'fill_text_in_question', q: missingLabel, value: personal.portfolio || linkedin },

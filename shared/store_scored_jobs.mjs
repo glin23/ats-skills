@@ -70,8 +70,11 @@ for (const job of candidates) {
     summary.skipped_unusable_apply_url += 1;
     continue;
   }
-  const score = byUrl.get(job.apply_url) || {};
-  const platform = platformFromUrl(job.apply_url);
+  // hasUsableApplyUrl() accepts a row whose only URL is `url` (no `apply_url`),
+  // so resolve the apply URL the same way to avoid upsertJob's "apply_url required".
+  const applyUrl = job.apply_url || job.url;
+  const score = byUrl.get(applyUrl) || {};
+  const platform = platformFromUrl(applyUrl);
   const capped = cappedNames.has(String(job.company || '').toLowerCase());
   const storedRoleType = score.role_type_match || job.role_type || 'other';
   const recheckedRoleType = classifyRoleType(job);
@@ -92,7 +95,7 @@ for (const job of candidates) {
   const row = {
     company: job.company || '(unknown)',
     title: job.title,
-    apply_url: job.apply_url,
+    apply_url: applyUrl,
     location: job.location,
     source: job.source || job._discovery_source || 'unknown',
     status: '🤖 AI sourced',

@@ -558,9 +558,11 @@ async function answerMissing(tab, missingLabel) {
   }
 
   if (bucket.action === 'fill_phone') {
+    const digits = (PROFILE.personal.phone || '').replace(/\D/g, '').replace(/^1/, '');
+    if (!digits) return { ok: false, note: 'profile_phone_missing' };
     const phoneRes = await evalInTab(tab, `
       (() => {
-        const inp = [...document.querySelectorAll("input[type=tel]")].find(el => el.offsetParent !== null);
+        const inp = [...document.querySelectorAll("input[type=tel], input[autocomplete=tel], input[name*='phone' i], input[id*='phone' i], input[aria-label*='phone' i]")].find(el => el.offsetParent !== null);
         if (!inp) return { ok:false, note:'phone_input_not_found' };
         if (!inp.id) inp.id = 'mrw_phone_retry';
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -574,11 +576,15 @@ async function answerMissing(tab, missingLabel) {
         return { ok:true, sel };
       })()
     `);
-    if (!phoneRes.ok) return phoneRes;
-    const digits = (PROFILE.personal.phone || '').replace(/\D/g, '').replace(/^1/, '');
-    if (!digits) return { ok: false, note: 'profile_phone_missing' };
-    cdp('typetext', tab, phoneRes.sel, digits);
-    return { ok: true, mode: 'phone_retry' };
+    if (phoneRes.ok) {
+      cdp('typetext', tab, phoneRes.sel, digits);
+      return { ok: true, mode: 'phone_retry' };
+    }
+    // Ashby often renders "Primary phone" as a plain text input with a UUID id and
+    // no phone-y attributes — only the question label says "phone". Fall back to the
+    // question-container text fill so these aren't false "phone_input_not_found" skips.
+    if (bucket.q) return await fillTextInQuestion(tab, bucket.q, digits);
+    return phoneRes;
   }
 
   if (bucket.action === 'click_single_radio_in_question') {
