@@ -17,6 +17,19 @@ export function isSpecificCityLogisticsFact(label = '') {
   return TRANSPORT_FACT_RE.test(s) || RESIDENCE_FACT_RE.test(s);
 }
 
+// Open-ended residence prompts ask the user to STATE where they live, with no
+// named metro and no yes/no framing — e.g. "Where do you currently live?",
+// "Where do you reside?", "Current city". The answer is the user's real city
+// from their profile (a known fact, NOT something the tool cannot know), so
+// these are answerable and should bypass the specific-city-fact guard. A NAMED
+// yes/no question ("Are you currently located in the Bay Area?") does NOT match
+// here and stays guarded.
+const OPEN_ENDED_RESIDENCE_RE = /\bwhere (?:do|are) you\b[^?]{0,40}\b(?:live|living|reside|residing|located|based)\b|\bwhat (?:city|town)\b[^?]{0,30}\b(?:live|reside|based|from)\b|\bcurrent (?:city|residence|home (?:city|address))\b|\bcity of residence\b/i;
+
+export function isOpenEndedResidenceQuestion(label = '') {
+  return OPEN_ENDED_RESIDENCE_RE.test(String(label));
+}
+
 // --- Relocation policy ------------------------------------------------------
 // True only when the user explicitly opted into relocating anywhere legally
 // workable. Accepts either the whole search_intent.json object or the inner

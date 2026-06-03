@@ -33,6 +33,7 @@ import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
 import {
   isSpecificCityLogisticsFact as routingIsSpecificCityFact,
+  isOpenEndedResidenceQuestion as routingIsOpenEndedResidence,
   relocationPolicyOpen as routingRelocationPolicyOpen,
   confirmedCitiesFrom as routingConfirmedCities,
   mentionsConfirmedCity as routingMentionsConfirmedCity,
@@ -455,7 +456,10 @@ async function answerMissing(tab, missingLabel) {
   const confirmedCities = routingConfirmedCities(PROFILE);
   const mentionsConfirmedCity = routingMentionsConfirmedCity(ml, confirmedCities);
   const isSpecificCityLogisticsFact = routingIsSpecificCityFact(ml);
-  if (isSpecificCityLogisticsFact && !mentionsConfirmedCity) {
+  // Open-ended "Where do you live?" is answerable from the profile city; only a
+  // named/yes-no specific-city or transport fact stays guarded.
+  const isOpenEndedResidence = routingIsOpenEndedResidence(ml);
+  if (isSpecificCityLogisticsFact && !mentionsConfirmedCity && !isOpenEndedResidence) {
     return {
       ok: false,
       note: 'specific_city_fact_unconfirmed',

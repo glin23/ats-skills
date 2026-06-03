@@ -5,11 +5,29 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isSpecificCityLogisticsFact,
+  isOpenEndedResidenceQuestion,
   relocationPolicyOpen,
   confirmedCitiesFrom,
   mentionsConfirmedCity,
   deriveWorkAuthAnswers,
 } from '../shared/answer_routing.mjs';
+
+test('isOpenEndedResidenceQuestion: answerable-from-profile prompts vs guarded named-city', () => {
+  // Open-ended "state your residence" prompts — answerable from the profile city.
+  assert.equal(isOpenEndedResidenceQuestion('Where do you currently live?'), true);
+  assert.equal(isOpenEndedResidenceQuestion('Where do you reside?'), true);
+  assert.equal(isOpenEndedResidenceQuestion('Where are you located?'), true);
+  assert.equal(isOpenEndedResidenceQuestion('Current city of residence'), true);
+  // Named / yes-no specific-city questions must NOT count as open-ended (stay guarded).
+  assert.equal(isOpenEndedResidenceQuestion('Are you currently located in the Bay Area, California?'), false);
+  assert.equal(isOpenEndedResidenceQuestion('Do you currently reside in Boston?'), false);
+  assert.equal(isOpenEndedResidenceQuestion('Do you have reliable transportation to our Cincinnati office?'), false);
+  // Combined guard semantics: a row is only blocked when it's a specific-city fact
+  // AND not an open-ended prompt.
+  const blocked = (l) => isSpecificCityLogisticsFact(l) && !isOpenEndedResidenceQuestion(l);
+  assert.equal(blocked('Where do you currently live?'), false); // answerable now
+  assert.equal(blocked('Do you currently reside in Boston?'), true); // still guarded
+});
 
 test('isSpecificCityLogisticsFact: residence/transport FACTS, not willingness', () => {
   // real abby-care label (conflates residence fact + willingness) -> treated as FACT

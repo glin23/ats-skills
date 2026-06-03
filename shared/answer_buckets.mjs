@@ -51,6 +51,9 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No - I am authorized to work in the U.S. without employer sponsorship', fallback: 'No' },
     { match: /require.{0,5}sponsor|need.{0,5}sponsor|sponsorship/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     { match: /work auth|visa/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
+    // Non-standard sponsorship phrasings, e.g. "require the support of X to maintain
+    // that authorization" / "commence an immigration case". Answer follows sponsorAns.
+    { match: /(maintain|commence|continue|begin|support|sponsor).{0,40}(authorization|immigration)|authorization.{0,15}to (work|employ|remain)|immigration case/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     // Remote-comfort questions ("Are you comfortable working remote?") — the user
     // is remote-acceptable, so answer Yes. Kept narrow to remote-positive phrasings
     // so it never collides with onsite/RTO willingness questions below.
@@ -66,6 +69,10 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
         'No'
       ]
     },
+    // Work-style / work-arrangement preference ("Which work style(s) are you open
+    // to?") — the user is open to any mode (remote-acceptable + relocate-anywhere),
+    // so prefer Remote but accept hybrid/onsite/flexible options the form offers.
+    { match: /work style|working style|work arrangement|work setting|work mode|preferred.{0,15}work (location|environment)/i, action: 'click_radio_in_question', q: missingLabel, choices: ['Remote', 'Hybrid', 'Flexible', 'No preference', 'On-site', 'Onsite', 'In-person', 'In office', 'Open to all'] },
     // RTO / onsite-commitment / relocation-willingness phrasings.
     // These assert a WILLINGNESS (covered by relocation_policy) rather than a
     // residence/transport fact (those are intercepted by the specific-city-fact
@@ -80,7 +87,7 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /sexual orientation/i, action: 'click_checkbox_in_question', q: missingLabel, choice: pna },
     { match: /veteran/i, action: 'click_radio_in_question', q: missingLabel, choice: veteranAns, fallback: pna },
     { match: /disab/i, action: 'click_radio_in_question', q: missingLabel, choice: disabilityAns, fallback: pna },
-    { match: /current location|^location$|where are you located|where are you currently based|currently based|where.*based/i, action: 'fill_location_combobox', q: missingLabel, value: cityFull },
+    { match: /current location|^location$|^city$|where are you located|where are you currently based|currently based|where.*based|where (do|are) you.{0,40}(live|living|reside|residing)|where do you reside|current (city|residence)|city of residence/i, action: 'fill_location_combobox', q: missingLabel, value: cityFull },
     // Work-location plan ("From which city/state are you planning to work?") — NOT a
     // residence/transport fact (isSpecificCityLogisticsFact lets it through), so answer
     // with the user's base city. fill_location_combobox falls back to a text fill.
@@ -88,9 +95,11 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /compensation|salary|pay expectation|expected pay|expected compensation/i, action: 'fill_text_in_question', q: missingLabel, value: compensationExpectation },
     { match: /linkedin/i, action: 'fill_text_in_question', q: missingLabel, value: linkedin },
     { match: /portfolio|website/i, action: 'fill_text_in_question', q: missingLabel, value: personal.portfolio || linkedin },
+    // Major / field of study — tested BEFORE university/school so "major" wins.
+    { match: /\bmajor\b|field of study|area of study|course of study|what.{0,15}studying/i, action: 'fill_text_in_question', q: missingLabel, value: education.minor ? `${education.major || 'Business'} (minor: ${education.minor})` : (education.major || 'Business') },
     { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: education.school || 'Your School' },
     { match: /^degree|degree$/i, action: 'fill_text_in_question', q: missingLabel, value: `${education.degree || 'Bachelor of Science'} in ${education.major || 'Business'}` },
-    { match: /graduation date|when do you expect to graduate/i, action: 'fill_text_in_question', q: missingLabel, value: ctx.graduationDate || 'May 2027' },
+    { match: /graduation date|when do you expect to graduate|expected graduation|graduation (month|year)|anticipated graduation/i, action: 'fill_text_in_question', q: missingLabel, value: ctx.graduationDate || 'May 2027' },
     // Name fields — extremely common on Ashby; resolve from profile, never pending.
     // Order matters: "preferred"/"legal" qualifiers must be tested before the plain forms.
     { match: /preferred first name/i, action: 'fill_text_in_question', q: missingLabel, value: personal.preferred_name || personal.first_name },
