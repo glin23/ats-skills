@@ -55,6 +55,19 @@ test('validateProfileBundle accepts canonical work authorization keys', () => {
   assert.equal(result.ok, true);
 });
 
+test('validateProfileBundle warns when zip is missing but does not block', () => {
+  const home = tempHome();
+  writeBundle(home, {
+    visa_status: 'F-1 OPT eligible',
+    authorized_to_work_us: true,
+    requires_sponsorship_now: false,
+    requires_sponsorship_future: true,
+  });
+  const result = validateProfileBundle(home);
+  assert.equal(result.ok, true);
+  assert.match(result.warnings.map((w) => w.message).join('\n'), /zip\/postal-code-gated forms/);
+});
+
 test('validateProfileBundle rejects legacy work authorization-only shape', () => {
   const home = tempHome();
   writeBundle(home, {

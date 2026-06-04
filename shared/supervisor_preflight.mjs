@@ -167,6 +167,12 @@ const checks = [
 ];
 
 const warnings = [];
+for (const warning of profileValidation.warnings || []) {
+  warnings.push({
+    name: `profile_${String(warning.path || 'warning').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase()}`,
+    detail: warning.message,
+  });
+}
 if (!existsSync(coverLetterPath)) {
   warnings.push({
     name: 'cover_letter_missing',

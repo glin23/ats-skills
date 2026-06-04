@@ -93,6 +93,16 @@ export function validateProfileBundle(home = atsHome()) {
     if (!profile.resume_path) {
       pushIssue(warnings, 'warning', profilePath, 'resume_path', 'resume_path is empty; uploads may fail');
     }
+    const personal = profile.personal || {};
+    if (!personal.address_zip && !personal.zip && !personal.postal_code) {
+      pushIssue(
+        warnings,
+        'warning',
+        profilePath,
+        'personal.address_zip',
+        'address_zip is empty; zip/postal-code-gated forms will be skipped until the user adds a real value'
+      );
+    }
   }
 
   const intent = intentRead.value || {};
