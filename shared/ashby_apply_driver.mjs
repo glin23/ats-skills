@@ -536,8 +536,9 @@ async function answerMissing(tab, missingLabel) {
     disabilityAns,
     cityFull,
     compensationExpectation,
+    earliestStartDate: PROFILE.standard_qa?.earliest_start_date || BANK.fallback_text?.start_date_summer_2026,
     linkedin,
-    graduationDate: BANK.fallback_text?.graduation_date,
+    graduationDate: PROFILE.education?.graduation_date || BANK.fallback_text?.graduation_date,
     pna: PNA,
   });
   if (!bucket) {

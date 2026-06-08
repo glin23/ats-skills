@@ -210,6 +210,46 @@ function earliestStartDate() {
     'May 2026';
 }
 
+function languageProficiencyForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  const langs = PROFILE.standard_qa?.language_proficiency || {};
+  for (const [name, level] of Object.entries(langs)) {
+    if (!level) continue;
+    if (lt.includes(String(name).toLowerCase())) return String(level);
+  }
+  return '';
+}
+
+function companyRelationshipValueForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  const rel = PROFILE.standard_qa?.company_relationships || {};
+  if (/alarm\.?com|dealer|partner|supplier/.test(lt)) {
+    if (typeof rel.alarm_com_dealer_partner_supplier_last_year === 'boolean') {
+      return rel.alarm_com_dealer_partner_supplier_last_year;
+    }
+    if (typeof rel.any_supplier_partner_dealer_relationship === 'boolean') {
+      return rel.any_supplier_partner_dealer_relationship;
+    }
+  }
+  if (/pebl|affiliate partners?|clients?|supported employee|engagement type/.test(lt)) {
+    if (typeof rel.pebl_employee_or_affiliate_partner_client_relationship === 'boolean') {
+      return rel.pebl_employee_or_affiliate_partner_client_relationship;
+    }
+  }
+  if (/currently.*work|previously.*work|employed|employee|contractor/.test(lt)) {
+    if (typeof rel.currently_working_for_other_company === 'boolean') {
+      return rel.currently_working_for_other_company;
+    }
+  }
+  return null;
+}
+
+function manualExternalFormsAllowed() {
+  const prefs = PROFILE.standard_qa?.external_form_confirmations || {};
+  if (prefs.manual_external_forms === false || prefs.auto_only === true) return false;
+  return true;
+}
+
 function preferredCandidateCity() {
   const city = PROFILE.personal?.address_city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const state = PROFILE.personal?.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
@@ -298,6 +338,22 @@ function countriesOpenTo() {
 
 function locationDecisionForLabel(labelText) {
   const lt = String(labelText || '').toLowerCase();
+  const commitments = PROFILE.standard_qa?.work_location_commitments || {};
+  for (const [place, ok] of Object.entries(commitments)) {
+    if (!place) continue;
+    const placeLower = String(place).toLowerCase();
+    const aliases = [
+      placeLower,
+      placeLower === 'bay area' ? 'sf bay' : '',
+      placeLower === 'san francisco' ? 'sf' : '',
+      placeLower === 'united states' ? 'us' : '',
+    ].filter(Boolean);
+    if (aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lt))) {
+      return ok === true
+        ? { ok: true, note: 'profile_work_location_commitment', mentioned: [place] }
+        : { ok: false, note: 'profile_work_location_declined', mentioned: [place] };
+    }
+  }
   const aliases = preferredLocationAliases();
 
   const usLocationWords = [
@@ -364,6 +420,35 @@ function currentResidenceAnswerForLabel(labelText) {
     value: mentioned.some((w) => current.has(w)) ? 'Yes' : 'No',
     mentioned,
   };
+}
+
+function educationEnrollmentAnswerForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  const schoolLoc = SEARCH_INTENT.user_summary?.school_location || {};
+  const schoolCity = String(PROFILE.education?.school_city || schoolLoc.city || '').toLowerCase();
+  const schoolState = String(PROFILE.education?.school_state || schoolLoc.state || '').toLowerCase();
+  const schoolCountry = String(PROFILE.education?.school_country || schoolLoc.country || 'United States').toLowerCase();
+  const enrolled = PROFILE.education?.currently_enrolled === true;
+  if (!enrolled) return { value: 'No', note: 'not_currently_enrolled_from_profile' };
+  if (/new york|\bny\b|nyc/.test(lt)) {
+    return {
+      value: /new york|\bny\b|nyc/.test(`${schoolCity} ${schoolState}`) ? 'Yes' : 'No',
+      note: 'school_location_from_profile',
+    };
+  }
+  if (/massachusetts|\bma\b|boston|babson/.test(lt)) {
+    return {
+      value: /massachusetts|\bma\b|boston|babson/.test(`${schoolCity} ${schoolState}`) ? 'Yes' : 'No',
+      note: 'school_location_from_profile',
+    };
+  }
+  if (/united states|\bus\b|usa|u\.s\./.test(lt)) {
+    return {
+      value: /united states|\bus\b|usa/.test(schoolCountry) ? 'Yes' : 'No',
+      note: 'school_country_from_profile',
+    };
+  }
+  return { value: 'Yes', note: 'currently_enrolled_from_profile' };
 }
 
 function profileAddressValueForLabel(labelText) {
@@ -477,8 +562,17 @@ function workAuthWithoutRestrictionAnswer() {
 
 function standardYesNoAnswerForLabel(labelText) {
   const lt = String(labelText || '').toLowerCase();
+  if (/did you .*complete.*form|successfully complete.*form|complete the form below|form listed below/.test(lt)) {
+    if (!manualExternalFormsAllowed()) {
+      return { value: 'No', note: 'external_form_not_manually_completed_auto_only' };
+    }
+    return { needs_user_answer: true, note: 'external_form_completion_required' };
+  }
   if (/deemed export license|ear[- ]controlled technology|export control|\bitar\b/.test(lt)) {
     return { needs_user_answer: true, note: 'export_control_answer_required' };
+  }
+  if (/enrolled.*university|currently enrolled|student at/.test(lt)) {
+    return educationEnrollmentAnswerForLabel(labelText);
   }
   if (/contractual obligations|agreements.{0,40}relationships.{0,40}commitments|impede or interfere.{0,80}ability to join|non[- ]?compete/.test(lt)) {
     const explicit = PROFILE.legal_attestations?.conflicting_obligations;
@@ -500,6 +594,12 @@ function standardYesNoAnswerForLabel(labelText) {
   }
   if (/have you ever been employed by|previously employed by|worked for .* or any affiliated company/.test(lt)) {
     return { value: hasWorkedForCompany() ? 'Yes' : 'No', note: hasWorkedForCompany() ? 'prior_employment_from_profile' : 'no_prior_employment_in_profile' };
+  }
+  if (/dealer|partner|supplier|pebl|affiliate partners?|clients?|supported employee|engagement type/.test(lt)) {
+    const explicit = companyRelationshipValueForLabel(labelText);
+    if (explicit === true) return { value: 'Yes', note: 'profile_company_relationship' };
+    if (explicit === false) return { value: 'No', note: 'profile_no_company_relationship' };
+    return { needs_user_answer: true, note: 'company_relationship_answer_required' };
   }
   if (/relatives?.{0,80}(?:currently )?working|family member.{0,80}(?:currently )?working/.test(lt)) {
     if (/federal government|department of health|human services|cdc|department of defense|\bdod\b|military|political appointee|contractor/.test(lt)) {
@@ -523,6 +623,14 @@ function standardYesNoAnswerForLabel(labelText) {
       candidates: ['Yes', 'Yes, I am available', 'I am available', 'I can commit', 'Available for full-time 12-week internship', 'Available'],
       note: 'internship_availability_commitment',
     };
+  }
+  if (/confirm.{0,80}available.{0,80}(part[- ]?time|internship|25h|25\s*hours?|40\s*hours?)|available.{0,80}(july|august).{0,80}(december|january)/.test(lt)) {
+    const available = PROFILE.standard_qa?.part_time_internship_25h_2026_through_jan_2027 === true ||
+      String(PROFILE.standard_qa?.hours_per_week || '').includes('25');
+    if (available) {
+      return { value: 'Yes', candidates: ['Yes', 'I confirm', 'Confirm', 'I am available', 'Available'], note: 'profile_part_time_internship_availability' };
+    }
+    return { needs_user_answer: true, note: 'part_time_availability_answer_required' };
   }
   if (/complete fluency in english|english.*(?:c1|advanced|fluen)/.test(lt)) {
     if (!hasEnglishFluency()) return { needs_user_answer: true, note: 'english_fluency_answer_required' };
@@ -1361,6 +1469,11 @@ async function answerMissing(tab, labelText) {
       }
     }
     else if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
+    else if (/spanish|mandarin|french|german|language|proficiency|fluen/i.test(lt)) {
+      value = languageProficiencyForLabel(labelText);
+      if (!value) return { ok: false, note: 'language_proficiency_not_in_profile', needs_user_answer: true };
+      mode = 'sync';
+    }
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) {
       value = preferredCandidateCity();
       if (!f.is_react_select && f.type !== 'select-one' && f.type !== 'select') {
@@ -1386,10 +1499,8 @@ async function answerMissing(tab, labelText) {
     }
     else if (/\b(?:location|city)\b/i.test(lt)) value = preferredCandidateCity();
     else if (/sponsor|work auth|visa/i.test(lt)) value = sponsorVal;
-    else if (/enrolled in.*university|currently enrolled/i.test(lt)) {
-      const loc = locationDecisionForLabel(labelText);
-      if (!loc.ok) return { ok: false, note: 'school_location_not_in_profile', detail: loc, needs_user_answer: true };
-      value = BANK.yes_no_defaults?.enrolled_in_university || 'Yes';
+    else if (/enrolled.*university|currently enrolled/i.test(lt)) {
+      value = educationEnrollmentAnswerForLabel(labelText).value;
       mode = 'sync';
     }
     else if (/full.?time|consider.*ft|consideration for|full.?time offer/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
@@ -1428,6 +1539,10 @@ async function answerMissing(tab, labelText) {
     else if (/school|college|university/i.test(lt)) value = profileSchool;
     else if (/degree/i.test(lt)) value = profileDegree;
     else if (/discipline|major|field of study/i.test(lt)) value = profileMajor;
+    else if (/spanish|mandarin|french|german|language|proficiency|fluen/i.test(lt)) {
+      value = languageProficiencyForLabel(labelText);
+      if (!value) return { ok: false, note: 'language_proficiency_not_in_profile', needs_user_answer: true };
+    }
     else if (/(how|where).{0,12}did.{0,8}you.{0,8}hear|hear about|job opening|source/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
     else if (/hours?.{0,12}per week|weekly hours|available.{0,20}hours/i.test(lt)) value = hoursPerWeekAnswer();
     else if (/expect(?:ed)? to graduate|graduation date|graduation year|when do you expect|complete your program/i.test(lt)) value = monthYear(profileGraduationDate, '');
@@ -1435,6 +1550,7 @@ async function answerMissing(tab, labelText) {
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) value = preferredCandidateCity();
     else if (/currently\s+(?:reside|live)|do you currently reside|currently based|are you based/i.test(lt)) value = currentResidenceAnswerForLabel(labelText).value || 'No';
     else if (/salary|compensation|expected.*pay|expect.*paid|hourly.*rate/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || BANK.fallback_text?.compensation_expectations || 'Negotiable';
+    else if (/if .*employee.*selected|provide the employee name|if yes.*company|if yes.*explain|please.*explain.*yes/i.test(lt)) value = 'N/A';
     else if (/most recent employer|current employer|latest employer|^company name$|^company$/i.test(lt)) value = latestExperience?.company || '';
     else if (/most recent job title|current title|latest title|^title$|^job title$/i.test(lt)) value = latestExperience?.title || '';
     else if (/gpa/i.test(lt)) value = gpaValue(PROFILE);

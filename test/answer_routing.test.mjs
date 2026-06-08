@@ -56,6 +56,21 @@ test('confirmedCities lowercases; mentionsConfirmedCity matches case-insensitive
   assert.deepEqual(confirmedCitiesFrom({}), []);
 });
 
+test('confirmedCities includes true work-location commitments, not declined places', () => {
+  const cc = confirmedCitiesFrom({
+    standard_qa: {
+      work_location_commitments: {
+        'Bay Area': true,
+        'San Francisco': true,
+        Singapore: false,
+      },
+    },
+  });
+  assert.equal(mentionsConfirmedCity('Are you able to work in the Bay Area?', cc), true);
+  assert.equal(mentionsConfirmedCity('Can you work from San Francisco?', cc), true);
+  assert.equal(mentionsConfirmedCity('Do you have confirmed plans to be in Singapore?', cc), false);
+});
+
 test('deriveWorkAuthAnswers: F-1 OPT answers Yes/Yes (never a false no-sponsorship)', () => {
   const f1 = deriveWorkAuthAnswers(
     { work_authorization: { visa_status: 'F-1 OPT eligible', authorized_to_work_us: true, requires_sponsorship_future: true } },

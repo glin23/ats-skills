@@ -29,6 +29,7 @@ const CTX = {
   disabilityAns: 'I do not want to answer',
   cityFull: 'Boston, Massachusetts, United States',
   compensationExpectation: 'Open to discussion based on the role.',
+  earliestStartDate: '2026-06-08',
   linkedin: 'https://linkedin.com/in/alexchen',
   graduationDate: 'May 2027',
   pna: PNA,
@@ -81,10 +82,10 @@ test('EEO gender/race/veteran/disability prefer-not-to-answer', () => {
   assert.equal(matchAnswerBucket('Disability status', CTX).choice, 'I do not want to answer');
 });
 
-test('start date fills the fixed default date', () => {
+test('start date fills the profile start date', () => {
   const b = matchAnswerBucket('What is your earliest start date?', CTX);
   assert.equal(b.action, 'fill_text_in_question');
-  assert.equal(b.value, '06/01/2026');
+  assert.equal(b.value, '2026-06-08');
 });
 
 test('name fields resolve from profile; preferred/legal qualifiers ordered first', () => {

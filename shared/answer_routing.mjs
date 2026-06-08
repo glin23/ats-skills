@@ -45,8 +45,15 @@ export function relocationPolicyOpen(searchIntent = {}) {
 // Cities the user has explicitly confirmed living-in / having logistics for.
 // Empty by default so unknown cities always ask-or-skip.
 export function confirmedCitiesFrom(profile = {}) {
-  return (profile?.factual_gap_fields?.onsite_location_logistics?.confirmed_cities || [])
-    .map((c) => String(c).toLowerCase());
+  const out = new Set(
+    (profile?.factual_gap_fields?.onsite_location_logistics?.confirmed_cities || [])
+      .map((c) => String(c).toLowerCase())
+  );
+  const commitments = profile?.standard_qa?.work_location_commitments || {};
+  for (const [place, ok] of Object.entries(commitments)) {
+    if (ok === true) out.add(String(place).toLowerCase());
+  }
+  return [...out];
 }
 
 export function mentionsConfirmedCity(label = '', confirmedCities = []) {

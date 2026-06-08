@@ -40,6 +40,7 @@ function parseJsonLines(text) {
 }
 
 function newestSummary() {
+  if (!fs.existsSync(TMP)) return null;
   const files = fs.readdirSync(TMP)
     .filter((name) => /^apply-batch-summary-.*\.json$/.test(name))
     .map((name) => path.join(TMP, name))
@@ -55,6 +56,7 @@ function resultFilesFromSummary(summaryPath) {
 }
 
 function resultFilesFromDir(dir) {
+  if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
     .filter((name) => /^apply-result-.*\.jsonl$/.test(name))
     .map((name) => path.join(dir, name))
@@ -105,22 +107,67 @@ function classifyField(field, outcome = {}) {
   const lower = label.toLowerCase();
   const note = String(field.note || outcome.reason || '').toLowerCase();
   const source = String(field.source || '');
+  const personal = PROFILE.personal || {};
+  const standard = PROFILE.standard_qa || {};
+  const legal = PROFILE.legal_attestations || {};
+  const relationships = standard.company_relationships || {};
+  const externalForms = standard.external_form_confirmations || {};
+  const fullAddressKnown = !!(personal.address_street && personal.address_city && personal.address_state && personal.address_zip);
+  const locationCommitment = (() => {
+    const commitments = standard.work_location_commitments || {};
+    for (const [place, ok] of Object.entries(commitments)) {
+      const aliases = [
+        String(place).toLowerCase(),
+        String(place).toLowerCase() === 'bay area' ? 'sf bay' : '',
+        String(place).toLowerCase() === 'san francisco' ? 'sf' : '',
+        String(place).toLowerCase() === 'united states' ? 'us' : '',
+      ].filter(Boolean);
+      if (aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lower))) {
+        return ok === true ? 'accepted' : 'declined';
+      }
+    }
+    return null;
+  })();
 
   if (/captcha/.test(note) || /captcha/.test(lower)) return 'manual_captcha';
   if (/record|interview.*record|privacy|consent|data|gdpr|arbitration|certification|true and complete/.test(lower)) return 'agent_attestation';
   if (/confirm.{0,80}(information|application|resume).{0,80}(true|correct|accurate)|false statements|material omissions|acknowledge.{0,80}(true|correct|accurate)/.test(lower)) return 'agent_attestation';
   if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|currently live|currently reside|current location|where are you located|where.*located|where.*based|unlimited and unrestricted authorization|legally authorized|authorized to work|require.{0,40}sponsor|sponsor.{0,40}immigration|maintain that authorization|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|gender|race|ethnic|hispanic|latino|veteran|disability|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
-  if (/did you .*complete.*form|successfully complete.*form|complete the form below/.test(lower)) return 'user_external_form_completion';
-  if (/non[- ]?compete|non[- ]?solicit|restrictive covenant|supplier|partner|dealer|confidentiality agreement|conflict of interest/.test(lower)) return 'user_compliance_relationship_or_restriction';
-  if (/full.{0,20}address|primary mailing address|mailing address|permanent address|street, city, state, zip|street address|address line|postal code|zip code|\bzip\b|home state/.test(lower)) return 'user_full_address';
-  if (/profile_full_address_required/.test(note) && !/record|interview|privacy|consent|data/.test(lower)) return 'user_full_address';
-  if (/earliest.*start|start date|when can you start|availability date|available.{0,80}(internship|part-time|part time).{0,80}(from|through)|duration of (the )?internship/.test(lower)) return 'user_earliest_start_date';
+  if (/did you .*complete.*form|successfully complete.*form|complete the form below/.test(lower)) {
+    if (externalForms.manual_external_forms === false || externalForms.auto_only === true) return 'system_external_form_auto_required';
+    return 'user_external_form_completion';
+  }
+  if (/non[- ]?compete|non[- ]?solicit|restrictive covenant|supplier|partner|dealer|confidentiality agreement|conflict of interest/.test(lower)) {
+    if (legal.conflicting_obligations === false ||
+        relationships.non_compete === false ||
+        relationships.any_supplier_partner_dealer_relationship === false ||
+        relationships.alarm_com_dealer_partner_supplier_last_year === false ||
+        relationships.pebl_employee_or_affiliate_partner_client_relationship === false) {
+      return 'agent_profile_backed';
+    }
+    return 'user_compliance_relationship_or_restriction';
+  }
+  if (/full.{0,20}address|primary mailing address|mailing address|permanent address|street, city, state, zip|street address|address line|postal code|zip code|\bzip\b|home state/.test(lower)) return fullAddressKnown ? 'agent_profile_backed' : 'user_full_address';
+  if (/profile_full_address_required/.test(note) && !/record|interview|privacy|consent|data/.test(lower)) return fullAddressKnown ? 'agent_profile_backed' : 'user_full_address';
+  if (/hybrid|in office|in-office|onsite|on-site|commute|work out of|comfortable working remote|from which city\/state.*planning to work|bay area|san francisco|new york|boston|seattle|austin|los angeles|confirmed plans/.test(lower)) {
+    if (locationCommitment === 'accepted') return 'agent_profile_backed';
+    if (locationCommitment === 'declined') return 'system_profile_declined_location';
+    return 'user_work_location_commitment';
+  }
+  if (/earliest.*start|start date|when can you start|availability date|available.{0,80}(internship|part-time|part time).{0,80}(from|through)|duration of (the )?internship/.test(lower)) return standard.earliest_start_date ? 'agent_profile_backed' : 'user_earliest_start_date';
   if (/high school/.test(lower)) return 'user_high_school_location';
-  if (/relatives?.{0,140}(federal|government|contractor|department|hhs|health and human services|defense|dod|military|political)|family member.{0,140}(federal|government|contractor|military|political)|political appointee/.test(lower)) return 'user_government_relative_compliance';
-  if (/spanish|mandarin|french|german|language|proficiency level|fluen/.test(lower)) return 'user_language_or_skill_level';
+  if (/relatives?.{0,140}(federal|government|contractor|department|hhs|health and human services|defense|dod|military|political)|family member.{0,140}(federal|government|contractor|military|political)|political appointee/.test(lower)) {
+    return typeof legal.relatives_in_federal_government_or_contractors === 'boolean'
+      ? 'agent_profile_backed'
+      : 'user_government_relative_compliance';
+  }
+  if (/spanish|mandarin|french|german|language|proficiency level|fluen/.test(lower)) {
+    const langs = standard.language_proficiency || {};
+    const known = Object.keys(langs).some((name) => lower.includes(String(name).toLowerCase()) && langs[name]);
+    return known ? 'agent_profile_backed' : 'user_language_or_skill_level';
+  }
   if (/gpa/.test(lower)) return PROFILE.education?.gpa ? 'agent_profile_backed' : 'user_gpa';
   if (/specific_city_fact_unconfirmed|transportation|driver'?s license/.test(note) || /reliable transportation|driver'?s license/.test(lower)) return 'user_logistics_fact';
-  if (/hybrid|in office|in-office|onsite|on-site|commute|work out of|comfortable working remote|from which city\/state.*planning to work|bay area|san francisco|new york|boston|seattle|austin|los angeles|confirmed plans/.test(lower)) return 'user_work_location_commitment';
   if (/work environment|previously employed/.test(lower)) return 'agent_profile_backed';
   if (source === 'agent_pending'
       || /essay_answer_required/.test(note)
@@ -315,11 +362,15 @@ const agent_actions = Object.entries(grouped)
   }));
 
 const system_blockers = Object.entries(grouped)
-  .filter(([category]) => category === 'manual_captcha')
+  .filter(([category]) => category === 'manual_captcha' || category === 'system_external_form_auto_required' || category === 'system_profile_declined_location')
   .map(([category, items]) => ({
     category,
     count: items.length,
-    action: 'Captcha or human verification. Skip or ask the user to complete manually in browser.',
+    action: category === 'manual_captcha'
+      ? 'Captcha or human verification. Skip or ask the user to complete manually in browser.'
+      : category === 'system_external_form_auto_required'
+        ? 'External form is required, but the user chose auto-only. Build/dispatch external-form automation or skip this row; do not ask the user to complete it manually.'
+        : 'The profile explicitly declines this location. Skip this row instead of asking again.',
     examples: items.slice(0, 5).map(exampleFor),
   }));
 

@@ -30,6 +30,7 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     disabilityAns,
     cityFull,
     compensationExpectation,
+    earliestStartDate,
     linkedin,
     pna = PNA,
   } = ctx;
@@ -39,7 +40,7 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
   return [
     { match: /phone|mobile|telephone|cell ?phone/i, action: 'fill_phone', q: missingLabel },
     { match: /^resume$|upload.{0,10}resume/i, action: 'upload_resume' },
-    { match: /start date|earliest start|when can you start|when could you start/i, action: 'fill_text_in_question', q: missingLabel, value: '06/01/2026' },
+    { match: /start date|earliest start|when can you start|when could you start/i, action: 'fill_text_in_question', q: missingLabel, value: earliestStartDate || PROFILE.standard_qa?.earliest_start_date || '06/01/2026' },
     { match: /marketing funnel|email marketing|a\/b testing|ab testing|heard of.{0,20}testing/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
     { match: /freshman|sophomore/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
     { match: /graduate.{0,15}2025|2025.{0,15}earlier/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
