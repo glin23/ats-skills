@@ -571,6 +571,10 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/deemed export license|ear[- ]controlled technology|export control|\bitar\b/.test(lt)) {
     return { needs_user_answer: true, note: 'export_control_answer_required' };
   }
+  if (/unlimited and unrestricted authorization|unrestricted authorization.{0,80}work|authorization.{0,40}unrestricted/.test(lt)) {
+    const value = workAuthWithoutRestrictionAnswer();
+    return { value, candidates: [value, value === 'Yes' ? 'I have unrestricted authorization' : 'No'], note: 'profile_unrestricted_work_authorization' };
+  }
   if (/enrolled.*university|currently enrolled|student at/.test(lt)) {
     return educationEnrollmentAnswerForLabel(labelText);
   }
@@ -592,7 +596,7 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/authorize.{0,80}(?:use|process|share).{0,80}(?:information|personal details|personal data).{0,120}(?:evaluate|confirm|eligibility|suitability|qualifications)/.test(lt)) {
     return { value: 'Yes', candidates: ['Yes', 'I agree', 'Agree', 'I authorize'], note: 'application_data_use_authorization' };
   }
-  if (/have you ever been employed by|previously employed by|worked for .* or any affiliated company/.test(lt)) {
+  if (/have you ever been employed by|previously (?:been )?employed by|worked for .* or any affiliated company/.test(lt)) {
     return { value: hasWorkedForCompany() ? 'Yes' : 'No', note: hasWorkedForCompany() ? 'prior_employment_from_profile' : 'no_prior_employment_in_profile' };
   }
   if (/dealer|partner|supplier|pebl|affiliate partners?|clients?|supported employee|engagement type/.test(lt)) {
@@ -1554,6 +1558,7 @@ async function answerMissing(tab, labelText) {
     else if (/most recent employer|current employer|latest employer|^company name$|^company$/i.test(lt)) value = latestExperience?.company || '';
     else if (/most recent job title|current title|latest title|^title$|^job title$/i.test(lt)) value = latestExperience?.title || '';
     else if (/gpa/i.test(lt)) value = gpaValue(PROFILE);
+    else if (essayAnswerFor(labelText)) value = essayAnswerFor(labelText);
     else if (shouldQueueForMainClaude(labelText)) return { ok: false, note: 'essay_answer_required', pending_for_main_claude: true, question: labelText };
     else return { ok: false, note: 'no_value_rule_text:' + labelText.slice(0, 40) };
     if (!value) return { ok: false, note: 'value_empty_for:' + lt.slice(0, 30) };
