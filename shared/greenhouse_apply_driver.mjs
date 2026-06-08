@@ -1437,6 +1437,10 @@ async function answerMissing(tab, labelText) {
     return { ok: false, note: 'standard_yes_no_unhandled_field', detail: { ...standardYesNo, field: f } };
   }
 
+  if (/work environment|work arrangement|work style|work setting|work mode/i.test(lt) && f.is_react_select) {
+    return await reactSelectOneOf(tab, f.id, ['Any of these', 'Hybrid', 'Fully remote', 'On-site', 'Onsite'], { mode: 'sync' });
+  }
+
   const templatedAnswer = essayAnswerFor(labelText);
   if (templatedAnswer && (f.type === 'text' || f.type === 'textarea' || f.is_react_select)) {
     const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
