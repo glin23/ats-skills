@@ -470,6 +470,11 @@
       );
     }
     const personal = raw.personal || {};
+    const locationParts = [
+      personal.address_city || personal.city,
+      personal.address_state,
+      personal.address_country,
+    ].filter(Boolean);
     return {
       first_name: personal.first_name,
       last_name: personal.last_name,
@@ -481,7 +486,7 @@
       linkedin_url: personal.linkedin,
       website_url: personal.portfolio,
       github_url: personal.github,
-      location_text: personal.city,
+      location_text: locationParts.join(', ') || personal.city,
       custom_answers: {},
       picker_answers: {},
       _raw: raw,

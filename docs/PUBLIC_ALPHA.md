@@ -40,7 +40,7 @@ and a short self-introduction.
   `essay_profile.json` under the user's own `MRWEIRDO_HOME`.
 - Discovery runs in realtime and advances that user's `source_cursor.json`.
 - `jobs.db` records only that user's seen/applied/skipped history.
-- If ready rows exist, Greenhouse/Ashby batch apply can submit a small run after
+- If ready rows exist, Greenhouse/Ashby/Lever batch apply can submit a small run after
   the user confirms the parsed profile/search intent.
 - If no ready rows exist, `supervisor_status` and `apply_readiness_plan` explain
   what blocked the run and point to review or next realtime discovery.

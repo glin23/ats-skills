@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-onboard
-description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, essay/cover-letter material drafting, and guarded auto-apply. Collects resume + a lightweight self-introduction + three hard-boundary questions + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
+description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, essay/cover-letter material drafting, and guarded auto-apply. Collects resume + a lightweight self-introduction + three hard-boundary questions + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby/Lever rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
 ---
 
 # Mr. Weirdo Jobs Onboard
@@ -21,7 +21,7 @@ The skill's job is:
 2. generate local `profile.json`, `search_intent.json`, and `essay_profile.json`;
 3. confirm the parse before spending applications;
 4. run fresh discovery, score jobs, and update the local history ledger;
-5. auto-submit only guarded Greenhouse/Ashby matches;
+5. auto-submit only guarded Greenhouse/Ashby/Lever matches;
 6. generate a report and prune disposable discovered rows.
 
 ## Trigger
@@ -45,7 +45,7 @@ Do not use this skill for:
 ## Defaults
 
 - Auto-apply threshold: `fit_score >= 5`.
-- Stable batch auto-submit ATS: Greenhouse and Ashby.
+- Stable batch auto-submit ATS: Greenhouse, Ashby, and Lever.
 - Per-company quota guard stays on for the user's local `company_list.user.json`.
 - Public default batch size: `MRWEIRDO_MAX_AUTO_APPLY=10`.
 - LinkedIn, Indeed, and Glassdoor are never automated.
@@ -72,7 +72,7 @@ Welcome to Mr. Weirdo Jobs.
 
 I will read your resume, ask three hard-boundary questions, build a local job
 search profile, confirm it with you, then discover and score US student
-internship/new-grad jobs. Only supported, high-fit Greenhouse/Ashby matches are
+internship/new-grad jobs. Only supported, high-fit Greenhouse/Ashby/Lever matches are
 auto-submitted. All state stays on this machine at ~/.mrweirdo-jobs.
 ```
 

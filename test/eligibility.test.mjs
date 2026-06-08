@@ -51,7 +51,11 @@ test('fit below threshold is blocked', () => {
 });
 
 test('unsupported ATS is blocked', () => {
-  assert.equal(eligibleReason({ ...base, ats_platform: 'lever' }, opts()), 'unsupported_ats_platform');
+  assert.equal(eligibleReason({ ...base, ats_platform: 'workday' }, opts()), 'unsupported_ats_platform');
+});
+
+test('Lever is in the stable auto-submit set', () => {
+  assert.equal(eligibleReason({ ...base, ats_platform: 'lever' }, opts()), 'eligible');
 });
 
 test('supportedAuto accepts a plain array as well as a Set', () => {

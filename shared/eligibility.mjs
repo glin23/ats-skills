@@ -5,8 +5,9 @@
 // script.
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
 import { deriveRoleTypeFromJob } from './role_types.mjs';
+import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
-export const DEFAULT_SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+export const DEFAULT_SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
 export function duplicateKey(row = {}) {
   return `${normalizeCompany(row.company)}::${normalizeTitle(row.title)}`;

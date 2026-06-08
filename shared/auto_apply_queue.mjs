@@ -7,11 +7,12 @@ import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { passesQueueFilters, duplicateKey } from './eligibility.mjs';
+import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
 const HOME = atsHome();
 const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
-const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
 function readIntent() {
   try {
@@ -36,6 +37,7 @@ const candidates = db.prepare(`
                         WHEN lower(apply_url) LIKE '%job-boards.greenhouse.io%' THEN 0
                         WHEN lower(apply_url) LIKE '%boards.greenhouse.io%' THEN 1
                         WHEN lower(apply_url) LIKE '%ashbyhq.com%' THEN 2
+                        WHEN lower(apply_url) LIKE '%jobs.lever.co%' THEN 3
                         ELSE 9
                       END,
                       updated_at DESC,

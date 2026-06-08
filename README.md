@@ -45,7 +45,7 @@ Alpha success means:
 - a fresh install completes on macOS;
 - `/mrweirdo-onboard` creates this user's local profile/search files;
 - each run performs fresh discovery and updates local history;
-- supported Greenhouse/Ashby rows can submit in a small batch after the user
+- supported Greenhouse/Ashby/Lever rows can submit in a small batch after the user
   confirms the parsed profile/search intent;
 - if no rows are ready, the tool explains why and points to the next realtime
   discovery/review step.
@@ -102,7 +102,7 @@ wants both internship and part-time, pass or store `["intern", "part_time"]`.
 
 This is still an early, self-hosted agent. Treat the support matrix honestly:
 
-- **Best-tested auto-submit**: Greenhouse and Ashby. These paths have
+- **Best-tested auto-submit**: Greenhouse, Ashby, and Lever. These paths have
   end-to-end real-form validation, including Cloudflare Greenhouse and
   Ashby essay flows.
 - **Known weak spot**: Lever upload can trigger a bogus "100MB" error

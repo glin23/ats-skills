@@ -3,10 +3,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
 import { SUBMITTED_STATUSES } from './job_identity.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
+import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
 const PENDING_STATUS = '🤖 AI sourced';
 const SKIPPED_STATUS = '⚠️ 跳过未投';
-const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);

@@ -6,12 +6,12 @@ import { dbPath } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
-import { KNOWN_UNSUPPORTED_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
+import { KNOWN_UNSUPPORTED_PLATFORMS, SUPPORTED_AUTO_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
 
 const HOME = atsHome();
 const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
-const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
 function readIntent() {
   try {

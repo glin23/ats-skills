@@ -4,7 +4,7 @@ import path from 'node:path';
 import { atsHome } from './paths.mjs';
 import { initDb, upsertJob } from './local_db.mjs';
 import { classifyRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
-import { platformFromUrl } from './sourcing/apply_url_classification.mjs';
+import { SUPPORTED_AUTO_PLATFORMS, platformFromUrl } from './sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 
 function argValue(name, fallback = null) {
@@ -31,7 +31,7 @@ const toScorePath = argValue('--to-score', '/tmp/mrweirdo-onboard/to_score.json'
 const scoredPath = argValue('--scored', '/tmp/mrweirdo-onboard/scored.json');
 const quotaPath = argValue('--company-list', path.join(HOME, 'company_list.user.json'));
 const allowPartialScores = hasArg('--allow-partial-scores') || process.env.MRWEIRDO_ALLOW_PARTIAL_SCORES === '1';
-const supportedAuto = new Set((argValue('--supported-auto', 'greenhouse,ashby') || '')
+const supportedAuto = new Set((argValue('--supported-auto', [...SUPPORTED_AUTO_PLATFORMS].join(',')) || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean));

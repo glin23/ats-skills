@@ -59,6 +59,7 @@ for (const rel of [
   'shared/apply_readiness_plan.mjs',
   'shared/prune_discovered_jobs.mjs',
   'shared/store_scored_jobs.mjs',
+  'shared/lever_apply_driver.mjs',
   'shared/validate_user_profile.mjs',
 ]) {
   fileExists(rel);

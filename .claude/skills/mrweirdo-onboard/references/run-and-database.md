@@ -50,7 +50,7 @@ that, and so on. Use `--source-window-size 0` only for a full source-list crawl.
 Scoring is done by the main agent using `shared/scoring/score_prompt.md` over
 `/tmp/mrweirdo-onboard/to_score.json`, writing
 `/tmp/mrweirdo-onboard/scored.json`. `to_score.json` is limited to currently
-auto-supported Greenhouse/Ashby job rows. Manual-only and unsupported URLs
+auto-supported Greenhouse/Ashby/Lever job rows. Manual-only and unsupported URLs
 are kept in `/tmp/mrweirdo-onboard/manual_or_unsupported.json` for review, but
 they do not consume the batch auto-apply scoring budget.
 Discovery also writes `/tmp/mrweirdo-onboard/discovery_funnel.json`, which
@@ -112,7 +112,7 @@ node "$MRWEIRDO_REPO_ROOT/shared/prune_discovered_jobs.mjs" \
 - scorer sets `recommended: true`;
 - role type matches the user's `role_type_targets`;
 - company is not quota-guarded in the user's local `company_list.user.json`;
-- ATS is in the stable auto-submit set, currently Greenhouse and Ashby.
+- ATS is in the stable auto-submit set, currently Greenhouse, Ashby, and Lever.
 
 Lever, Workday, SmartRecruiters, iCIMS, JobVite, and Handshake may be discovered/scored, but are not part of the stable batch auto-submit path unless a later skill version explicitly changes that.
 

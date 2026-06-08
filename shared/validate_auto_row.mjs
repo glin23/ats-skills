@@ -6,6 +6,7 @@ import { dbPath } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
+import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -43,7 +44,7 @@ function fail(reason, detail = {}) {
 
 if (!row) fail('row_not_found');
 if (row.status !== '🤖 AI sourced') fail('row_status_not_pending', { status: row.status });
-if (!['greenhouse', 'ashby'].includes(row.ats_platform)) fail('unsupported_ats_platform', { ats_platform: row.ats_platform });
+if (!SUPPORTED_AUTO_PLATFORMS.has(row.ats_platform)) fail('unsupported_ats_platform', { ats_platform: row.ats_platform });
 if (row.apply_quota_limit != null) fail('quota_guarded_row', { apply_quota_limit: row.apply_quota_limit });
 if ((row.fit_score ?? 0) < minFit) fail('fit_below_threshold', { fit_score: row.fit_score, min_fit: minFit });
 const storedRoleType = normalizeRoleType(row.role_type_match);

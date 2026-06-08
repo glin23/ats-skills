@@ -33,6 +33,10 @@ test('discoveryApplyBucket separates auto-supported from manual sources', () => 
     apply_url: 'https://company.example/careers?gh_jid=123',
     source: 'yc_waas',
   }), 'auto_supported');
+  assert.equal(discoveryApplyBucket({
+    apply_url: 'https://jobs.lever.co/acme/abc-123/apply',
+    source: 'lever_bulk',
+  }), 'auto_supported');
   assert.equal(platformFromUrl('https://company.example/careers?gh_jid=123'), 'greenhouse');
 });
 

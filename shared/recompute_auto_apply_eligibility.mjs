@@ -7,10 +7,11 @@ import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { eligibleReason } from './eligibility.mjs';
+import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
 const HOME = atsHome();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
-const SUPPORTED_AUTO = new Set(['greenhouse', 'ashby']);
+const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
 function readIntent() {
   try {

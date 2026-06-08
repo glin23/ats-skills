@@ -115,6 +115,7 @@ function runTee(args, outPath) {
 function driverFor(row) {
   if (row.ats_platform === 'greenhouse') return 'shared/greenhouse_apply_driver.mjs';
   if (row.ats_platform === 'ashby') return 'shared/ashby_apply_driver.mjs';
+  if (row.ats_platform === 'lever') return 'shared/lever_apply_driver.mjs';
   throw new Error(`unsupported platform: ${row.ats_platform}`);
 }
 
