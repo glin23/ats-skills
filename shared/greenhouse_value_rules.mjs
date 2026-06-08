@@ -49,3 +49,45 @@ export function hoursPerWeekAnswer({ searchIntent = {}, profile = {}, bank = {} 
   if (targets.includes('part_time')) return '20';
   return '40';
 }
+
+export function gpaValue(profile = {}) {
+  const raw = profile.education?.gpa ?? profile.standard_qa?.gpa ?? '';
+  const value = String(raw || '').trim();
+  return value;
+}
+
+export function gpaRangeCandidates(profile = {}) {
+  const value = gpaValue(profile);
+  const numeric = Number(value.match(/\d+(?:\.\d+)?/)?.[0] || NaN);
+  if (!Number.isFinite(numeric)) return [];
+  if (numeric >= 3.8) return ['3.8 - 4.0', '3.8-4.0'];
+  if (numeric >= 3.6) return ['3.6 - 3.7', '3.6-3.7'];
+  if (numeric >= 3.3) return ['3.3 - 3.5', '3.3-3.5'];
+  if (numeric >= 3.0) return ['3.0 - 3.2', '3.0-3.2'];
+  return ['Below 3.0', '< 3.0'];
+}
+
+export function bachelorProgressCandidates(profile = {}) {
+  const education = profile.education || {};
+  const degree = String(education.degree || '').toLowerCase();
+  const enrolled = education.currently_enrolled === true;
+  const bachelor = /bachelor|b\.?\s?[as]\.?|undergrad/.test(degree) || enrolled;
+  if (!bachelor) return [];
+  if (enrolled) {
+    return [
+      "Bachelor's Degree in Progress",
+      'Bachelor’s Degree in Progress',
+      'Bachelor Degree in Progress',
+      'Currently pursuing',
+      'In Progress',
+      'Yes',
+    ];
+  }
+  return [
+    "Bachelor's Degree Completed",
+    'Bachelor’s Degree Completed',
+    'Bachelor Degree Completed',
+    'Completed',
+    'Yes',
+  ];
+}

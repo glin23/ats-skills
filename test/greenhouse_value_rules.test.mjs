@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { monthYear, graduationSelectValues, hoursPerWeekAnswer } from '../shared/greenhouse_value_rules.mjs';
+import {
+  bachelorProgressCandidates,
+  gpaRangeCandidates,
+  gpaValue,
+  graduationSelectValues,
+  hoursPerWeekAnswer,
+  monthYear,
+} from '../shared/greenhouse_value_rules.mjs';
 
 test('monthYear parses MM/YYYY and YYYY-MM, falls back on junk', () => {
   assert.equal(monthYear('05/2027'), 'May 2027');
@@ -21,4 +28,22 @@ test('hoursPerWeekAnswer prefers explicit, else infers from role type', () => {
   assert.equal(hoursPerWeekAnswer({ bank: { fallback_text: { hours_per_week: '30' } } }), '30');
   assert.equal(hoursPerWeekAnswer({ searchIntent: { search_intent: { role_type_targets: ['part_time'] } } }), '20');
   assert.equal(hoursPerWeekAnswer({}), '40');
+});
+
+test('gpa helpers preserve exact GPA and map select ranges', () => {
+  assert.equal(gpaValue({ education: { gpa: '3.2' } }), '3.2');
+  assert.deepEqual(gpaRangeCandidates({ education: { gpa: '3.2' } }), ['3.0 - 3.2', '3.0-3.2']);
+  assert.deepEqual(gpaRangeCandidates({ education: { gpa: '3.65' } }), ['3.6 - 3.7', '3.6-3.7']);
+  assert.deepEqual(gpaRangeCandidates({ education: {} }), []);
+});
+
+test('bachelorProgressCandidates maps current undergrad status to ATS labels', () => {
+  assert.deepEqual(
+    bachelorProgressCandidates({ education: { degree: 'Bachelor of Science', currently_enrolled: true } }).slice(0, 2),
+    ["Bachelor's Degree in Progress", 'Bachelor’s Degree in Progress']
+  );
+  assert.deepEqual(
+    bachelorProgressCandidates({ education: { degree: 'Bachelor of Science', currently_enrolled: false } }).slice(0, 2),
+    ["Bachelor's Degree Completed", 'Bachelor’s Degree Completed']
+  );
 });

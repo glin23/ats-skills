@@ -31,7 +31,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
-import { graduationSelectValues as graduationSelectValueCandidates, hoursPerWeekAnswer as resolveHoursPerWeekAnswer, monthYear } from './greenhouse_value_rules.mjs';
+import {
+  bachelorProgressCandidates,
+  gpaValue,
+  graduationSelectValues as graduationSelectValueCandidates,
+  hoursPerWeekAnswer as resolveHoursPerWeekAnswer,
+  monthYear,
+} from './greenhouse_value_rules.mjs';
 
 const HOME = atsHome();
 const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
@@ -207,6 +213,14 @@ function preferredCandidateCity() {
     '';
 }
 
+function preferredCandidateLocationFull() {
+  const city = PROFILE.personal?.address_city || SEARCH_INTENT.user_summary?.school_location?.city || '';
+  const state = PROFILE.personal?.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
+  const country = PROFILE.personal?.address_country || SEARCH_INTENT.user_summary?.school_location?.country || 'United States';
+  return PROFILE.standard_qa?.current_location_for_ats ||
+    (city && state ? `${city}, ${state}, ${country}` : preferredCandidateCity());
+}
+
 function preferredCandidateCityFullMatchKeywords() {
   const configured = BANK.location_preferences?.city_full_match || [];
   const raw = [
@@ -306,6 +320,20 @@ function locationDecisionForLabel(labelText) {
 
 function currentResidenceAnswerForLabel(labelText) {
   const lt = String(labelText || '').toLowerCase();
+  const profileCountry = String(
+    PROFILE.personal?.address_country ||
+    PROFILE.personal?.address?.country ||
+    SEARCH_INTENT.user_summary?.school_location?.country ||
+    ''
+  ).toLowerCase();
+  if (/continental united states|united states|\bu\.?s\.?\b|\busa\b/.test(lt)) {
+    return {
+      ok: true,
+      value: /united states|\bus\b|usa/.test(profileCountry) ? 'Yes' : 'No',
+      mentioned: ['united states'],
+      note: 'current_country_from_profile',
+    };
+  }
   const currentRaw = [
     PROFILE.personal?.city,
     PROFILE.personal?.address_city,
@@ -338,8 +366,19 @@ function profileAddressValueForLabel(labelText) {
   const city = PROFILE.personal?.address_city || addr.city || PROFILE.personal?.city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const state = PROFILE.personal?.address_state || addr.state || SEARCH_INTENT.user_summary?.school_location?.state || '';
   const zip = PROFILE.personal?.address_zip || PROFILE.personal?.zip || addr.zip || addr.postal_code || '';
-  const line1 = PROFILE.personal?.address_line1 || addr.line1 || addr.street || addr.street1 || '';
+  const line1 = PROFILE.personal?.address_line1 || PROFILE.personal?.address_street || addr.line1 || addr.street || addr.street1 || '';
+  const country = PROFILE.personal?.address_country || addr.country || 'United States';
+  const cityStateZip = [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const fullAddress = [line1, cityStateZip, country].filter(Boolean).join(', ');
 
+  if (/current location|where are you located|where.*currently located|where.*located|where.*based/.test(lt)) {
+    return null;
+  }
+  if (/full.{0,20}address|primary mailing address|mailing address|permanent address/.test(lt)) {
+    return line1 && city && state && zip
+      ? { value: fullAddress, note: 'profile_full_address' }
+      : { needs_user_answer: true, note: 'profile_full_address_required' };
+  }
   if (/address line 1|street address|street line 1|\baddress\b/.test(lt)) {
     return line1
       ? { value: line1, note: 'profile_address_line1' }
@@ -474,11 +513,19 @@ function standardYesNoAnswerForLabel(labelText) {
     if (!hasEnglishFluency()) return { needs_user_answer: true, note: 'english_fluency_answer_required' };
     return { value: 'Yes', candidates: ['Yes', 'Fluent', 'C1', 'Advanced'], note: 'english_fluency_from_profile' };
   }
-  if (/have you applied to .* within the last|previously applied|applied.{0,40}(?:last|past).{0,20}(?:months|years)/.test(lt)) {
+  if (/have you applied to .* within the last|previously applied|applied.{0,40}(?:last|past).{0,20}(?:months|years)|applied or interviewed|previously interviewed|interviewed with .*company/.test(lt)) {
     const prior = hasPriorApplicationToCompany();
     return { value: prior ? 'Yes' : 'No', note: prior ? 'prior_application_found_in_db' : 'no_prior_application_in_db' };
   }
+  if (/background check|background screening/.test(lt)) {
+    return { value: 'Yes', note: 'background_check_willingness' };
+  }
   if (/able to work.{0,80}(?:office|location)|come into the office|in[- ]person|on[- ]site|onsite/.test(lt)) {
+    const loc = locationDecisionForLabel(labelText);
+    if (!loc.ok) return { needs_user_answer: true, note: 'location_not_in_profile_preferences', detail: loc };
+    return { value: 'Yes', note: 'work_location_commitment' };
+  }
+  if (/able to work.{0,80}(?:bay area|san francisco|new york|boston|seattle|austin|los angeles|u\.?s\.?|united states)/.test(lt)) {
     const loc = locationDecisionForLabel(labelText);
     if (!loc.ok) return { needs_user_answer: true, note: 'location_not_in_profile_preferences', detail: loc };
     return { value: 'Yes', note: 'work_location_commitment' };
@@ -515,6 +562,19 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/dishonorable/.test(lt) && /armed forces|military/.test(lt)) return { value: 'No', note: 'legal_disqualifier_default_no' };
   if (/renounced.*united states citizenship/.test(lt)) return { value: 'No', note: 'legal_disqualifier_default_no' };
   return null;
+}
+
+function sourceCheckboxDecision(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  const isSourceOption = /company website|employee|relative|family member|handshake|job board|agency|recruiter|linkedin|other/.test(lt);
+  if (!isSourceOption) return 'not_source';
+  if (/linkedin|other job board|job board|online/.test(lt)) return 'check';
+  return 'skip';
+}
+
+function isAckCheckboxLabel(labelText) {
+  return /acknowledge|confirm|privacy|policy|review|consent|agree|certify|certification|truthfully|data collection|process my data|candidate privacy/i
+    .test(String(labelText || ''));
 }
 
 function companyFromUrl(url) {
@@ -1271,8 +1331,20 @@ async function answerMissing(tab, labelText) {
     else if (/master'?s|masters|graduate degree/i.test(lt)) { value = 'No'; mode = 'sync'; }
     else if (/legally authorized|authorized to work|work authorization|work authorised/i.test(lt)) { value = BANK.yes_no_defaults?.work_authorization || 'Yes'; mode = 'sync'; }
     else if (/school|college|university/i.test(lt) && !/confirm|enrolled/i.test(lt)) { value = profileSchool; mode = 'async'; }
+    else if (/completed.*bachelor|bachelor.*(?:completed|progress|working towards)|currently working towards.*bachelor/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, bachelorProgressCandidates(PROFILE), { mode: 'sync' });
+    }
     else if (/degree/i.test(lt)) { value = degreeSelectValue(); mode = 'sync'; }
     else if (/discipline|major|field of study/i.test(lt)) { value = profileMajor; mode = 'sync'; }
+    else if (/current location|where are you located|where.*located|where.*based/i.test(lt)) {
+      value = preferredCandidateLocationFull();
+      if (!f.is_react_select && f.type !== 'select-one' && f.type !== 'select') {
+        const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
+        if (!value) return { ok: false, note: 'candidate_location_empty' };
+        cdp('typetext', tab, sel, value);
+        return { ok: true, mode: 'candidate_location_text_fill', value };
+      }
+    }
     else if (/country/i.test(lt)) { value = 'United States'; mode = 'sync'; }
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) {
       value = preferredCandidateCity();
@@ -1336,7 +1408,7 @@ async function answerMissing(tab, labelText) {
     else if (/linkedin/i.test(lt)) value = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin;
     else if (/project|portfolio|github|live url|website|shipped/i.test(lt)) value = profilePortfolio;
     else if (/legal name/i.test(lt)) value = `${PROFILE.personal.first_name} ${PROFILE.personal.last_name}`;
-    else if (/current location|where.*currently located|where.*based/i.test(lt)) value = preferredCandidateCity();
+    else if (/current location|where are you located|where.*currently located|where.*located|where.*based/i.test(lt)) value = preferredCandidateLocationFull();
     else if (/school|college|university/i.test(lt)) value = profileSchool;
     else if (/degree/i.test(lt)) value = profileDegree;
     else if (/discipline|major|field of study/i.test(lt)) value = profileMajor;
@@ -1347,9 +1419,9 @@ async function answerMissing(tab, labelText) {
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) value = preferredCandidateCity();
     else if (/currently\s+(?:reside|live)|do you currently reside|currently based|are you based/i.test(lt)) value = currentResidenceAnswerForLabel(labelText).value || 'No';
     else if (/salary|compensation/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || BANK.fallback_text?.compensation_expectations || 'Negotiable';
-    else if (/most recent employer|current employer|latest employer/i.test(lt)) value = latestExperience?.company || '';
-    else if (/most recent job title|current title|latest title/i.test(lt)) value = latestExperience?.title || '';
-    else if (/gpa/i.test(lt)) value = ''; // skip GPA — fill empty (may still fail validation)
+    else if (/most recent employer|current employer|latest employer|^company name$|^company$/i.test(lt)) value = latestExperience?.company || '';
+    else if (/most recent job title|current title|latest title|^title$|^job title$/i.test(lt)) value = latestExperience?.title || '';
+    else if (/gpa/i.test(lt)) value = gpaValue(PROFILE);
     else if (shouldQueueForMainClaude(labelText)) return { ok: false, note: 'essay_answer_required', pending_for_main_claude: true, question: labelText };
     else return { ok: false, note: 'no_value_rule_text:' + labelText.slice(0, 40) };
     if (!value) return { ok: false, note: 'value_empty_for:' + lt.slice(0, 30) };
@@ -1359,8 +1431,15 @@ async function answerMissing(tab, labelText) {
     return { ok: true, mode: 'text_fill', value };
   }
 
-  // Checkbox: acknowledge / privacy / confirm
-  if (f.type === 'checkbox' || /acknowledge|confirm|privacy|policy|review/i.test(lt)) {
+  // Checkbox: acknowledge / privacy / confirm, plus one safe source option.
+  const sourceCheckbox = sourceCheckboxDecision(labelText);
+  if (f.type === 'checkbox' && sourceCheckbox === 'skip') {
+    return { ok: false, note: 'source_checkbox_option_not_selected' };
+  }
+  if (f.type === 'checkbox' && sourceCheckbox !== 'check' && !isAckCheckboxLabel(labelText)) {
+    return { ok: false, note: 'checkbox_answer_required' };
+  }
+  if (f.type === 'checkbox' || isAckCheckboxLabel(labelText)) {
     const r = await evalInTab(tab, `
       (() => {
         // Find checkbox by label text — GH renders these as <input type=checkbox> with sibling label

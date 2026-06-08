@@ -83,6 +83,11 @@
       "tags": ["availability", "start_date"]
     },
     {
+      "match": "(employment history.{0,40}gap|gaps? in your employment|explain any gaps)",
+      "answer_template": "I am currently an undergraduate student, so my timeline is organized around academic semesters, internships, coursework, and project-based work rather than continuous full-time employment. Any gaps reflect school terms, independent projects, and student commitments rather than a break from professional interest or availability.",
+      "tags": ["employment_gap", "student_context"]
+    },
+    {
       "match": "(industry trend|trend.{0,15}excit|excit.{0,10}about|area.{0,5}you.{0,5}follow|emerging.{0,5}area|trend.{0,15}follow)",
       "answer_template": "One trend I am excited about is the shrinking distance between identifying a problem and testing a real solution. AI and automation make it easier for small teams and students to prototype, analyze, and iterate quickly. That makes judgment, communication, and customer understanding even more important, because speed only matters when you are working on the right problem.",
       "tags": ["industry_trend", "thesis"]

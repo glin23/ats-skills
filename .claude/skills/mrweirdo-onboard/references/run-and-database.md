@@ -114,7 +114,7 @@ node "$MRWEIRDO_REPO_ROOT/shared/prune_discovered_jobs.mjs" \
 - company is not quota-guarded in the user's local `company_list.user.json`;
 - ATS is in the stable auto-submit set, currently Greenhouse, Ashby, and Lever.
 
-Lever, Workday, SmartRecruiters, iCIMS, JobVite, and Handshake may be discovered/scored, but are not part of the stable batch auto-submit path unless a later skill version explicitly changes that.
+Workday, SmartRecruiters, iCIMS, JobVite, and Handshake may be discovered/scored, but are not part of the stable batch auto-submit path unless a later skill version explicitly changes that.
 
 ## Queue Visibility
 

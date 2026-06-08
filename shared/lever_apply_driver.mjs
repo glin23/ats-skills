@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
+import { bachelorProgressCandidates, gpaRangeCandidates, gpaValue } from './greenhouse_value_rules.mjs';
 
 const HOME = atsHome();
 const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
@@ -79,6 +80,37 @@ function profileLocation(profile = {}) {
   if (city && state) return `${city}, ${state}, ${country}`;
   if (city) return city;
   return '';
+}
+
+function profileFullAddress(profile = {}) {
+  const personal = profile.personal || {};
+  const addr = personal.address || {};
+  const line1 = personal.address_line1 || personal.address_street || addr.line1 || addr.street || addr.street1 || '';
+  const city = personal.address_city || addr.city || '';
+  const state = personal.address_state || addr.state || '';
+  const zip = personal.address_zip || personal.zip || addr.zip || addr.postal_code || '';
+  const country = personal.address_country || addr.country || 'United States';
+  if (!line1 || !city || !state || !zip) return '';
+  const cityStateZip = [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return [line1, cityStateZip, country].filter(Boolean).join(', ');
+}
+
+function stateValueCandidates(state) {
+  const value = String(state || '').trim();
+  const map = {
+    MA: 'Massachusetts',
+    NY: 'New York',
+    CA: 'California',
+    WA: 'Washington',
+    TX: 'Texas',
+    OH: 'Ohio',
+    FL: 'Florida',
+    IL: 'Illinois',
+    DC: 'District of Columbia',
+  };
+  if (!value) return [];
+  const upper = value.toUpperCase();
+  return [...new Set([value, upper, map[upper]].filter(Boolean))];
 }
 
 function graduation(profile = {}) {
@@ -162,17 +194,35 @@ function answerForField(field = {}) {
 
   if (/notice period|certification|initial|signature|certify|true and complete|privacy|consent|acknowledge/i.test(label)) return null;
   if (/currently (located|live|living|reside|residing|based) in|do you (currently )?(live|reside)/i.test(label)) return null;
-  if (/transportation|driver'?s license|permanent address|street address/i.test(label)) return null;
+  if (/transportation|driver'?s license/i.test(label)) return null;
+  if (/full.{0,20}address|permanent address|street, city, state, zip|mailing address/i.test(label)) {
+    return profileFullAddress(PROFILE) || null;
+  }
+  if (/street address|address line 1|street line 1/i.test(label)) {
+    return personal.address_street || personal.address_line1 || personal.address?.street || '';
+  }
 
   if (/how did you hear|source|referred/i.test(label)) return chooseOption(field, [standard.how_did_you_hear, 'LinkedIn', 'Online']) || 'LinkedIn';
   if (/linkedin/i.test(label)) return personal.linkedin || '';
   if (/portfolio|website|github|project/i.test(label)) return personal.portfolio || personal.github || '';
+  if (/high school/i.test(label)) return standard.high_school_location || '';
+  if (/\bgpa\b/i.test(label)) {
+    if (field.type === 'select' || field.type === 'react-select') {
+      return chooseOption(field, gpaRangeCandidates(PROFILE)) || '';
+    }
+    return gpaValue(PROFILE);
+  }
+  if (/completed.*bachelor|bachelor.*(?:completed|progress|working towards)|currently working towards.*bachelor/i.test(label)) {
+    return chooseOption(field, bachelorProgressCandidates(PROFILE)) || '';
+  }
+  if (/home state|state:/i.test(label)) {
+    return chooseOption(field, stateValueCandidates(personal.address_state || personal.address?.state)) || '';
+  }
   if (/location|where are you|city|reside/i.test(label) && location) return location;
   if (/school|university|college/i.test(label)) return education.school || '';
   if (/major|discipline|field of study/i.test(label)) return education.major || '';
   if (/minor/i.test(label)) return education.minor || 'N/A';
   if (/graduat|complete your program|month and year/i.test(label)) return graduation(PROFILE);
-  if (/\bgpa\b/i.test(label)) return education.gpa || '';
   if (/salary|compensation|pay expectation|hourly|rate/i.test(label)) {
     if (field.type === 'number') return salary || null;
     return PROFILE.work_authorization?.salary_expectation_usd || BANK.fallback_text?.compensation_expectations || salary || null;
@@ -188,7 +238,7 @@ function answerForField(field = {}) {
   if (/work style|remote|hybrid|on[- ]?site|onsite|in[- ]?person/i.test(label)) {
     return chooseOption(field, [standard.preferred_work_arrangement, 'Remote', 'Hybrid', 'On-site', 'Onsite']);
   }
-  if (/relative|previously employed|former employee|conflict/i.test(label)) return chooseOption(field, ['No']) || 'No';
+  if (/relative|previously employed|former employee|previously applied|previously interviewed|interviewed with.*hiring team|conflict/i.test(label)) return chooseOption(field, ['No']) || 'No';
   if (/18 years|over 18|at least 18/i.test(label)) return chooseOption(field, ['Yes']) || 'Yes';
   if (/gender/i.test(label)) return chooseOption(field, [demographics.gender, 'Prefer not', 'Decline']);
   if (/hispanic|latino/i.test(label)) return chooseOption(field, [demographics.hispanic_or_latino, 'Prefer not', 'Decline']);
