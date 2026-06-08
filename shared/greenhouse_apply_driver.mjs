@@ -1437,6 +1437,22 @@ async function answerMissing(tab, labelText) {
     return { ok: false, note: 'standard_yes_no_unhandled_field', detail: { ...standardYesNo, field: f } };
   }
 
+  const templatedAnswer = essayAnswerFor(labelText);
+  if (templatedAnswer && (f.type === 'text' || f.type === 'textarea' || f.is_react_select)) {
+    const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
+    cdp('typetext', tab, sel, templatedAnswer);
+    await evalInTab(tab, `
+      (() => {
+        const el = document.getElementById(${JSON.stringify(f.id)});
+        if (!el) return { ok:false };
+        el.dispatchEvent(new Event('input', { bubbles:true }));
+        el.dispatchEvent(new Event('change', { bubbles:true }));
+        return { ok:true, value: el.value || '' };
+      })()
+    `);
+    return { ok: true, mode: 'essay_template_direct_field_fill', answer_len: templatedAnswer.length };
+  }
+
   // Bank defaults
   const needsFutureSponsorship =
     PROFILE.work_authorization?.requires_sponsorship_future ??
