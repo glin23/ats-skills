@@ -45,7 +45,7 @@ Alpha success means:
 - a fresh install completes on macOS;
 - `/mrweirdo-jobskill` creates this user's local profile/search files;
 - each run performs fresh discovery and updates local history;
-- supported Greenhouse/Ashby rows can submit in a small batch after the user
+- supported Greenhouse/Ashby rows can submit after the user
   confirms the parsed profile/search intent;
 - if no rows are ready, the tool explains why and points to the next realtime
   discovery/review step.
@@ -182,9 +182,8 @@ Then in Claude Code or Codex:
 The skill will ask you for your resume PDF path and a short self-introduction,
 then three hard-boundary questions (work authorization, location flexibility,
 and legal/attestation policy). First-run timing depends on discovery volume
-and how many rows you allow it to submit; the public alpha default is 10
-auto-submit rows per run, usually tens of minutes rather than a 10-minute
-promise.
+and how many eligible rows are ready; by default it processes every currently
+eligible queued row unless you set `MRWEIRDO_MAX_AUTO_APPLY` to cap the run.
 
 ### Optional: Datasette audit UI
 
@@ -234,7 +233,7 @@ no default Notion database.
 
 | Command | Purpose | Mode |
 |---|---|---|
-| `/mrweirdo-jobskill` | Demo-friendly main entry. Resume → intent → discovery → score → guarded 10-row auto-apply. | v2 batch |
+| `/mrweirdo-jobskill` | Demo-friendly main entry. Resume → intent → discovery → score → guarded auto-apply. | v2 batch |
 | `/mrweirdo-onboard` | The main entry. Resume → intent → discovery → score → guarded auto-apply. Run once per cycle. | v2 batch |
 | `/mrweirdo-doctor` | Checks install, Skill links, user-state files, and Chrome CDP readiness. Never submits applications. | safety |
 | `/mrweirdo-cherry-pick` | Large-company opt-in flow. Lets you pick which 大公司 to invest quota slots in. **Preserves Submit gate.** | v1 manual-confirm |
@@ -267,11 +266,11 @@ Architecture:
 5. Up to 5 attempts; if errors don't change between rounds, emit `outcome: stuck_on_same_missing` and skip.
 6. On `outcome: essay_pending`, surface the questions to the main agent. The agent uses `~/.mrweirdo-jobs/essay_profile.json` plus job context to draft truthful, tailored answers; it asks the user only for missing batch-level facts or legal-sensitive answers.
 
-Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility; real apply batches should not be launched in Claude Code background mode. Public alpha onboarding caps auto-submit at 10 rows per run by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks for a bigger batch. The simplest guarded entrypoint is `shared/apply_supervisor.mjs`: run it with `--dry-run` to validate the queue without submitting, or with `--real` after the user explicitly asks to apply. It verifies or launches Chrome CDP, then delegates to `shared/apply_batch.mjs`, which performs preflight, queue validation, driver execution, evidence-bound DB recording, pacing, report generation, and a local batch lock so two apply batches cannot run concurrently against the same user data. If a requested batch is larger than the current eligible queue, `shared/queue_diagnostics.mjs` explains whether the gap is low fit score, unsupported ATS, quota, role boundary, or duplicate submissions. `shared/queue_review_report.mjs` generates a local HTML review page with ready-to-apply rows, one-point-below-threshold rows for human re-scoring, and unsupported ATS rows. `shared/rescore_review.mjs` exports the fit-one-below rows and can promote only user-selected IDs with `--promote ... --apply`. `shared/apply_readiness_plan.mjs` writes a readiness report for the current local history, so users can see how many rows are immediately submittable, how many need review, and how many new supported-ATS rows the next realtime discovery run should find. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
+Tabs are auto-closed on submit/skip. Background batches are deprecated in favor of foreground per-row execution for visibility; real apply batches should not be launched in Claude Code background mode. Public alpha onboarding processes all currently eligible queued rows by default; set `MRWEIRDO_MAX_AUTO_APPLY=50` only when the user deliberately asks to cap a run. The simplest guarded entrypoint is `shared/apply_supervisor.mjs`: run it with `--dry-run` to validate the queue without submitting, or with `--real` after the user explicitly asks to apply. It verifies or launches Chrome CDP, then delegates to `shared/apply_batch.mjs`, which performs preflight, queue validation, driver execution, evidence-bound DB recording, pacing, report generation, and a local batch lock so two apply batches cannot run concurrently against the same user data. If a requested cap is larger than the current eligible queue, `shared/queue_diagnostics.mjs` explains whether the gap is low fit score, unsupported ATS, quota, role boundary, or duplicate submissions. `shared/queue_review_report.mjs` generates a local HTML review page with ready-to-apply rows, one-point-below-threshold rows for human re-scoring, and unsupported ATS rows. `shared/rescore_review.mjs` exports the fit-one-below rows and can promote only user-selected IDs with `--promote ... --apply`. `shared/apply_readiness_plan.mjs` writes a readiness report for the current local history, so users can see how many rows are immediately submittable, how many need review, and how many new supported-ATS rows the next realtime discovery run should find. Essay templates and Yes/No defaults live in `shared/answer_bank.json` — edit that file to update answers without touching driver source.
 
 For the next realtime discovery run, `shared/discover_candidates.mjs --plan` shows the target-role-safe discovery keywords and sources without touching the network; `--run` performs fresh discovery for the current user, hard-filters the results, and writes `/tmp/mrweirdo-onboard/to_score.json` for the main agent's scoring pass.
 
-For a one-command local health snapshot, run `node shared/supervisor_status.mjs --max 3 --target 100`. It derives role targets from `~/.mrweirdo-jobs/search_intent.json` unless you explicitly pass `--role-targets`. It reports CDP state, whether a real apply batch is currently ready, latest application report, ready row count, current remaining target, and the next safe commands. If CDP is down, the first commands are the visible-terminal recovery commands to start Chrome CDP before applying.
+For a one-command local health snapshot, run `node shared/supervisor_status.mjs --target 100`. It derives role targets from `~/.mrweirdo-jobs/search_intent.json` unless you explicitly pass `--role-targets`. It reports CDP state, whether a real apply batch is currently ready, latest application report, ready row count, current remaining target, and the next safe commands. If CDP is down, the first commands are the visible-terminal recovery commands to start Chrome CDP before applying.
 
 ---
 

@@ -8,9 +8,10 @@ import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.m
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { eligibleReason } from './eligibility.mjs';
 import { KNOWN_UNSUPPORTED_PLATFORMS, SUPPORTED_AUTO_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const HOME = atsHome();
-const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
+const MAX_ROWS = resolveMaxRows();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
@@ -123,7 +124,7 @@ const manualOnlyCandidates = pendingRows.filter((row) => {
     && (row.fit_score ?? 0) >= MIN_FIT;
 });
 const summary = {
-  max_rows: MAX_ROWS,
+  max_rows: formatMaxRows(MAX_ROWS),
   min_fit: MIN_FIT,
   allowed_role_types: allowedRoleTypes,
   scanned: pendingRows.length,
@@ -155,7 +156,7 @@ const summary = {
     },
   },
 };
-summary.shortfall = Math.max(0, MAX_ROWS - summary.eligible);
+summary.shortfall = MAX_ROWS == null ? 0 : Math.max(0, MAX_ROWS - summary.eligible);
 summary.remaining_to_requested_batch = summary.shortfall;
 
 for (const row of annotated) {
@@ -178,7 +179,7 @@ for (const reason of Object.keys(summary.by_reason)) {
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(summary, null, 2));
 } else {
-  console.log(`queue diagnostics: eligible=${summary.eligible}, requested=${MAX_ROWS}, remaining=${summary.remaining_to_requested_batch}`);
+  console.log(`queue diagnostics: eligible=${summary.eligible}, requested=${formatMaxRows(MAX_ROWS)}, remaining=${summary.remaining_to_requested_batch}`);
   for (const [reason, count] of Object.entries(summary.by_reason).sort((a, b) => b[1] - a[1])) {
     console.log(`- ${reason}: ${count}`);
   }

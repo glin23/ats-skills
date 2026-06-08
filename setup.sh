@@ -168,7 +168,7 @@ Three steps to start:
   1. Drop your resume PDF and a short self-introduction.
   2. Answer 3 hard-boundary questions:
      work authorization, location, and legal/attestation policy.
-  3. Confirm the parsed profile/search intent, then run a small batch.
+  3. Confirm the parsed profile/search intent, then run the eligible queue.
      Supported Greenhouse / Ashby rows can auto-submit after that consent.
 
 Before the first run, start the dedicated Chrome launcher.

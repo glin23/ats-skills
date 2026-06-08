@@ -104,10 +104,10 @@
     "visa_must_sponsor": false,
 
     "batch_pace": "slow",
-    "_batch_pace_options": "fast | normal | slow | stealth — see mrweirdo-jobs SKILL.md for per-pace timing + public-alpha per-run cap. Default 'slow' for human-pacing (2-5 min jitter, 10/run public-alpha default).",
+    "_batch_pace_options": "fast | normal | slow | stealth — see mrweirdo-jobs SKILL.md for per-pace timing. Default 'slow' for human-pacing.",
 
     "max_auto_apply_per_run": 10,
-    "_max_auto_apply_per_run_notes": "Public-alpha default. Raise deliberately with MRWEIRDO_MAX_AUTO_APPLY only after the user asks for a larger batch."
+    "_max_auto_apply_per_run_notes": "Optional cap. Leave unset to process all currently eligible queued rows; set MRWEIRDO_MAX_AUTO_APPLY only when the user asks to limit a run."
   },
 
   "social_accounts_to_skip": [

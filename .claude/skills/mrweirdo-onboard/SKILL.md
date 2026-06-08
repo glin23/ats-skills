@@ -47,7 +47,9 @@ Do not use this skill for:
 - Auto-apply threshold: `fit_score >= 5`.
 - Stable batch auto-submit ATS: Greenhouse and Ashby.
 - Per-company quota guard stays on for the user's local `company_list.user.json`.
-- Public default batch size: `MRWEIRDO_MAX_AUTO_APPLY=10`.
+- Default batch size: all currently eligible queued rows.
+- Optional cap: set `MRWEIRDO_MAX_AUTO_APPLY=N` only when the user explicitly
+  wants to limit a run.
 - LinkedIn, Indeed, and Glassdoor are never automated.
 - Do not invent personal facts. Unknowns stay null or become blockers.
 
@@ -260,10 +262,13 @@ batch starts. Do not re-confirm every individual row after the batch begins.
 Run:
 
 ```bash
-MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
     --real \
-    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+    --max "$MRWEIRDO_MAX_AUTO_APPLY"
+else
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+fi
 ```
 
 The supervisor handles CDP, queue validation, dedupe, eligibility recompute,
@@ -300,12 +305,14 @@ needed, validate the profile, then requeue the affected rows:
 node "$MRWEIRDO_REPO_ROOT/shared/validate_user_profile.mjs"
 node "$MRWEIRDO_REPO_ROOT/shared/retry_gap_rows.mjs" \
   --apply \
-  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json \
-  --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
-MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
+if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
     --real \
-    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+    --max "$MRWEIRDO_MAX_AUTO_APPLY"
+else
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+fi
 ```
 
 Use the second batch as the conversion-rate check. If the gap report lists

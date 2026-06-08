@@ -6,10 +6,11 @@ import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { validateProfileBundle } from './validate_user_profile.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
-const maxRows = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 3));
+const maxRows = resolveMaxRows();
 const roleTargetsEnv = process.env.MRWEIRDO_ROLE_TYPE_TARGETS || '';
 
 function readJson(path, fallback = null) {
@@ -85,12 +86,12 @@ const resumePath = profile?.resume_path || join(home, 'resume.pdf');
 const coverLetterPath = profile?.cover_letter_path || join(home, 'cover_letter.pdf');
 
 const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary'], {
-  MRWEIRDO_MAX_AUTO_APPLY: String(maxRows),
+  MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),
   MRWEIRDO_ROLE_TYPE_TARGETS: allowedRoleTypes.join(','),
 });
 const queueRows = queueRun.stdout.trim().split(/\n+/).filter(Boolean).map((line) => JSON.parse(line));
 const diagnosticsRun = runNode(['shared/queue_diagnostics.mjs', '--json'], {
-  MRWEIRDO_MAX_AUTO_APPLY: String(maxRows),
+  MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),
   MRWEIRDO_ROLE_TYPE_TARGETS: allowedRoleTypes.join(','),
 });
 let queueDiagnostics = null;
@@ -179,7 +180,7 @@ if (!existsSync(coverLetterPath)) {
     detail: 'Rows with required cover-letter uploads will be skipped until profile.cover_letter_path or ~/.mrweirdo-jobs/cover_letter.pdf exists.',
   });
 }
-if (queueRows.length > 0 && queueRows.length < maxRows) {
+if (maxRows != null && queueRows.length > 0 && queueRows.length < maxRows) {
   warnings.push({
     name: 'ready_rows_below_requested_batch',
     detail: queueDiagnostics
@@ -192,12 +193,6 @@ if (queueRows.length > 0 && queueRows.length < maxRows) {
       : `Requested ${maxRows} rows, but only ${queueRows.length} currently pass the auto-apply queue gates. Run realtime discovery/scoring before expecting a larger batch.`,
   });
 }
-if (maxRows > 10) {
-  warnings.push({
-    name: 'large_batch_requested',
-    detail: 'Public alpha default is 10. Raise the cap only after a smaller verification run has clean results.',
-  });
-}
 if (allowedRoleTypes.includes('new_grad_FT')) {
   warnings.push({ name: 'new_grad_enabled', detail: 'Current run includes full-time/new-grad rows.' });
 }
@@ -207,7 +202,7 @@ const result = {
   generated_at: new Date().toISOString(),
   home,
   repoRoot,
-  maxRows,
+  maxRows: formatMaxRows(maxRows),
   allowedRoleTypes,
   checks,
   warnings,
@@ -221,6 +216,7 @@ if (process.argv.includes('--json')) {
   console.log(`# Mr. Weirdo Jobs Supervisor Preflight`);
   console.log(`ok: ${result.ok}`);
   console.log(`role targets: ${allowedRoleTypes.join(', ')}`);
+  console.log(`max rows: ${formatMaxRows(maxRows)}`);
   console.log(`queue rows: ${queueRows.length}`);
   for (const check of checks) {
     console.log(`- ${check.ok ? 'OK' : 'FAIL'} ${check.name}`);

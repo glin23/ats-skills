@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -100,7 +101,7 @@ function parseJson(stdout) {
 }
 
 const target = Math.max(1, Number(argValue('--target', process.env.MRWEIRDO_TARGET_APPLICATIONS || '100')));
-const max = Math.max(1, Number(argValue('--max', process.env.MRWEIRDO_MAX_AUTO_APPLY || '3')));
+const max = resolveMaxRows({ fallback: null });
 const roleTargets = resolveRoleTargets();
 const cdpPorts = ['9222', '9223'];
 const cdp = await Promise.all(cdpPorts.map(checkCdp));
@@ -110,11 +111,11 @@ const cdpRecoveryCommands = cdpReady
   ? []
   : [
       `ATS_CDP_PORT=${preferredRecoveryPort} bash shared/chrome-cdp-launcher.sh`,
-      `ATS_CDP_PORT=${preferredRecoveryPort} node shared/apply_supervisor.mjs --real --max ${max} --role-targets ${roleTargets}`,
+      `ATS_CDP_PORT=${preferredRecoveryPort} node shared/apply_supervisor.mjs --real${max == null ? '' : ` --max ${max}`} --role-targets ${roleTargets}`,
     ];
 
 const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary'], {
-  MRWEIRDO_MAX_AUTO_APPLY: String(max),
+  MRWEIRDO_MAX_AUTO_APPLY: max == null ? '0' : String(max),
   MRWEIRDO_ROLE_TYPE_TARGETS: roleTargets,
 });
 const queueRows = queueRun.stdout.split(/\r?\n/).filter((line) => line.trim().startsWith('{')).length;
@@ -133,15 +134,15 @@ const result = {
   ok: true,
   generated_at: new Date().toISOString(),
   role_targets: roleTargets.split(',').map((s) => s.trim()).filter(Boolean),
-  requested_real_batch_size: max,
+  requested_real_batch_size: formatMaxRows(max),
   target_applications: target,
   cdp,
-  ready_to_real_apply: cdpReady && queueRows >= max,
+  ready_to_real_apply: cdpReady && (max == null ? queueRows > 0 : queueRows >= max),
   cdp_recovery_commands: cdpRecoveryCommands,
   latest_report: latestReport(),
   status_counts: statusCounts(),
   queue: {
-    requested: max,
+    requested: formatMaxRows(max),
     ready_for_requested_batch: queueRows,
   },
   capacity: readiness,
@@ -149,8 +150,8 @@ const result = {
   discover_plan: discoverPlan,
   next_commands: [
     ...cdpRecoveryCommands,
-    `node shared/apply_supervisor.mjs --dry-run --max ${max} --role-targets ${roleTargets}`,
-    `node shared/apply_supervisor.mjs --real --max ${max} --role-targets ${roleTargets}`,
+    `node shared/apply_supervisor.mjs --dry-run${max == null ? '' : ` --max ${max}`} --role-targets ${roleTargets}`,
+    `node shared/apply_supervisor.mjs --real${max == null ? '' : ` --max ${max}`} --role-targets ${roleTargets}`,
     'node shared/rescore_review.mjs --output /tmp/mrweirdo-rescore-review-latest.html',
     'node shared/discover_candidates.mjs --run --source-window-size "${MRWEIRDO_SOURCE_WINDOW_SIZE:-1000}"',
   ],
@@ -164,7 +165,7 @@ if (hasArg('--json')) {
   console.log(`CDP: ${cdp.map((p) => `${p.port}=${p.ok ? 'ok' : 'down'}`).join(', ')}`);
   console.log(`ready to real apply: ${result.ready_to_real_apply ? 'yes' : 'no'}`);
   console.log(`latest report: ${result.latest_report?.path || '(none)'}`);
-  console.log(`ready for requested batch: ${queueRows}/${max}`);
+  console.log(`ready for requested batch: ${queueRows}/${formatMaxRows(max)}`);
   if (readiness) {
     const remaining = readiness.remaining_now ?? readiness.shortfall_now;
     console.log(`target ${target}: ready_now=${readiness.ready_now}, remaining=${remaining}`);

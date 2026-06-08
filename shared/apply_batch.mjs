@@ -13,6 +13,7 @@ import {
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
+import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -27,7 +28,7 @@ function hasArg(name) {
   return process.argv.includes(name);
 }
 
-const maxRows = Math.max(1, Number(argValue('--max') || process.env.MRWEIRDO_MAX_AUTO_APPLY || 3));
+const maxRows = resolveMaxRows();
 const roleTargets = argValue('--role-targets') || process.env.MRWEIRDO_ROLE_TYPE_TARGETS || '';
 const dryRun = hasArg('--dry-run');
 const paceMinMs = Math.max(0, Number(argValue('--pace-min-ms') || process.env.MRWEIRDO_APPLY_PACE_MIN_MS || 30000));
@@ -35,7 +36,7 @@ const paceMaxMs = Math.max(paceMinMs, Number(argValue('--pace-max-ms') || proces
 
 const env = {
   ...process.env,
-  MRWEIRDO_MAX_AUTO_APPLY: String(maxRows),
+  MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),
   ...(roleTargets ? { MRWEIRDO_ROLE_TYPE_TARGETS: roleTargets } : {}),
 };
 
@@ -127,7 +128,7 @@ function acquireBatchLock() {
   const payload = `${JSON.stringify({
     pid: process.pid,
     started_at: new Date().toISOString(),
-    max_rows: maxRows,
+    max_rows: formatMaxRows(maxRows),
     role_targets: roleTargets || '(from search_intent)',
   })}\n`;
 
@@ -178,7 +179,7 @@ mkdirSync(tmpDir, { recursive: true });
 
 console.error(`[apply-batch] repo=${repoRoot}`);
 console.error(`[apply-batch] home=${home}`);
-console.error(`[apply-batch] max=${maxRows} role_targets=${roleTargets || '(from search_intent)'} dry_run=${dryRun}`);
+console.error(`[apply-batch] max=${formatMaxRows(maxRows)} role_targets=${roleTargets || '(from search_intent)'} dry_run=${dryRun}`);
 
 if (!dryRun) {
   acquireBatchLock();
@@ -202,9 +203,9 @@ if (!dryRun) {
 const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary']);
 if (queueRun.stderr) process.stderr.write(queueRun.stderr);
 if (queueRun.code !== 0) fail('auto_apply_queue', queueRun);
-const rows = parseJsonLines(queueRun.stdout).slice(0, maxRows);
+const rows = limitRows(parseJsonLines(queueRun.stdout), maxRows);
 console.error(`[apply-batch] queue_rows=${rows.length}`);
-if (rows.length < maxRows) {
+if (maxRows != null && rows.length < maxRows) {
   const diag = runNode(['shared/queue_diagnostics.mjs', '--json']);
   if (diag.code === 0) {
     const parsed = parseLastJson(diag.stdout) || {};

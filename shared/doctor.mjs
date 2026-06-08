@@ -9,6 +9,7 @@ import { homedir, platform } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || resolve(__dirname, '..');
@@ -31,7 +32,7 @@ function optionValue(name, fallback) {
   return fallback;
 }
 
-const supervisorMax = optionValue('--max', process.env.MRWEIRDO_MAX_AUTO_APPLY || '3');
+const supervisorMax = resolveMaxRows({ fallback: null });
 const supervisorTarget = optionValue('--target', process.env.MRWEIRDO_TARGET_APPLICATIONS || '100');
 
 function readSearchIntent() {
@@ -174,18 +175,19 @@ function checkSupervisorStatus() {
     return;
   }
 
+  const statusArgs = [
+    scriptPath,
+    '--json',
+    '--target',
+    String(supervisorTarget),
+    '--role-targets',
+    String(supervisorRoleTargets),
+  ];
+  if (supervisorMax != null) statusArgs.push('--max', String(supervisorMax));
+
   const out = spawnSync(
     process.execPath,
-    [
-      scriptPath,
-      '--json',
-      '--max',
-      String(supervisorMax),
-      '--target',
-      String(supervisorTarget),
-      '--role-targets',
-      String(supervisorRoleTargets),
-    ],
+    statusArgs,
     {
       cwd: repoRoot,
       env: { ...process.env, MRWEIRDO_HOME: home },
@@ -222,13 +224,14 @@ function checkSupervisorStatus() {
   }
 
   const queueReady = Number(status.queue?.ready_for_requested_batch || 0);
-  const requested = Number(status.queue?.requested || supervisorMax);
-  if (queueReady >= requested) {
-    pass('Ready rows', `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`);
+  const requestedLabel = status.queue?.requested || formatMaxRows(supervisorMax);
+  const requestedNumber = requestedLabel === 'all' ? null : Number(requestedLabel);
+  if (requestedNumber == null ? queueReady > 0 : queueReady >= requestedNumber) {
+    pass('Ready rows', `${queueReady}/${requestedLabel} target-role rows ready for role targets: ${roleTargets}.`);
   } else {
     warn(
       'Ready rows',
-      `${queueReady}/${requested} target-role rows ready for role targets: ${roleTargets}.`,
+      `${queueReady}/${requestedLabel} target-role rows ready for role targets: ${roleTargets}.`,
       'Review fit-4 rows or run realtime supported-ATS discovery before scaling.'
     );
   }

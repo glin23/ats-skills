@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-jobskill
-description: Demo-friendly main entry for Mr. Weirdo Jobs. Trigger when the user types /mrweirdo-jobskill, /Mr-Weirdo-JobSkill, asks to run the Mr. Weirdo job skill, or wants the live end-to-end resume onboarding -> realtime job research -> scoring -> 10-row guarded auto-apply flow. This is an alias/wrapper over mrweirdo-onboard; do not use for single URL applications.
+description: Demo-friendly main entry for Mr. Weirdo Jobs. Trigger when the user types /mrweirdo-jobskill, /Mr-Weirdo-JobSkill, asks to run the Mr. Weirdo job skill, or wants the live end-to-end resume onboarding -> realtime job research -> scoring -> guarded auto-apply flow. This is an alias/wrapper over mrweirdo-onboard; do not use for single URL applications.
 ---
 
 # Mr. Weirdo JobSkill
@@ -27,7 +27,8 @@ Before any real application is submitted, I will show you the parsed profile
 and ask for one explicit confirmation.
 ```
 
-- Default target batch remains `MRWEIRDO_MAX_AUTO_APPLY=10`.
+- By default, process every currently eligible queued row. Use
+  `MRWEIRDO_MAX_AUTO_APPLY=N` only when the user explicitly wants a cap.
 - Stable unattended batch platforms are Greenhouse and Ashby. Lever remains a
   manual/single-URL helper until its batch upload path is proven reliable.
 - If the user is doing a public/live demo, run `npm run demo:check` first and

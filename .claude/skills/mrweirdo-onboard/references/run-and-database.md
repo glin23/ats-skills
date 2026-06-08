@@ -76,10 +76,13 @@ node "$MRWEIRDO_REPO_ROOT/shared/store_scored_jobs.mjs" \
 Run the guarded batch apply supervisor:
 
 ```bash
-MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
     --real \
-    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+    --max "$MRWEIRDO_MAX_AUTO_APPLY"
+else
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+fi
 ```
 
 The real batch writes a JSON summary and generates:
@@ -98,12 +101,14 @@ gap report and run a retry batch:
 node "$MRWEIRDO_REPO_ROOT/shared/validate_user_profile.mjs"
 node "$MRWEIRDO_REPO_ROOT/shared/retry_gap_rows.mjs" \
   --apply \
-  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json \
-  --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
-MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
+if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
     --real \
-    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+    --max "$MRWEIRDO_MAX_AUTO_APPLY"
+else
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+fi
 ```
 
 Do not ask the user to write open-text answers such as ISA/cover-letter style

@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -40,13 +41,13 @@ function resolveRoleTargets() {
 function printUsage() {
   console.error(`Usage:
   Dry-run validation:
-    node shared/apply_supervisor.mjs --dry-run --max 3 --role-targets intern,part_time
+    node shared/apply_supervisor.mjs --dry-run --role-targets intern,part_time
 
   Real foreground batch:
-    node shared/apply_supervisor.mjs --real --max 3 --role-targets intern,part_time
+    node shared/apply_supervisor.mjs --real --role-targets intern,part_time
 
 Options:
-  --max N                  Number of rows to process.
+  --max N                  Optional number of rows to process. Omit for all eligible rows.
   --role-targets LIST      Comma-separated: intern,part_time,new_grad_FT.
   --cdp-port PORT          Preferred Chrome CDP port. Defaults to ATS_CDP_PORT or 9222.
   --no-launch-cdp          Do not try to launch Chrome; only check the existing endpoint.
@@ -87,9 +88,10 @@ function remediationPort(preferredPort) {
 }
 
 function printCdpRecovery(port, maxRows, roleTargets) {
+  const maxArg = maxRows == null ? '' : ` --max ${maxRows}`;
   console.error('Start it from the visible Terminal/Cloud Code terminal, then rerun:');
   console.error(`  ATS_CDP_PORT=${port} bash shared/chrome-cdp-launcher.sh`);
-  console.error(`  ATS_CDP_PORT=${port} node shared/apply_supervisor.mjs --real --max ${maxRows} --role-targets ${roleTargets}`);
+  console.error(`  ATS_CDP_PORT=${port} node shared/apply_supervisor.mjs --real${maxArg} --role-targets ${roleTargets}`);
 }
 
 async function ensureCdp(preferredPort) {
@@ -101,7 +103,7 @@ async function ensureCdp(preferredPort) {
   if (hasArg('--no-launch-cdp')) {
     const port = remediationPort(preferredPort);
     console.error(`[apply-supervisor] CDP is not available on port ${preferredPort}`);
-    printCdpRecovery(port, argValue('--max') || '3', argValue('--role-targets') || 'intern,part_time');
+    printCdpRecovery(port, resolveMaxRows(), argValue('--role-targets') || 'intern,part_time');
     return null;
   }
 
@@ -111,13 +113,13 @@ async function ensureCdp(preferredPort) {
   if (fallbackPort !== preferredPort && await launchAndCheck(fallbackPort)) return fallbackPort;
 
   console.error('[apply-supervisor] Chrome CDP is still unavailable.');
-  printCdpRecovery(fallbackPort, argValue('--max') || '3', argValue('--role-targets') || 'intern,part_time');
+  printCdpRecovery(fallbackPort, resolveMaxRows(), argValue('--role-targets') || 'intern,part_time');
   return null;
 }
 
 const dryRun = hasArg('--dry-run');
 const realRun = hasArg('--real');
-const maxRows = argValue('--max') || process.env.MRWEIRDO_MAX_AUTO_APPLY || '3';
+const maxRows = resolveMaxRows();
 const roleTargets = resolveRoleTargets();
 const preferredPort = String(argValue('--cdp-port') || process.env.ATS_CDP_PORT || '9222');
 
@@ -148,17 +150,18 @@ if (realRun) {
   if (!cdpPort) process.exit(1);
 }
 
-const applyArgs = ['shared/apply_batch.mjs', '--max', String(maxRows), '--role-targets', roleTargets];
+const applyArgs = ['shared/apply_batch.mjs', '--role-targets', roleTargets];
+if (maxRows != null) applyArgs.push('--max', String(maxRows));
 if (dryRun) applyArgs.push('--dry-run');
 for (const name of ['--pace-min-ms', '--pace-max-ms']) {
   const value = argValue(name);
   if (value != null) applyArgs.push(name, value);
 }
 
-console.error(`[apply-supervisor] mode=${dryRun ? 'dry-run' : 'real'} max=${maxRows} role_targets=${roleTargets}`);
+console.error(`[apply-supervisor] mode=${dryRun ? 'dry-run' : 'real'} max=${formatMaxRows(maxRows)} role_targets=${roleTargets}`);
 const apply = run(process.execPath, applyArgs, {
   ATS_CDP_PORT: cdpPort,
-  MRWEIRDO_MAX_AUTO_APPLY: String(maxRows),
+  MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),
   MRWEIRDO_ROLE_TYPE_TARGETS: roleTargets,
 });
 

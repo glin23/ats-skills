@@ -8,11 +8,13 @@ import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { passesQueueFilters, duplicateKey } from './eligibility.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
+import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const HOME = atsHome();
-const MAX_ROWS = Math.max(1, Number(process.env.MRWEIRDO_MAX_AUTO_APPLY || 10));
+const MAX_ROWS = resolveMaxRows();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
+const CANDIDATE_LIMIT = MAX_ROWS == null ? -1 : MAX_ROWS * 20;
 
 function readIntent() {
   try {
@@ -55,7 +57,7 @@ const candidates = db.prepare(`
    WHERE rn = 1
    ORDER BY fit_score DESC, updated_at DESC
    LIMIT ?
-`).all(MIN_FIT, ...SUPPORTED_AUTO, MAX_ROWS * 20);
+`).all(MIN_FIT, ...SUPPORTED_AUTO, CANDIDATE_LIMIT);
 
 const submittedKeys = new Set(
   db.prepare(`
@@ -72,11 +74,11 @@ for (const row of candidates) {
   if (!passesQueueFilters(row, { roleTypes, submittedKeys, seenKeys: queuedKeys })) continue;
   rows.push(row);
   queuedKeys.add(duplicateKey(row));
-  if (rows.length >= MAX_ROWS) break;
+  if (MAX_ROWS != null && rows.length >= MAX_ROWS) break;
 }
 
 if (process.argv.includes('--summary')) {
-  console.error(JSON.stringify({ max_rows: MAX_ROWS, min_fit: MIN_FIT, role_type_targets: roleTypes, rows: rows.length }));
+  console.error(JSON.stringify({ max_rows: formatMaxRows(MAX_ROWS), min_fit: MIN_FIT, role_type_targets: roleTypes, rows: rows.length }));
 }
 
 for (const row of rows) {

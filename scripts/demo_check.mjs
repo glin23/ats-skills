@@ -121,7 +121,7 @@ if (existsSync(profilePath)) {
 
 let preflight = null;
 if (existsSync(profilePath) && existsSync(intentPath) && existsSync(dbPath)) {
-  const maxRows = String(Math.max(expectReady || 10, 1));
+  const maxRows = expectReady > 0 ? String(expectReady) : '0';
   const r = run(process.execPath, ['shared/supervisor_preflight.mjs', '--json'], {
     env: { MRWEIRDO_MAX_AUTO_APPLY: maxRows },
   });
@@ -165,7 +165,7 @@ if (json) {
     console.log(`ready rows: ${facts.ready_rows}${facts.eligible_rows != null ? ` / eligible ${facts.eligible_rows}` : ''}`);
   }
   console.log('');
-  console.log('Live demo flow: type /mrweirdo-jobskill, upload resume, add a short self-introduction, confirm the parsed profile, then run the 10-row batch.');
+  console.log('Live demo flow: type /mrweirdo-jobskill, upload resume, add a short self-introduction, confirm the parsed profile, then run the eligible batch.');
 }
 
 process.exit(result.ok ? 0 : 1);

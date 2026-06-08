@@ -49,7 +49,7 @@ The v2 tool includes several safety nets, none of which eliminates the risks abo
 
 - **Resume-verbatim filling.** The tool fills fields directly from your resume without inventing answers. If a field isn't on your resume, the tool leaves it blank or skips the application.
 - **Hard fit-score threshold.** Only listings with `fit_score >= 5` by default (configurable) are auto-applied.
-- **Public-alpha per-run cap.** `/mrweirdo-onboard` processes at most 10 auto-submit rows per run by default. A technical user can deliberately raise this with `MRWEIRDO_MAX_AUTO_APPLY`, but the default public path is small-batch first.
+- **Foreground batch execution.** `/mrweirdo-jobskill` processes the currently eligible queue in the foreground, with visible row-by-row progress and a local batch lock. A technical user can deliberately cap a run with `MRWEIRDO_MAX_AUTO_APPLY=N`.
 - **Large-company quota guard.** ~25 large companies (Google, Meta, Microsoft, Stripe, Anthropic, OpenAI, FAANG, top banks, etc.) are deliberately skipped from auto-apply because each has a hard submission cap per cycle. To apply to one of these, you run `/mrweirdo-cherry-pick` manually; that skill **preserves** the v1 Submit gate for large companies.
 - **CAPTCHA detection.** If a form shows a CAPTCHA / "verify you are human" widget, the tool skips that application rather than attempting to bypass.
 - **Per-application screenshots.** Pre-submit and post-submit screenshots are saved to `~/.mrweirdo-jobs/log/screenshots/` for forensic audit. You can review what was submitted on your behalf after the fact.
@@ -62,7 +62,7 @@ The v2 tool will **not** do these. This is non-negotiable and is enforced in the
 - **No automation on LinkedIn.** LinkedIn Easy Apply, LinkedIn job search scraping, LinkedIn messaging — none of it. Use LinkedIn manually.
 - **No automation on Indeed or Glassdoor.** Same reason as LinkedIn.
 - **No CAPTCHA solving.** The tool detects CAPTCHAs and stops; it does not try to defeat them.
-- **No mass-submission rate.** Default pacing is 30–90 seconds between submissions, and public-alpha onboarding defaults to a small per-run batch. This is also enforced in the Skill instructions.
+- **No high-speed submission loop.** Default pacing is 30–90 seconds between submissions. This is also enforced in the Skill instructions.
 - **No financial actions on your behalf.** The tool only submits free job applications. It does not pay fees, accept terms involving money, or sign agreements outside the scope of a normal application form.
 
 ## Your responsibilities as the user
