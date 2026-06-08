@@ -132,7 +132,7 @@ function classifyField(field, outcome = {}) {
   if (/captcha/.test(note) || /captcha/.test(lower)) return 'manual_captcha';
   if (/record|interview.*record|privacy|consent|data|gdpr|arbitration|certification|true and complete/.test(lower)) return 'agent_attestation';
   if (/confirm.{0,80}(information|application|resume).{0,80}(true|correct|accurate)|false statements|material omissions|acknowledge.{0,80}(true|correct|accurate)/.test(lower)) return 'agent_attestation';
-  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|currently live|currently reside|current location|where are you located|where.*located|where.*based|unlimited and unrestricted authorization|legally authorized|authorized to work|require.{0,40}sponsor|sponsor.{0,40}immigration|maintain that authorization|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|gender|race|ethnic|hispanic|latino|veteran|disability|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
+  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|do you live in|do you reside in|currently live|currently reside|current location|where are you located|where.*located|where.*based|unlimited and unrestricted authorization|legally authorized|authorized to work|require.{0,40}sponsor|sponsor.{0,40}immigration|maintain that authorization|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|gender|race|ethnic|hispanic|latino|veteran|disability|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
   if (/did you .*complete.*form|successfully complete.*form|complete the form below/.test(lower)) {
     if (externalForms.manual_external_forms === false || externalForms.auto_only === true) return 'system_external_form_auto_required';
     return 'user_external_form_completion';
@@ -168,7 +168,7 @@ function classifyField(field, outcome = {}) {
   }
   if (/gpa/.test(lower)) return PROFILE.education?.gpa ? 'agent_profile_backed' : 'user_gpa';
   if (/specific_city_fact_unconfirmed|transportation|driver'?s license/.test(note) || /reliable transportation|driver'?s license/.test(lower)) return 'user_logistics_fact';
-  if (/work environment|previously employed/.test(lower)) return 'agent_profile_backed';
+  if (/work environment|previously employed|previously worked at|ever worked at/.test(lower)) return 'agent_profile_backed';
   if (source === 'agent_pending'
       || /essay_answer_required/.test(note)
       || /why|explain|describe|tell us|share|interested|experience|gap|cover letter|writing sample/.test(lower)) return 'agent_open_text';

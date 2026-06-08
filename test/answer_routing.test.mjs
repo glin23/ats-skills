@@ -10,6 +10,7 @@ import {
   confirmedCitiesFrom,
   mentionsConfirmedCity,
   deriveWorkAuthAnswers,
+  currentResidenceYesNoAnswer,
 } from '../shared/answer_routing.mjs';
 
 test('isOpenEndedResidenceQuestion: answerable-from-profile prompts vs guarded named-city', () => {
@@ -85,4 +86,30 @@ test('deriveWorkAuthAnswers: F-1 OPT answers Yes/Yes (never a false no-sponsorsh
   );
   assert.equal(noSpon.sponsorAns, 'No');
   assert.equal(noSpon.authorizedAns, 'Yes');
+});
+
+test('currentResidenceYesNoAnswer uses profile address for named residence facts', () => {
+  const profile = {
+    personal: {
+      address_city: 'Waltham',
+      address_state: 'MA',
+      address_country: 'United States',
+    },
+  };
+  assert.deepEqual(
+    currentResidenceYesNoAnswer('Do you live in the West End Neighborhood?', profile),
+    { value: 'No', note: 'current_residence_not_matching_profile' },
+  );
+  assert.deepEqual(
+    currentResidenceYesNoAnswer('Do you live in Massachusetts?', profile),
+    { value: 'Yes', note: 'current_residence_from_profile' },
+  );
+  assert.deepEqual(
+    currentResidenceYesNoAnswer('Do you live in the West End Neighborhood? Tell us more if yes.', profile),
+    { value: 'No', note: 'current_residence_not_matching_profile' },
+  );
+  assert.equal(
+    currentResidenceYesNoAnswer('Are you open to relocation for this role?', profile),
+    null,
+  );
 });

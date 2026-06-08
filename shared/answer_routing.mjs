@@ -61,6 +61,111 @@ export function mentionsConfirmedCity(label = '', confirmedCities = []) {
   return confirmedCities.some((c) => c && ml.includes(c));
 }
 
+const STATE_NAMES = {
+  AL: 'alabama',
+  AK: 'alaska',
+  AZ: 'arizona',
+  AR: 'arkansas',
+  CA: 'california',
+  CO: 'colorado',
+  CT: 'connecticut',
+  DC: 'district of columbia',
+  DE: 'delaware',
+  FL: 'florida',
+  GA: 'georgia',
+  HI: 'hawaii',
+  IA: 'iowa',
+  ID: 'idaho',
+  IL: 'illinois',
+  IN: 'indiana',
+  KS: 'kansas',
+  KY: 'kentucky',
+  LA: 'louisiana',
+  MA: 'massachusetts',
+  MD: 'maryland',
+  ME: 'maine',
+  MI: 'michigan',
+  MN: 'minnesota',
+  MO: 'missouri',
+  MS: 'mississippi',
+  MT: 'montana',
+  NC: 'north carolina',
+  ND: 'north dakota',
+  NE: 'nebraska',
+  NH: 'new hampshire',
+  NJ: 'new jersey',
+  NM: 'new mexico',
+  NV: 'nevada',
+  NY: 'new york',
+  OH: 'ohio',
+  OK: 'oklahoma',
+  OR: 'oregon',
+  PA: 'pennsylvania',
+  RI: 'rhode island',
+  SC: 'south carolina',
+  SD: 'south dakota',
+  TN: 'tennessee',
+  TX: 'texas',
+  UT: 'utah',
+  VA: 'virginia',
+  VT: 'vermont',
+  WA: 'washington',
+  WI: 'wisconsin',
+  WV: 'west virginia',
+  WY: 'wyoming',
+};
+
+function wordIncludes(haystack, needle) {
+  const clean = String(needle || '').trim().toLowerCase();
+  if (!clean) return false;
+  return new RegExp(`\\b${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(String(haystack || ''));
+}
+
+export function currentResidenceYesNoAnswer(label = '', profile = {}) {
+  const text = String(label || '');
+  const lt = text.toLowerCase();
+  if (!/\b(?:do you|are you|currently|already)\b.{0,90}\b(?:live|living|reside|residing|located|based)\b.{0,90}\b(?:in|near|within|around)\b/i.test(text)) {
+    return null;
+  }
+  if (/\b(?:willing|open to|relocat|able to work|can work|commute|transportation|travel)\b/i.test(text)) {
+    return null;
+  }
+
+  const personal = profile?.personal || {};
+  const addr = personal.address || {};
+  const rawCity = personal.address_city || addr.city || personal.city || '';
+  const city = String(rawCity || '').split(',')[0].trim();
+  const stateRaw = String(personal.address_state || addr.state || '').trim();
+  const stateUpper = stateRaw.toUpperCase();
+  const stateName = STATE_NAMES[stateUpper] || stateRaw.toLowerCase();
+  const country = String(personal.address_country || addr.country || '').toLowerCase();
+  const livesInUnitedStates = /united states|usa|\bu\.?s\.?\b/.test(country);
+
+  if (!city && !stateRaw && !country) {
+    return { needs_user_answer: true, note: 'current_residence_required' };
+  }
+
+  const yesTokens = [
+    city,
+    stateName,
+    stateUpper.length === 2 ? stateUpper : '',
+    country,
+    livesInUnitedStates ? 'united states' : '',
+    livesInUnitedStates ? 'usa' : '',
+  ].filter(Boolean);
+
+  if ((livesInUnitedStates && /\b(?:US|U\.S\.|USA)\b/.test(text)) ||
+      yesTokens.some((token) => wordIncludes(lt, token))) {
+    return { value: 'Yes', note: 'current_residence_from_profile' };
+  }
+
+  const placeMatch = text.match(/\b(?:live|living|reside|residing|located|based)\b.{0,30}\b(?:in|near|within|around)\s+(?:the\s+)?(.+?)\??$/i);
+  const askedPlace = String(placeMatch?.[1] || '').trim().replace(/[.?!]+$/, '');
+  if (!askedPlace || /^(area|office|location|role|position|job)$/i.test(askedPlace)) return null;
+
+  return { value: 'No', note: 'current_residence_not_matching_profile' };
+}
+
 // --- Work authorization answers ---------------------------------------------
 // F-1 honesty: an OPT user is authorized NOW (Yes) and "Yes" to future
 // sponsorship — never the false "I will not require sponsorship". Profile

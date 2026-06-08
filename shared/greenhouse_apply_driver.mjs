@@ -31,6 +31,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
+import { currentResidenceYesNoAnswer } from './answer_routing.mjs';
 import {
   availabilityCommitmentAnswer,
   bachelorProgressCandidates,
@@ -606,7 +607,9 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/authorize.{0,80}(?:use|process|share).{0,80}(?:information|personal details|personal data).{0,120}(?:evaluate|confirm|eligibility|suitability|qualifications)/.test(lt)) {
     return { value: 'Yes', candidates: ['Yes', 'I agree', 'Agree', 'I authorize'], note: 'application_data_use_authorization' };
   }
-  if (/have you ever been employed by|previously (?:been )?employed by|worked for .* or any affiliated company/.test(lt)) {
+  const residence = currentResidenceYesNoAnswer(labelText, PROFILE);
+  if (residence) return residence;
+  if (/have you ever been employed by|previously (?:been )?employed by|previously worked at|ever worked at|worked at .* or any affiliated company|worked for .* or any affiliated company/.test(lt)) {
     return { value: hasWorkedForCompany() ? 'Yes' : 'No', note: hasWorkedForCompany() ? 'prior_employment_from_profile' : 'no_prior_employment_in_profile' };
   }
   if (/dealer|partner|supplier|pebl|affiliate partners?|clients?|supported employee|engagement type/.test(lt)) {
