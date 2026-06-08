@@ -13,9 +13,57 @@ export function duplicateKey(row = {}) {
   return `${normalizeCompany(row.company)}::${normalizeTitle(row.title)}`;
 }
 
+function compact(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function currentYear(now = new Date()) {
+  const y = now instanceof Date ? now.getUTCFullYear() : Number(now);
+  return Number.isFinite(y) ? y : new Date().getUTCFullYear();
+}
+
+function isStudentRoleTitle(title = '') {
+  return /\b(intern|internship|co[-\s]?op|working student|student assistant|summer|fall|spring)\b/i.test(String(title || ''));
+}
+
+function expiredStudentRoleYear(title = '', now = new Date()) {
+  if (!isStudentRoleTitle(title)) return null;
+  const year = currentYear(now);
+  const years = [...String(title || '').matchAll(/\b20\d{2}\b/g)]
+    .map((m) => Number(m[0]))
+    .filter((n) => Number.isFinite(n));
+  const expired = years.filter((n) => n < year).sort((a, b) => a - b)[0];
+  return expired || null;
+}
+
+// Rows like Greenhouse's "examplecorpsandbox" are live-submit test tenants.
+// They can look valid to the ATS driver, so keep this guard near eligibility.
+export function unusableAutoApplyReason(row = {}, { now = new Date() } = {}) {
+  const companyCompact = compact(row.company);
+  const urlCompact = compact(row.apply_url || row.url);
+  const joinedCompact = `${companyCompact} ${urlCompact}`;
+  const joinedText = `${row.company || ''} ${row.title || ''} ${row.apply_url || row.url || ''}`.toLowerCase();
+
+  if (/(examplecorp|examplecompany|samplecompany|democompany|testcompany)/.test(joinedCompact)) {
+    return 'test_or_sandbox_posting';
+  }
+  if (/(example.*sandbox|sandbox.*example|test.*sandbox|sandbox.*test)/.test(joinedCompact)) {
+    return 'test_or_sandbox_posting';
+  }
+  if (/\b(example|sample|demo|test)\s+(job|posting|requisition|application)\b/i.test(joinedText)) {
+    return 'test_or_sandbox_posting';
+  }
+
+  const expiredYear = expiredStudentRoleYear(row.title, now);
+  if (expiredYear) return 'expired_title_year';
+
+  return null;
+}
+
 // Returns one of:
 //   'not_pending' | 'quota_guarded'
 //   | 'duplicate_same_company_title_already_submitted'
+//   | 'test_or_sandbox_posting' | 'expired_title_year'
 //   | 'role_type_not_allowed' | 'fit_below_threshold'
 //   | 'unsupported_ats_platform' | 'eligible'
 // Order matters — the first failing guard wins (matches the original).
@@ -25,9 +73,12 @@ export function eligibleReason(row = {}, {
   submittedKeys = new Set(),
   minFit = 5,
   supportedAuto = DEFAULT_SUPPORTED_AUTO,
+  now = new Date(),
 } = {}) {
   if (row.status !== '🤖 AI sourced') return 'not_pending';
   if (row.apply_quota_limit != null) return 'quota_guarded';
+  const unusableReason = unusableAutoApplyReason(row, { now });
+  if (unusableReason) return unusableReason;
   if (submittedKeys.has(duplicateKey(row))) return 'duplicate_same_company_title_already_submitted';
   if (!allowedRoleTypes.includes(roleType)) return 'role_type_not_allowed';
   if ((row.fit_score ?? 0) < minFit) return 'fit_below_threshold';
@@ -48,8 +99,10 @@ export function passesQueueFilters(row = {}, {
   roleTypes = [],
   submittedKeys = new Set(),
   seenKeys = new Set(),
+  now = new Date(),
 } = {}) {
   const key = duplicateKey(row);
+  if (unusableAutoApplyReason(row, { now })) return false;
   if (submittedKeys.has(key)) return false;
   if (seenKeys.has(key)) return false;
   if (!roleTypes.includes(deriveRoleTypeFromJob(row))) return false;

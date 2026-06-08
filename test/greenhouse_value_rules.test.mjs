@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  availabilityCommitmentAnswer,
   bachelorProgressCandidates,
   gpaRangeCandidates,
   gpaValue,
@@ -28,6 +29,47 @@ test('hoursPerWeekAnswer prefers explicit, else infers from role type', () => {
   assert.equal(hoursPerWeekAnswer({ bank: { fallback_text: { hours_per_week: '30' } } }), '30');
   assert.equal(hoursPerWeekAnswer({ searchIntent: { search_intent: { role_type_targets: ['part_time'] } } }), '20');
   assert.equal(hoursPerWeekAnswer({}), '40');
+});
+
+test('availabilityCommitmentAnswer confirms concrete time windows from profile', () => {
+  const answer = availabilityCommitmentAnswer(
+    'Are you available during the hours of 2-6 PM Eastern Time from June 2026 for a period of 5-6 months?',
+    {
+      profile: {
+        standard_qa: {
+          earliest_start_date: '2026-06-08',
+          hours_per_week: '25-40',
+          available_until: '2027-01',
+        },
+      },
+    }
+  );
+  assert.equal(answer.value, 'Yes');
+  assert.equal(answer.note, 'profile_availability_commitment');
+});
+
+test('availabilityCommitmentAnswer asks when the profile cannot cover the window', () => {
+  const answer = availabilityCommitmentAnswer(
+    'Are you available during the hours of 2-6 PM Eastern Time from June 2026 for a period of 5-6 months?',
+    {
+      profile: {
+        standard_qa: {
+          earliest_start_date: '2026-07-01',
+          hours_per_week: '10',
+          available_until: '2026-09',
+        },
+      },
+    }
+  );
+  assert.equal(answer.needs_user_answer, true);
+});
+
+test('availabilityCommitmentAnswer asks when concrete availability facts are missing', () => {
+  const answer = availabilityCommitmentAnswer(
+    'Are you available during the hours of 2-6 PM Eastern Time from June 2026 for a period of 5-6 months?',
+    { profile: { standard_qa: {} } }
+  );
+  assert.equal(answer.needs_user_answer, true);
 });
 
 test('gpa helpers preserve exact GPA and map select ranges', () => {

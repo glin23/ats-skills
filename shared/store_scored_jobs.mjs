@@ -6,6 +6,7 @@ import { initDb, upsertJob } from './local_db.mjs';
 import { classifyRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { SUPPORTED_AUTO_PLATFORMS, platformFromUrl } from './sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
+import { unusableAutoApplyReason } from './eligibility.mjs';
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -127,10 +128,12 @@ for (const job of candidates) {
   const recommended = score.recommended === true;
   const roleOk = wantedRoleTypes.has(storedRoleType) && wantedRoleTypes.has(recheckedRoleType);
   const platformOk = supportedAuto.has(platform);
-  const eligible = passThreshold && recommended && roleOk && !capped && platformOk;
+  const unusableReason = unusableAutoApplyReason({ ...job, apply_url: applyUrl });
+  const eligible = passThreshold && recommended && roleOk && !capped && platformOk && !unusableReason;
 
   let reason = 'eligible';
-  if (!passThreshold) reason = 'fit_below_threshold';
+  if (unusableReason) reason = unusableReason;
+  else if (!passThreshold) reason = 'fit_below_threshold';
   else if (!recommended) reason = 'not_recommended';
   else if (!roleOk) reason = 'role_type_not_allowed';
   else if (capped) reason = 'quota_guarded';

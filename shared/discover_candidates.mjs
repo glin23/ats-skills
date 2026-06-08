@@ -6,6 +6,7 @@ import { discoveryApplyBucket, isAutoSupportedCandidate } from './sourcing/apply
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { passesAllowedRoleType, roleTypesFromSearchIntent, roleTypeConflict } from './role_types.mjs';
 import { atsHome } from './paths.mjs';
+import { unusableAutoApplyReason } from './eligibility.mjs';
 
 const HOME = atsHome();
 const TMP_DIR = '/tmp/mrweirdo-onboard';
@@ -318,8 +319,10 @@ function filterWithReasons(jobs, intent, roleTypes, intentDoc = {}) {
     if (!hasUsableApplyUrl(job)) {
       reason = 'unusable_apply_url';
     } else {
+      const unusableReason = unusableAutoApplyReason(job);
       const excludedKeyword = excludeKeywordMatch(job.title, excludes);
-      if (excludedKeyword) reason = `excluded_title_keyword:${excludedKeyword}`;
+      if (unusableReason) reason = unusableReason;
+      else if (excludedKeyword) reason = `excluded_title_keyword:${excludedKeyword}`;
       else if (!passesLocation(job.location, intent)) reason = 'location_mismatch';
       else if (!passesAllowedRoleType(job, roleTypes)) reason = 'role_type_not_allowed';
     }

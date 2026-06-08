@@ -43,6 +43,34 @@ test('drops a row whose derived role type is not in the targets (full-time leak)
   }), false);
 });
 
+test('drops a sandbox/example row even when it otherwise looks eligible', () => {
+  assert.equal(passesQueueFilters({
+    company: 'examplecorpsandbox',
+    title: 'Cloud Software Development Co-op Intern - Summer/Fall 2026',
+    apply_url: 'https://job-boards.greenhouse.io/examplecorpsandbox/jobs/7232268',
+    role_type_match: 'intern',
+  }, {
+    roleTypes: ['intern', 'part_time'],
+    submittedKeys: new Set(),
+    seenKeys: new Set(),
+    now: new Date('2026-06-08T00:00:00Z'),
+  }), false);
+});
+
+test('drops an expired student job before it enters the real apply queue', () => {
+  assert.equal(passesQueueFilters({
+    company: 'Acme',
+    title: 'Cloud Software Development Co-op Intern - Summer/Fall 2021',
+    apply_url: 'https://job-boards.greenhouse.io/acme/jobs/7232268',
+    role_type_match: 'intern',
+  }, {
+    roleTypes: ['intern', 'part_time'],
+    submittedKeys: new Set(),
+    seenKeys: new Set(),
+    now: new Date('2026-06-08T00:00:00Z'),
+  }), false);
+});
+
 test('submitted-key check is normalized (case/whitespace insensitive)', () => {
   const submittedKeys = new Set([duplicateKey({ company: 'ACORNS', title: 'product management intern' })]);
   assert.equal(passesQueueFilters(internRow, {

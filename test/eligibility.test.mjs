@@ -2,7 +2,7 @@
 // decision layer, independent of the SQLite database.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { eligibleReason, duplicateKey, DEFAULT_SUPPORTED_AUTO } from '../shared/eligibility.mjs';
+import { eligibleReason, duplicateKey, DEFAULT_SUPPORTED_AUTO, unusableAutoApplyReason } from '../shared/eligibility.mjs';
 
 const base = {
   status: '🤖 AI sourced',
@@ -52,6 +52,40 @@ test('fit below threshold is blocked', () => {
 
 test('unsupported ATS is blocked', () => {
   assert.equal(eligibleReason({ ...base, ats_platform: 'workday' }, opts()), 'unsupported_ats_platform');
+});
+
+test('Greenhouse sandbox/example tenants are blocked before auto-apply', () => {
+  const row = {
+    ...base,
+    company: 'examplecorpsandbox',
+    title: 'Cloud Software Development Co-op Intern - Summer/Fall 2026',
+    apply_url: 'https://job-boards.greenhouse.io/examplecorpsandbox/jobs/7232268',
+    ats_platform: 'greenhouse',
+  };
+  assert.equal(unusableAutoApplyReason(row, { now: new Date('2026-06-08T00:00:00Z') }), 'test_or_sandbox_posting');
+  assert.equal(eligibleReason(row, opts({ now: new Date('2026-06-08T00:00:00Z') })), 'test_or_sandbox_posting');
+});
+
+test('student jobs with already-past title years are blocked', () => {
+  const row = {
+    ...base,
+    title: 'Cloud Software Development Co-op Intern - Summer/Fall 2021',
+    apply_url: 'https://job-boards.greenhouse.io/acme/jobs/7232268',
+    ats_platform: 'greenhouse',
+  };
+  assert.equal(unusableAutoApplyReason(row, { now: new Date('2026-06-08T00:00:00Z') }), 'expired_title_year');
+  assert.equal(eligibleReason(row, opts({ now: new Date('2026-06-08T00:00:00Z') })), 'expired_title_year');
+});
+
+test('future-dated student jobs are not blocked by the title-year guard', () => {
+  const row = {
+    ...base,
+    title: '2027 Real Estate Investments Summer Intern',
+    apply_url: 'https://job-boards.greenhouse.io/acme/jobs/7761840003',
+    ats_platform: 'greenhouse',
+  };
+  assert.equal(unusableAutoApplyReason(row, { now: new Date('2026-06-08T00:00:00Z') }), null);
+  assert.equal(eligibleReason(row, opts({ now: new Date('2026-06-08T00:00:00Z') })), 'eligible');
 });
 
 test('Lever is in the stable auto-submit set', () => {

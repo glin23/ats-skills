@@ -6,6 +6,7 @@ import { dbPath } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
+import { eligibleReason } from './eligibility.mjs';
 import { KNOWN_UNSUPPORTED_PLATFORMS, SUPPORTED_AUTO_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
 
 const HOME = atsHome();
@@ -35,13 +36,14 @@ function isAlreadySubmitted(row, submittedKeys) {
 }
 
 function reasonFor(row, allowedRoleTypes, submittedKeys) {
-  if (row.apply_quota_limit != null) return 'quota_guarded';
-  if (isAlreadySubmitted(row, submittedKeys)) return 'duplicate_same_company_title_already_submitted';
   const roleType = deriveRoleTypeFromJob(row);
-  if (!allowedRoleTypes.includes(roleType)) return 'role_type_not_allowed';
-  if ((row.fit_score ?? 0) < MIN_FIT) return 'fit_below_threshold';
-  if (!SUPPORTED_AUTO.has(row.ats_platform)) return 'unsupported_ats_platform';
-  return 'eligible';
+  return eligibleReason(row, {
+    roleType,
+    allowedRoleTypes,
+    submittedKeys,
+    minFit: MIN_FIT,
+    supportedAuto: SUPPORTED_AUTO,
+  });
 }
 
 function exampleShape(r) {
@@ -96,6 +98,8 @@ const rescoreCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) === MIN_FIT - 1;
 });
 const platformExpansionCandidates = pendingRows.filter((row) => {
@@ -104,6 +108,8 @@ const platformExpansionCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
 });
 const manualOnlyCandidates = pendingRows.filter((row) => {
@@ -112,6 +118,8 @@ const manualOnlyCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
 });
 const summary = {

@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
 import {
+  availabilityCommitmentAnswer,
   bachelorProgressCandidates,
   gpaValue,
   graduationSelectValues as graduationSelectValueCandidates,
@@ -628,6 +629,8 @@ function standardYesNoAnswerForLabel(labelText) {
       note: 'internship_availability_commitment',
     };
   }
+  const availability = availabilityCommitmentAnswer(labelText, { searchIntent: SEARCH_INTENT, profile: PROFILE, bank: BANK });
+  if (availability) return availability;
   if (/confirm.{0,80}available.{0,80}(part[- ]?time|internship|25h|25\s*hours?|40\s*hours?)|available.{0,80}(july|august).{0,80}(december|january)/.test(lt)) {
     const available = PROFILE.standard_qa?.part_time_internship_25h_2026_through_jan_2027 === true ||
       String(PROFILE.standard_qa?.hours_per_week || '').includes('25');
@@ -1405,6 +1408,10 @@ async function answerMissing(tab, labelText) {
   if (profileAddress?.needs_user_answer) {
     return { ok: false, note: profileAddress.note, needs_user_answer: true };
   }
+  const availability = availabilityCommitmentAnswer(labelText, { searchIntent: SEARCH_INTENT, profile: PROFILE, bank: BANK });
+  if (availability?.needs_user_answer) {
+    return { ok: false, note: availability.note, needs_user_answer: true };
+  }
 
   const dateValue = dateValueForLabel(labelText);
   if (dateValue) {
@@ -1498,6 +1505,9 @@ async function answerMissing(tab, labelText) {
       if (!value) return { ok: false, note: 'language_proficiency_not_in_profile', needs_user_answer: true };
       mode = 'sync';
     }
+    else if (availability?.value) {
+      return await reactSelectOneOf(tab, f.id, availability.candidates || [availability.value], { mode: 'sync' });
+    }
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) {
       value = preferredCandidateCity();
       if (!f.is_react_select && f.type !== 'select-one' && f.type !== 'select') {
@@ -1567,6 +1577,7 @@ async function answerMissing(tab, labelText) {
       value = languageProficiencyForLabel(labelText);
       if (!value) return { ok: false, note: 'language_proficiency_not_in_profile', needs_user_answer: true };
     }
+    else if (availability?.value) value = availability.value;
     else if (/(how|where).{0,12}did.{0,8}you.{0,8}hear|hear about|job opening|source/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
     else if (/hours?.{0,12}per week|weekly hours|available.{0,20}hours/i.test(lt)) value = hoursPerWeekAnswer();
     else if (/expect(?:ed)? to graduate|graduation date|graduation year|when do you expect|complete your program/i.test(lt)) value = monthYear(profileGraduationDate, '');

@@ -50,6 +50,114 @@ export function hoursPerWeekAnswer({ searchIntent = {}, profile = {}, bank = {} 
   return '40';
 }
 
+function parseMonthYear(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  let m = raw.match(/^(\d{4})-(\d{1,2})$/);
+  if (m) return { year: Number(m[1]), month: Number(m[2]) };
+  m = raw.match(/^(\d{4})-(\d{1,2})-\d{1,2}$/);
+  if (m) return { year: Number(m[1]), month: Number(m[2]) };
+  m = raw.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/i);
+  if (m) return { year: Number(m[2]), month: MONTHS.findIndex((x) => x.toLowerCase() === m[1].toLowerCase()) + 1 };
+  m = raw.match(/\b(20\d{2})\b/);
+  if (m) return { year: Number(m[1]), month: 12 };
+  return null;
+}
+
+function monthIndex({ year, month }) {
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+  return year * 12 + month;
+}
+
+function addMonths(ym, months) {
+  const idx = monthIndex(ym);
+  if (idx == null) return null;
+  const next = idx + months;
+  return { year: Math.floor((next - 1) / 12), month: ((next - 1) % 12) + 1 };
+}
+
+function requestedStartFromLabel(labelText) {
+  const raw = String(labelText || '');
+  const m = raw.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/i);
+  if (!m) return null;
+  return { year: Number(m[2]), month: MONTHS.findIndex((x) => x.toLowerCase() === m[1].toLowerCase()) + 1 };
+}
+
+function requestedDurationMonths(labelText) {
+  const raw = String(labelText || '');
+  let m = raw.match(/\b(\d+)\s*[-–]\s*(\d+)\s*months?\b/i);
+  if (m) return Number(m[2]);
+  m = raw.match(/\b(?:period of|for)\s+(\d+)\s*months?\b/i);
+  if (m) return Number(m[1]);
+  return null;
+}
+
+function weeklyHoursFromTimeWindow(labelText) {
+  const raw = String(labelText || '');
+  const m = raw.match(/\b(\d{1,2})\s*(?::\d{2})?\s*[-–]\s*(\d{1,2})\s*(?::\d{2})?\s*(am|pm)\b/i);
+  if (!m) return null;
+  let start = Number(m[1]);
+  let end = Number(m[2]);
+  const meridiem = m[3].toLowerCase();
+  if (meridiem === 'pm' && start < 12) start += 12;
+  if (meridiem === 'pm' && end < 12) end += 12;
+  const daily = Math.max(0, end - start);
+  return daily ? daily * 5 : null;
+}
+
+function maxHoursPerWeek(value) {
+  const nums = String(value || '').match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite) || [];
+  if (!nums.length) return null;
+  return Math.max(...nums);
+}
+
+function explicitHoursPerWeekAnswer({ searchIntent = {}, profile = {}, bank = {} } = {}) {
+  const candidates = [
+    searchIntent.search_intent?.availability?.hours_per_week,
+    searchIntent.search_intent?.hours_per_week,
+    profile.standard_qa?.hours_per_week,
+    profile.standard_qa?.hours_per_week_available,
+    profile.target_filters?.hours_per_week,
+    bank.fallback_text?.hours_per_week,
+  ];
+  for (const v of candidates) {
+    if (typeof v === 'number' && Number.isFinite(v)) return String(Math.round(v));
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return '';
+}
+
+export function availabilityCommitmentAnswer(labelText, { searchIntent = {}, profile = {}, bank = {} } = {}) {
+  const lt = String(labelText || '').toLowerCase();
+  if (!/available|availability|commit/.test(lt)) return null;
+  if (!/(hours?|months?|period|january|february|march|april|may|june|july|august|september|october|november|december|summer|fall|spring|internship|part[- ]?time)/.test(lt)) {
+    return null;
+  }
+
+  const hoursText = explicitHoursPerWeekAnswer({ searchIntent, profile, bank });
+  const requiredWeeklyHours = weeklyHoursFromTimeWindow(labelText) ||
+    (lt.match(/\b(\d+)\s*(?:hours?|hrs?)\b/) ? Number(lt.match(/\b(\d+)\s*(?:hours?|hrs?)\b/)[1]) : null);
+  const hasEnoughHours = requiredWeeklyHours == null || (hoursText && (maxHoursPerWeek(hoursText) ?? 0) >= requiredWeeklyHours);
+
+  const requestedStart = requestedStartFromLabel(labelText);
+  const earliest = parseMonthYear(profile.standard_qa?.earliest_start_date || searchIntent.search_intent?.availability?.earliest_start_date);
+  const startsInTime = !requestedStart || (earliest && monthIndex(earliest) <= monthIndex(requestedStart));
+
+  const duration = requestedDurationMonths(labelText);
+  const availableUntil = parseMonthYear(profile.standard_qa?.available_until || searchIntent.search_intent?.availability?.available_until);
+  const requestedEnd = requestedStart && duration ? addMonths(requestedStart, duration) : null;
+  const lastsLongEnough = !requestedEnd || (availableUntil && monthIndex(availableUntil) >= monthIndex(requestedEnd));
+
+  if (hasEnoughHours && startsInTime && lastsLongEnough) {
+    return {
+      value: 'Yes',
+      candidates: ['Yes', 'Yes, I am available', 'I am available', 'I can commit', 'Available', 'Confirm'],
+      note: 'profile_availability_commitment',
+    };
+  }
+  return { needs_user_answer: true, note: 'availability_commitment_answer_required' };
+}
+
 export function gpaValue(profile = {}) {
   const raw = profile.education?.gpa ?? profile.standard_qa?.gpa ?? '';
   const value = String(raw || '').trim();
