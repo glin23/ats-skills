@@ -66,6 +66,7 @@ function readJsonOptional(path, fallback = {}) {
   }
 }
 const SEARCH_INTENT = readJsonOptional(SEARCH_INTENT_PATH, {});
+let companyFamiliarityAnswer = null;
 const latestExperience = Array.isArray(PROFILE.experience_summary) ? PROFILE.experience_summary[0] : null;
 const profilePortfolio =
   PROFILE.personal?.portfolio ||
@@ -156,6 +157,11 @@ function degreeSelectValue() {
   if (/associate/.test(d)) return 'Associate';
   if (/bachelor|b\.?s\.?|b\.?a\.?/.test(d)) return 'Bachelor';
   return profileDegree || 'Bachelor';
+}
+
+function isGraduateDegreeProfile() {
+  const d = String(profileDegree || '').toLowerCase();
+  return /master|mba|m\.?s\.?|m\.?a\.?|doctor|ph\.?d/.test(d);
 }
 
 function graduationSelectValues() {
@@ -481,7 +487,7 @@ function profileAddressValueForLabel(labelText) {
       ? { value: zip, note: 'profile_postal_code' }
       : { needs_user_answer: true, note: 'profile_full_address_required' };
   }
-  if (/^state$|state\/province|province|region/.test(lt)) {
+  if (/^state$|state\/province|province|region|state of residence|residence state|home state|current state/.test(lt)) {
     return state
       ? { value: state, candidates: stateValueCandidates(state), note: 'profile_state' }
       : { needs_user_answer: true, note: 'profile_full_address_required' };
@@ -509,7 +515,7 @@ function stateValueCandidates(state) {
   };
   if (!s) return [];
   const upper = s.toUpperCase();
-  return [...new Set([s, upper, map[upper]].filter(Boolean))];
+  return [...new Set([map[upper], s, upper].filter(Boolean))];
 }
 
 function hasEnglishFluency() {
@@ -575,6 +581,9 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/unlimited and unrestricted authorization|unrestricted authorization.{0,80}work|authorization.{0,40}unrestricted/.test(lt)) {
     const value = workAuthWithoutRestrictionAnswer();
     return { value, candidates: [value, value === 'Yes' ? 'I have unrestricted authorization' : 'No'], note: 'profile_unrestricted_work_authorization' };
+  }
+  if (/currently enrolled.{0,80}(?:masters?|ph\.?d|doctor|graduate)|(?:masters?|ph\.?d).{0,80}program|graduate degree program/.test(lt)) {
+    return { value: isGraduateDegreeProfile() ? 'Yes' : 'No', note: isGraduateDegreeProfile() ? 'graduate_degree_from_profile' : 'not_graduate_degree_from_profile' };
   }
   if (/enrolled.*university|currently enrolled|student at/.test(lt)) {
     return educationEnrollmentAnswerForLabel(labelText);
@@ -696,8 +705,10 @@ function standardYesNoAnswerForLabel(labelText) {
 
 function sourceCheckboxDecision(labelText) {
   const lt = String(labelText || '').toLowerCase();
+  if (/answered.*unaware/.test(lt)) return companyFamiliarityAnswer === 'unaware' ? 'check' : 'skip';
   const isSourceOption = /company website|employee|relative|family member|handshake|job board|agency|recruiter|linkedin|other/.test(lt);
   if (!isSourceOption) return 'not_source';
+  if (companyFamiliarityAnswer === 'unaware') return 'skip';
   if (/linkedin|other job board|job board|online/.test(lt)) return 'check';
   return 'skip';
 }
@@ -1413,6 +1424,18 @@ async function answerMissing(tab, labelText) {
     return { ok: false, note: availability.note, needs_user_answer: true };
   }
 
+  if (/which .{0,80}(?:masters?|ph\.?d|doctor|graduate).{0,80}program|(?:masters?|ph\.?d).{0,80}program.*currently/.test(lt)) {
+    const value = isGraduateDegreeProfile()
+      ? [profileSchool, profileDegree, profileMajor].filter(Boolean).join(' - ')
+      : 'N/A';
+    const fGrad = await findFieldByLabel(tab, labelText);
+    if (fGrad.ok && (fGrad.type === 'text' || fGrad.type === 'textarea')) {
+      const sel = /^[0-9]/.test(fGrad.id) ? `[id="${fGrad.id}"]` : '#' + fGrad.id;
+      cdp('typetext', tab, sel, value);
+      return { ok: true, mode: 'graduate_program_text_fill', value };
+    }
+  }
+
   const dateValue = dateValueForLabel(labelText);
   if (dateValue) {
     if (f.is_react_select) return await reactSelectOneOf(tab, f.id, dateValue.candidates, { mode: 'sync' });
@@ -1474,7 +1497,7 @@ async function answerMissing(tab, labelText) {
   if (/\b(?:location|city|country|state|province)\b/i.test(lt) || f.is_react_select) {
     let value;
     let mode = 'async';
-    if (profileAddress?.value && /^state$|state\/province|province|region/.test(lt)) {
+    if (profileAddress?.value && /^state$|state\/province|province|region|state of residence|residence state|home state|current state/.test(lt)) {
       value = profileAddress.value;
       mode = 'sync';
     }
@@ -1487,6 +1510,17 @@ async function answerMissing(tab, labelText) {
     else if (/school|college|university/i.test(lt) && !/confirm|enrolled/i.test(lt)) { value = profileSchool; mode = 'async'; }
     else if (/completed.*bachelor|bachelor.*(?:completed|progress|working towards)|currently working towards.*bachelor/i.test(lt)) {
       return await reactSelectOneOf(tab, f.id, bachelorProgressCandidates(PROFILE), { mode: 'sync' });
+    }
+    else if (/based on the team descriptions|which team|team preference|preferred team/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, ['Search and Recommendations', 'Search & Recommendations', 'Risk Management', 'Data Science', 'Product Analytics'], { mode: 'sync' });
+    }
+    else if (/before seeing.*job posting|how familiar|familiar.*faire|familiar.*company/i.test(lt)) {
+      const r = await reactSelectOneOf(tab, f.id, ['Unaware', 'Not familiar', 'Not at all familiar', 'I was not familiar', 'Somewhat familiar'], { mode: 'sync' });
+      companyFamiliarityAnswer = r.ok && /unaware/i.test(`${r.picked || ''} ${r.requested || ''}`) ? 'unaware' : 'not_unaware';
+      return r;
+    }
+    else if (/do you consider yourself a member of|which categories describe you|community.*member|underrepresented/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, ["I don't wish to answer", 'I prefer not to answer', 'Prefer not to answer', 'Decline to answer', 'None of the above'], { mode: 'sync' });
     }
     else if (/degree/i.test(lt)) { value = degreeSelectValue(); mode = 'sync'; }
     else if (/discipline|major|field of study/i.test(lt)) { value = profileMajor; mode = 'sync'; }
@@ -1539,9 +1573,15 @@ async function answerMissing(tab, labelText) {
     }
     else if (/full.?time|consider.*ft|consideration for|full.?time offer/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
     else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) { value = earliestStartDate(); mode = 'sync'; }
-    else if (/gender/i.test(lt)) value = BANK.yes_no_defaults?.gender || "Don't want to answer";
-    else if (/race|ethnic/i.test(lt)) value = BANK.yes_no_defaults?.race || "Don't want to answer";
-    else if (/veteran/i.test(lt)) value = BANK.yes_no_defaults?.veteran || 'I am not a protected veteran';
+    else if (/gender/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, ["I don't wish to answer", 'I prefer not to answer', 'Prefer not to answer', "Don't want to answer", BANK.yes_no_defaults?.gender], { mode: 'sync' });
+    }
+    else if (/race|ethnic|hispanic|latino/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, ["I don't wish to answer", 'I prefer not to answer', 'Prefer not to answer', "Don't want to answer", BANK.yes_no_defaults?.race], { mode: 'sync' });
+    }
+    else if (/veteran|military/i.test(lt)) {
+      return await reactSelectOneOf(tab, f.id, ['No', "I don't wish to answer", 'I prefer not to answer', 'Prefer not to answer', BANK.yes_no_defaults?.veteran], { mode: 'sync' });
+    }
     else if (/disab/i.test(lt)) value = BANK.yes_no_defaults?.disability || "I don't wish to answer";
     else if (/(how|where).{0,12}did.{0,8}you.{0,8}hear|hear about|job opening|source/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
     else if (/hours?.{0,12}per week|weekly hours|available.{0,20}hours/i.test(lt)) value = hoursPerWeekAnswer();
@@ -1571,6 +1611,11 @@ async function answerMissing(tab, labelText) {
     else if (/legal name/i.test(lt)) value = `${PROFILE.personal.first_name} ${PROFILE.personal.last_name}`;
     else if (/current location|where are you located|where.*currently located|where.*located|where.*based/i.test(lt)) value = preferredCandidateLocationFull();
     else if (/school|college|university/i.test(lt)) value = profileSchool;
+    else if (/which .{0,40}(?:masters?|ph\.?d|doctor|graduate).{0,40}program|(?:masters?|ph\.?d).{0,40}program.*currently/i.test(lt)) {
+      value = isGraduateDegreeProfile()
+        ? [profileSchool, profileDegree, profileMajor].filter(Boolean).join(' - ')
+        : 'N/A';
+    }
     else if (/degree/i.test(lt)) value = profileDegree;
     else if (/discipline|major|field of study/i.test(lt)) value = profileMajor;
     else if (/spanish|mandarin|french|german|language|proficiency|fluen/i.test(lt)) {
@@ -1579,6 +1624,11 @@ async function answerMissing(tab, labelText) {
     }
     else if (availability?.value) value = availability.value;
     else if (/(how|where).{0,12}did.{0,8}you.{0,8}hear|hear about|job opening|source/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
+    else if (/before seeing.*job posting|how familiar|familiar.*faire|familiar.*company/i.test(lt)) {
+      companyFamiliarityAnswer = 'unaware';
+      value = 'Unaware';
+    }
+    else if (/do you consider yourself a member of|which categories describe you|community.*member|underrepresented/i.test(lt)) value = 'I prefer not to answer';
     else if (/hours?.{0,12}per week|weekly hours|available.{0,20}hours/i.test(lt)) value = hoursPerWeekAnswer();
     else if (/expect(?:ed)? to graduate|graduation date|graduation year|when do you expect|complete your program/i.test(lt)) value = monthYear(profileGraduationDate, '');
     else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) value = earliestStartDate();
