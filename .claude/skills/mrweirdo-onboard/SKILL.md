@@ -257,10 +257,53 @@ MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
 ```
 
 The supervisor handles CDP, queue validation, dedupe, eligibility recompute,
-driver execution, recorder updates, pacing, and final status. Do not hand-write
-submitted statuses in the DB.
+driver execution, recorder updates, pacing, final status, and automatic
+missing-info report generation. Do not hand-write submitted statuses in the DB.
 
-## Step 6 - Report And Prune
+## Step 6 - Missing Info Follow-Up And Retry
+
+After every real batch, inspect:
+
+```text
+/tmp/mrweirdo-onboard/apply-gap-report.json
+/tmp/mrweirdo-onboard/apply-gap-report.md
+```
+
+If `user_questions` is non-empty, do not summarize the run as "only N
+submitted, the rest failed". Pause before pruning and ask the user the grouped
+questions from the report. Ask only key facts that cannot be safely inferred,
+such as full address, earliest start date, high-school city/state, government
+relative/compliance facts, language or skill level, GPA, logistics, or location
+commitments.
+
+Open-text application answers are not user homework. For `agent_open_text`,
+draft from the resume, self-introduction, `essay_profile.json`, and
+`answer_bank.json`; add a reusable answer-bank template when the same prompt is
+recurring. For `agent_attestation` and `agent_profile_backed`, fill from the
+local profile or add driver coverage before retrying.
+
+After the user answers, update only that user's local
+`$MRWEIRDO_HOME/profile.json` / `essay_profile.json` / answer templates as
+needed, validate the profile, then requeue the affected rows:
+
+```bash
+node "$MRWEIRDO_REPO_ROOT/shared/validate_user_profile.mjs"
+node "$MRWEIRDO_REPO_ROOT/shared/retry_gap_rows.mjs" \
+  --apply \
+  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json \
+  --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
+    --real \
+    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+```
+
+Use the second batch as the conversion-rate check. If the gap report lists
+`onboarding_candidates`, tell the maintainer which fields were frequent and
+whether they should become onboarding questions. Do not add low-frequency,
+one-off facts to onboarding without discussion.
+
+## Step 7 - Report And Prune
 
 Generate the local report:
 
@@ -302,6 +345,10 @@ If the run reached the report step, remove the first-run sentinel:
   `company_list.user.json` for quota guards.
 - Every run refreshes discovery and updates local row freshness.
 - Keep submitted/confirmed rows; prune stale/low-fit/skipped discovered rows.
+- If a batch hits missing personal facts, ask the user, update local profile,
+  and retry those rows before treating them as failed.
+- Do not make the user write open-text essays when the resume/self-intro can
+  support an answer.
 - Do not automate LinkedIn, Indeed, or Glassdoor.
 - Do not auto-submit large-company quota rows; use `mrweirdo-cherry-pick`.
 - Do not invent personal facts, legal facts, work authorization, GPA, relatives

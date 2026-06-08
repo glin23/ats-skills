@@ -204,6 +204,12 @@ function hoursPerWeekAnswer() {
   return resolveHoursPerWeekAnswer({ searchIntent: SEARCH_INTENT, profile: PROFILE, bank: BANK });
 }
 
+function earliestStartDate() {
+  return PROFILE.standard_qa?.earliest_start_date ||
+    BANK.fallback_text?.start_date_summer_2026 ||
+    'May 2026';
+}
+
 function preferredCandidateCity() {
   const city = PROFILE.personal?.address_city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const state = PROFILE.personal?.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
@@ -474,7 +480,7 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/deemed export license|ear[- ]controlled technology|export control|\bitar\b/.test(lt)) {
     return { needs_user_answer: true, note: 'export_control_answer_required' };
   }
-  if (/contractual obligations|agreements.{0,40}relationships.{0,40}commitments|impede or interfere.{0,80}ability to join/.test(lt)) {
+  if (/contractual obligations|agreements.{0,40}relationships.{0,40}commitments|impede or interfere.{0,80}ability to join|non[- ]?compete/.test(lt)) {
     const explicit = PROFILE.legal_attestations?.conflicting_obligations;
     if (explicit === true) return { value: 'Yes', note: 'profile_conflicting_obligations' };
     if (explicit === false) return { value: 'No', note: 'profile_no_conflicting_obligations' };
@@ -486,6 +492,9 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/by submitting.*privacy policy|agree.*privacy policy|consent.*privacy policy|candidate privacy|privacy notice/.test(lt)) {
     return { value: 'I agree', candidates: ['I agree', 'Agree', 'Yes', 'I acknowledge', 'Acknowledge'], note: 'privacy_policy_attestation' };
   }
+  if (/interview.{0,80}record|recorded.{0,80}interview|audio.{0,30}video.{0,30}transcript/.test(lt)) {
+    return { value: 'Yes', candidates: ['Yes', 'I agree', 'Agree', 'I acknowledge', 'Acknowledge'], note: 'interview_recording_attestation' };
+  }
   if (/authorize.{0,80}(?:use|process|share).{0,80}(?:information|personal details|personal data).{0,120}(?:evaluate|confirm|eligibility|suitability|qualifications)/.test(lt)) {
     return { value: 'Yes', candidates: ['Yes', 'I agree', 'Agree', 'I authorize'], note: 'application_data_use_authorization' };
   }
@@ -493,6 +502,12 @@ function standardYesNoAnswerForLabel(labelText) {
     return { value: hasWorkedForCompany() ? 'Yes' : 'No', note: hasWorkedForCompany() ? 'prior_employment_from_profile' : 'no_prior_employment_in_profile' };
   }
   if (/relatives?.{0,80}(?:currently )?working|family member.{0,80}(?:currently )?working/.test(lt)) {
+    if (/federal government|department of health|human services|cdc|department of defense|\bdod\b|military|political appointee|contractor/.test(lt)) {
+      const explicit = PROFILE.legal_attestations?.relatives_in_federal_government_or_contractors;
+      if (explicit === true) return { value: 'Yes', note: 'profile_government_related_relative' };
+      if (explicit === false) return { value: 'No', note: 'profile_no_government_related_relative' };
+      return { needs_user_answer: true, note: 'government_related_relative_answer_required' };
+    }
     const explicit = PROFILE.standard_qa?.relatives_at_target_company;
     if (explicit === true) return { value: 'Yes', note: 'profile_relatives_at_target_company' };
     if (explicit === false) return { value: 'No', note: 'profile_no_relatives_at_target_company' };
@@ -1378,7 +1393,7 @@ async function answerMissing(tab, labelText) {
       mode = 'sync';
     }
     else if (/full.?time|consider.*ft|consideration for|full.?time offer/i.test(lt)) { value = 'Need to return to school and available upon graduation'; mode = 'sync'; }
-    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) { value = BANK.fallback_text?.start_date_summer_2026 || 'May 2026'; mode = 'sync'; }
+    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) { value = earliestStartDate(); mode = 'sync'; }
     else if (/gender/i.test(lt)) value = BANK.yes_no_defaults?.gender || "Don't want to answer";
     else if (/race|ethnic/i.test(lt)) value = BANK.yes_no_defaults?.race || "Don't want to answer";
     else if (/veteran/i.test(lt)) value = BANK.yes_no_defaults?.veteran || 'I am not a protected veteran';
@@ -1407,6 +1422,7 @@ async function answerMissing(tab, labelText) {
     if (profileAddress?.value) value = profileAddress.value;
     else if (/linkedin/i.test(lt)) value = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin;
     else if (/project|portfolio|github|live url|website|shipped/i.test(lt)) value = profilePortfolio;
+    else if (/preferred name/i.test(lt)) value = PROFILE.personal?.preferred_name || PROFILE.personal?.first_name || '';
     else if (/legal name/i.test(lt)) value = `${PROFILE.personal.first_name} ${PROFILE.personal.last_name}`;
     else if (/current location|where are you located|where.*currently located|where.*located|where.*based/i.test(lt)) value = preferredCandidateLocationFull();
     else if (/school|college|university/i.test(lt)) value = profileSchool;
@@ -1415,10 +1431,10 @@ async function answerMissing(tab, labelText) {
     else if (/(how|where).{0,12}did.{0,8}you.{0,8}hear|hear about|job opening|source/i.test(lt)) value = (BANK.multichoice_preferences?.how_did_you_hear || ['LinkedIn'])[0];
     else if (/hours?.{0,12}per week|weekly hours|available.{0,20}hours/i.test(lt)) value = hoursPerWeekAnswer();
     else if (/expect(?:ed)? to graduate|graduation date|graduation year|when do you expect|complete your program/i.test(lt)) value = monthYear(profileGraduationDate, '');
-    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) value = BANK.fallback_text?.start_date_summer_2026 || 'May 2026';
+    else if (/available to start|earliest.*start|start date|when can you start/i.test(lt)) value = earliestStartDate();
     else if (/what city.*currently reside|city.*currently reside|currently reside.*city/i.test(lt)) value = preferredCandidateCity();
     else if (/currently\s+(?:reside|live)|do you currently reside|currently based|are you based/i.test(lt)) value = currentResidenceAnswerForLabel(labelText).value || 'No';
-    else if (/salary|compensation/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || BANK.fallback_text?.compensation_expectations || 'Negotiable';
+    else if (/salary|compensation|expected.*pay|expect.*paid|hourly.*rate/i.test(lt)) value = PROFILE.work_authorization?.salary_expectation_usd || BANK.fallback_text?.compensation_expectations || 'Negotiable';
     else if (/most recent employer|current employer|latest employer|^company name$|^company$/i.test(lt)) value = latestExperience?.company || '';
     else if (/most recent job title|current title|latest title|^title$|^job title$/i.test(lt)) value = latestExperience?.title || '';
     else if (/gpa/i.test(lt)) value = gpaValue(PROFILE);

@@ -237,6 +237,7 @@ if (rows.length < maxRows) {
 }
 
 const summaries = [];
+const batchStartedAt = new Date().toISOString();
 for (let i = 0; i < rows.length; i += 1) {
   const row = rows[i];
   console.error(`[apply-batch] row ${i + 1}/${rows.length}: ${row.id} ${row.company} — ${row.title}`);
@@ -313,9 +314,29 @@ if (!dryRun) {
   if (report.code === 0) reportPath = report.stdout.trim().split(/\r?\n/).filter(Boolean).pop() || null;
 }
 
-console.log(JSON.stringify({
+const batchSummary = {
   ok: true,
   dry_run: dryRun,
+  started_at: batchStartedAt,
+  finished_at: new Date().toISOString(),
   rows: summaries,
   report_path: reportPath,
+};
+
+const summaryPath = join(tmpDir, `apply-batch-summary-${Date.now()}.json`);
+writeFileSync(summaryPath, JSON.stringify(batchSummary, null, 2));
+
+let gapReport = null;
+if (!dryRun) {
+  const gaps = runNode(['shared/apply_gap_report.mjs', '--summary', summaryPath]);
+  if (gaps.stdout) process.stdout.write(gaps.stdout);
+  if (gaps.stderr) process.stderr.write(gaps.stderr);
+  if (gaps.code === 0) gapReport = parseLastJson(gaps.stdout);
+  else console.error('[apply-batch] apply gap report generation failed; continuing');
+}
+
+console.log(JSON.stringify({
+  ...batchSummary,
+  summary_path: summaryPath,
+  gap_report: gapReport,
 }, null, 2));

@@ -47,7 +47,8 @@
   "legal_attestations": {
     "_notes": "Optional. Leave null unless the user explicitly confirms. The auto-apply driver will skip legally sensitive questions instead of guessing.",
     "conflicting_obligations": null,
-    "no_prohibited_possessor_status": null
+    "no_prohibited_possessor_status": null,
+    "relatives_in_federal_government_or_contractors": null
   },
 
   "demographics": {
@@ -72,7 +73,15 @@
     "biggest_weakness": "",
     "favorite_project": "",
     "earliest_start_date": "MM/DD/YYYY",
+    "high_school_location": "",
     "hours_per_week": "",
+    "language_proficiency": {},
+    "location_logistics": {},
+    "company_relationships": {},
+    "relatives_at_target_company": null,
+    "work_location_commitments": {},
+    "external_form_confirmations": {},
+    "custom_facts": {},
     "willing_to_relocate": true,
     "willing_to_relocate_scope": "Anywhere US",
     "countries_open_to": ["US"],

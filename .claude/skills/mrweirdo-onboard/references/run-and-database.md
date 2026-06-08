@@ -82,6 +82,35 @@ MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
     --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
 ```
 
+The real batch writes a JSON summary and generates:
+
+```text
+/tmp/mrweirdo-onboard/apply-gap-report.json
+/tmp/mrweirdo-onboard/apply-gap-report.md
+```
+
+If that report contains `user_questions`, pause before pruning. Ask the user
+the grouped factual questions, update this user's local `profile.json` or
+`essay_profile.json`, validate the profile, then requeue only the rows from the
+gap report and run a retry batch:
+
+```bash
+node "$MRWEIRDO_REPO_ROOT/shared/validate_user_profile.mjs"
+node "$MRWEIRDO_REPO_ROOT/shared/retry_gap_rows.mjs" \
+  --apply \
+  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json \
+  --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+MRWEIRDO_MAX_AUTO_APPLY="${MRWEIRDO_MAX_AUTO_APPLY:-10}" \
+  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
+    --real \
+    --max "${MRWEIRDO_MAX_AUTO_APPLY:-10}"
+```
+
+Do not ask the user to write open-text answers such as ISA/cover-letter style
+prompts when the resume and self-introduction contain enough material. Those
+belong in the agent work bucket and should be answered or templated before the
+retry.
+
 Generate report:
 
 ```bash
@@ -127,6 +156,8 @@ Report:
 - raw discovered count, filtered count, scored count;
 - submitted count by ATS;
 - skipped counts by reason;
+- missing-info questions asked and retry-batch result, if any;
+- recurring onboarding candidates from the gap report;
 - report path;
 - local DB path;
 - prune summary;

@@ -84,10 +84,14 @@ export function validateProfileBundle(home = atsHome()) {
     }
 
     const legal = profile.legal_attestations || {};
-    for (const key of ['conflicting_obligations', 'no_prohibited_possessor_status']) {
+    for (const key of ['conflicting_obligations', 'no_prohibited_possessor_status', 'relatives_in_federal_government_or_contractors']) {
       if (hasOwn(legal, key) && !typeOfNullable(legal[key], 'boolean')) {
         pushIssue(issues, 'error', profilePath, `legal_attestations.${key}`, `${key} must be boolean or null`);
       }
+    }
+    const standardQa = profile.standard_qa || {};
+    if (hasOwn(standardQa, 'relatives_at_target_company') && !typeOfNullable(standardQa.relatives_at_target_company, 'boolean')) {
+      pushIssue(issues, 'error', profilePath, 'standard_qa.relatives_at_target_company', 'relatives_at_target_company must be boolean or null');
     }
 
     if (!profile.resume_path) {

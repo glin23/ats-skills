@@ -88,6 +88,16 @@
       "tags": ["employment_gap", "student_context"]
     },
     {
+      "match": "(what kind of work environment|work environment are you looking for|preferred work environment)",
+      "answer_template": "I do my best work in an environment with clear goals, direct feedback, and room to take ownership. I like teams that move quickly but communicate well, where interns can contribute practical work, ask thoughtful questions, and learn from people who care about quality.",
+      "tags": ["work_environment", "generic"]
+    },
+    {
+      "match": "(years? of experience.{0,40}relevant|total years? of experience|experience you have that are relevant)",
+      "answer_template": "I have about 1-2 years of relevant project, internship, and startup experience across product, growth, operations, AI tooling, and business research. I am still early-career, but I have already shipped projects, worked on GTM and operations tasks, and completed analytical work in internship settings.",
+      "tags": ["experience_years", "student_context"]
+    },
+    {
       "match": "(industry trend|trend.{0,15}excit|excit.{0,10}about|area.{0,5}you.{0,5}follow|emerging.{0,5}area|trend.{0,15}follow)",
       "answer_template": "One trend I am excited about is the shrinking distance between identifying a problem and testing a real solution. AI and automation make it easier for small teams and students to prototype, analyze, and iterate quickly. That makes judgment, communication, and customer understanding even more important, because speed only matters when you are working on the right problem.",
       "tags": ["industry_trend", "thesis"]
