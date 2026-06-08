@@ -16,6 +16,15 @@ This checks unit tests, role-guard smoke coverage, public-facing wording,
 version consistency, setup syntax, and the absence of stale shared-pool or
 personal-example logic.
 
+Run this before a live demo on an already-installed machine:
+
+```bash
+npm run demo:check
+```
+
+It checks the demo slash entrypoint, setup syntax, local profile health when
+present, Chrome CDP reachability, and ready-row count when a local queue exists.
+
 ## Fresh Install Test
 
 Use a clean local state directory when testing the alpha path:
@@ -30,7 +39,7 @@ bash "$MRWEIRDO_REPO_ROOT/shared/chrome-cdp-launcher.sh"
 node "$MRWEIRDO_REPO_ROOT/shared/doctor.mjs" --cdp
 ```
 
-Then run `/mrweirdo-onboard` from Claude Code or Codex with a real resume PDF
+Then run `/mrweirdo-jobskill` from Claude Code or Codex with a real resume PDF
 and a short self-introduction.
 
 ## Alpha Success Criteria
@@ -40,7 +49,7 @@ and a short self-introduction.
   `essay_profile.json` under the user's own `MRWEIRDO_HOME`.
 - Discovery runs in realtime and advances that user's `source_cursor.json`.
 - `jobs.db` records only that user's seen/applied/skipped history.
-- If ready rows exist, Greenhouse/Ashby/Lever batch apply can submit a small run after
+- If ready rows exist, Greenhouse/Ashby batch apply can submit a small run after
   the user confirms the parsed profile/search intent.
 - If no ready rows exist, `supervisor_status` and `apply_readiness_plan` explain
   what blocked the run and point to review or next realtime discovery.

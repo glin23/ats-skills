@@ -1,7 +1,8 @@
 import { hasUsableApplyUrl } from './usable_apply_url.mjs';
 
-export const SUPPORTED_AUTO_PLATFORMS = new Set(['greenhouse', 'ashby', 'lever']);
+export const SUPPORTED_AUTO_PLATFORMS = new Set(['greenhouse', 'ashby']);
 export const KNOWN_UNSUPPORTED_PLATFORMS = new Set([
+  'lever',
   'workday',
   'smartrecruiters',
   'icims',

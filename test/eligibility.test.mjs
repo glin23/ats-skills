@@ -88,8 +88,8 @@ test('future-dated student jobs are not blocked by the title-year guard', () => 
   assert.equal(eligibleReason(row, opts({ now: new Date('2026-06-08T00:00:00Z') })), 'eligible');
 });
 
-test('Lever is in the stable auto-submit set', () => {
-  assert.equal(eligibleReason({ ...base, ats_platform: 'lever' }, opts()), 'eligible');
+test('Lever is not in the stable batch auto-submit set', () => {
+  assert.equal(eligibleReason({ ...base, ats_platform: 'lever' }, opts()), 'unsupported_ats_platform');
 });
 
 test('supportedAuto accepts a plain array as well as a Set', () => {

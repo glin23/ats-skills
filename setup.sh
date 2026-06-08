@@ -8,7 +8,7 @@
 #   2. Clone (or update) the repo to ~/.mrweirdo-jobs/repo
 #   3. Symlink .claude/skills/* into Claude Code and Codex skill locations
 #   4. Create ~/.mrweirdo-jobs/ layout (log/, empty .env with chmod 600)
-#   5. Print next-step: "open Claude Code or Codex, run /mrweirdo-onboard"
+#   5. Print next-step: "open Claude Code or Codex, run /mrweirdo-jobskill"
 #
 # Re-runnable. Idempotent.
 
@@ -174,14 +174,14 @@ Three steps to start:
 Before the first run, start the dedicated Chrome launcher.
 Then open Claude Code or Codex and type:
 
-  /mrweirdo-onboard
+  /mrweirdo-jobskill
 
 You can also say: "I want to start applying for internships."
 
 WELCOME
 else
   blue "Setup re-run — existing profile detected at ~/.mrweirdo-jobs/profile.json"
-  echo "  Skipping first-run banner. Type /mrweirdo-onboard to re-onboard, or"
+  echo "  Skipping first-run banner. Type /mrweirdo-jobskill to re-onboard, or"
   echo "  use /mrweirdo-cherry-pick / /mrweirdo-confirm for daily ops."
   echo ""
 fi

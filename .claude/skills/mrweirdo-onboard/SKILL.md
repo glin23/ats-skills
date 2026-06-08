@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-onboard
-description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, essay/cover-letter material drafting, and guarded auto-apply. Collects resume + a lightweight self-introduction + three hard-boundary questions + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby/Lever rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
+description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, essay/cover-letter material drafting, and guarded auto-apply. Collects resume + a lightweight self-introduction + three hard-boundary questions + explicit parse confirmation, then discovers jobs across public ATS boards, scores them, skips large-company quota rows, and auto-submits supported Greenhouse/Ashby rows. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
 ---
 
 # Mr. Weirdo Jobs Onboard
@@ -21,7 +21,7 @@ The skill's job is:
 2. generate local `profile.json`, `search_intent.json`, and `essay_profile.json`;
 3. confirm the parse before spending applications;
 4. run fresh discovery, score jobs, and update the local history ledger;
-5. auto-submit only guarded Greenhouse/Ashby/Lever matches;
+5. auto-submit only guarded Greenhouse/Ashby matches;
 6. generate a report and prune disposable discovered rows.
 
 ## Trigger
@@ -30,7 +30,7 @@ Use this skill when:
 
 - first-run sentinel `~/.mrweirdo-jobs/.first_run` exists and the user asks how
   to start, says "start", "next step", "找实习", "投实习", or similar;
-- user explicitly invokes `/mrweirdo-onboard`;
+- user explicitly invokes `/mrweirdo-onboard` or `/mrweirdo-jobskill`;
 - user wants the end-to-end resume-driven discovery + scoring + guarded batch
   apply loop.
 
@@ -45,7 +45,7 @@ Do not use this skill for:
 ## Defaults
 
 - Auto-apply threshold: `fit_score >= 5`.
-- Stable batch auto-submit ATS: Greenhouse, Ashby, and Lever.
+- Stable batch auto-submit ATS: Greenhouse and Ashby.
 - Per-company quota guard stays on for the user's local `company_list.user.json`.
 - Public default batch size: `MRWEIRDO_MAX_AUTO_APPLY=10`.
 - LinkedIn, Indeed, and Glassdoor are never automated.
@@ -70,16 +70,22 @@ Show a short user-facing preamble. For first run:
 ```text
 Welcome to Mr. Weirdo Jobs.
 
-I will read your resume, ask three hard-boundary questions, build a local job
-search profile, confirm it with you, then discover and score US student
-internship/new-grad jobs. Only supported, high-fit Greenhouse/Ashby/Lever matches are
-auto-submitted. All state stays on this machine at ~/.mrweirdo-jobs.
+First of all, upload your resume PDF.
+
+Then talk to us about yourself: who you are, what kind of internship or
+part-time role you want, what experiences you want companies to notice, and
+what industries/functions you care about.
+
+I will turn that into a local profile, ask only the hard-boundary questions I
+must not infer, show you the parsed profile once, then discover, score, and
+submit a small guarded batch of US student roles. Stable batch auto-submit is
+Greenhouse/Ashby. All state stays on this machine at ~/.mrweirdo-jobs.
 ```
 
 For returning runs:
 
 ```text
-mrweirdo onboard: realtime discovery -> score -> guarded auto-apply -> report.
+mrweirdo jobskill: realtime discovery -> score -> guarded auto-apply -> report.
 All state is local; jobs.db only remembers this user's seen/applied history.
 ```
 
@@ -114,11 +120,15 @@ Stop on any failure and tell the user what to fix.
 Ask:
 
 ```text
-把你的简历 PDF 绝对路径贴给我。再用 5-10 句话介绍一下你自己：
-你是谁、想找什么类型的实习/工作、最想强调的经历、喜欢的行业/方向、
-为什么想做这些职位、有什么特别想让公司知道的点。
+First of all, upload your resume PDF. Paste the absolute file path here.
 
-确认解析前不会提交任何申请。
+Then talk to us about yourself in 5-10 sentences:
+who you are, what kind of internship or part-time role you want, what
+experiences you want companies to notice, preferred industries/functions, and
+anything you want the applications to emphasize.
+
+Before any real application is submitted, I will show you the parsed profile
+and ask for one explicit confirmation.
 ```
 
 Validate and copy:

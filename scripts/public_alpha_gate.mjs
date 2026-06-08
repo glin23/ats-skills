@@ -44,6 +44,7 @@ const packageJson = JSON.parse(read('package.json'));
 const version = normalizeVersion(read('VERSION'));
 check('VERSION matches package.json', version === normalizeVersion(packageJson.version), `VERSION=${version}; package=${packageJson.version}`);
 check('release:alpha script exists', Boolean(packageJson.scripts?.['release:alpha']));
+check('demo:check script exists', Boolean(packageJson.scripts?.['demo:check']));
 
 for (const rel of [
   'README.md',
@@ -53,8 +54,10 @@ for (const rel of [
   'setup.sh',
   'docs/PUBLIC_ALPHA.md',
   '.github/workflows/ci.yml',
+  '.claude/skills/mrweirdo-jobskill/SKILL.md',
   '.claude/skills/mrweirdo-onboard/SKILL.md',
   '.claude/skills/mrweirdo-doctor/SKILL.md',
+  'scripts/demo_check.mjs',
   'shared/discover_candidates.mjs',
   'shared/apply_readiness_plan.mjs',
   'shared/prune_discovered_jobs.mjs',
@@ -86,6 +89,7 @@ const publicSurface = [
   'shared/profile.template.json',
   'shared/supervisor_preflight.mjs',
   '.claude/skills/mrweirdo-onboard/SKILL.md',
+  '.claude/skills/mrweirdo-jobskill/SKILL.md',
   '.claude/skills/mrweirdo-onboard/references/run-and-database.md',
 ];
 

@@ -36,7 +36,7 @@ test('discoveryApplyBucket separates auto-supported from manual sources', () => 
   assert.equal(discoveryApplyBucket({
     apply_url: 'https://jobs.lever.co/acme/abc-123/apply',
     source: 'lever_bulk',
-  }), 'auto_supported');
+  }), 'known_unsupported_ats');
   assert.equal(platformFromUrl('https://company.example/careers?gh_jid=123'), 'greenhouse');
 });
 

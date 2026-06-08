@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:smoke": "node scripts/role_guard_smoke.mjs",
+    "demo:check": "node scripts/demo_check.mjs",
     "release:alpha": "npm test && npm run test:smoke && node scripts/public_alpha_gate.mjs"
   },
   "engines": {
