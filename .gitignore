@@ -1,4 +1,6 @@
 .DS_Store
+.env
+.env.*
 profile.json
 search_intent.json
 essay_profile.json
@@ -7,6 +9,8 @@ source_cursor.json
 company_list.user.json
 cdp_host
 resume.pdf
+*resume*.pdf
+*Resume*.pdf
 jobs.db
 feedback.jsonl
 quota.jsonl
@@ -15,3 +19,4 @@ generated_materials/
 reports/
 log/
 .agents/
+.claude/settings.local.json

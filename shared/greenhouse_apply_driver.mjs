@@ -461,6 +461,9 @@ function educationEnrollmentAnswerForLabel(labelText) {
 
 function profileAddressValueForLabel(labelText) {
   const lt = String(labelText || '').toLowerCase();
+  if (/\b(?:e-?mail|email)\s+address\b/.test(lt) || /\b(?:institutional|academic|work|professional)\s+e?mail\b/.test(lt)) {
+    return null;
+  }
   const addr = PROFILE.personal?.address || {};
   const city = PROFILE.personal?.address_city || addr.city || PROFILE.personal?.city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const state = PROFILE.personal?.address_state || addr.state || SEARCH_INTENT.user_summary?.school_location?.state || '';
@@ -499,6 +502,26 @@ function profileAddressValueForLabel(labelText) {
       : { needs_user_answer: true, note: 'profile_full_address_required' };
   }
   return null;
+}
+
+function profileSpecificTextAnswerForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  if (/(?:reference|referee|recommender|faculty|professor|advisor|academic contact|supervisor).{0,80}(?:name|title|email|phone|contact)|(?:academic title|institutional email|academic email|professional email)|(?:full name).{0,80}(?:institutional|academic|reference|email)/.test(lt)) {
+    return { needs_user_answer: true, note: 'reference_contact_answer_required' };
+  }
+  if (/(?:certif(?:y|ication)|attest|signature|all answers.{0,40}(?:true|correct)|true and correct|accurate and complete)/.test(lt)) {
+    return { needs_user_answer: true, note: 'attestation_answer_required' };
+  }
+  return null;
+}
+
+function currentLocationFactAnswerForLabel(labelText) {
+  const lt = String(labelText || '').toLowerCase();
+  if (!/\b(?:are you|do you).{0,80}\b(?:located|based|reside|residing|live|living)\b.{0,50}\b(?:area|office|location|region|city|state|country|this role|this position)\b/.test(lt)) {
+    return null;
+  }
+  const residence = currentResidenceAnswerForLabel(labelText);
+  return { value: residence.value || 'No', note: residence.note || 'current_location_fact_from_profile' };
 }
 
 function stateValueCandidates(state) {
@@ -582,6 +605,10 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/unlimited and unrestricted authorization|unrestricted authorization.{0,80}work|authorization.{0,40}unrestricted/.test(lt)) {
     const value = workAuthWithoutRestrictionAnswer();
     return { value, candidates: [value, value === 'Yes' ? 'I have unrestricted authorization' : 'No'], note: 'profile_unrestricted_work_authorization' };
+  }
+  if (/permanent.{0,60}work authorization|work authorization.{0,60}permanent/.test(lt)) {
+    const value = workAuthWithoutRestrictionAnswer();
+    return { value, candidates: [value, value === 'Yes' ? 'I have permanent work authorization' : 'No'], note: 'profile_permanent_work_authorization' };
   }
   if (/currently enrolled.{0,80}(?:masters?|ph\.?d|doctor|graduate)|(?:masters?|ph\.?d).{0,80}program|graduate degree program/.test(lt)) {
     return { value: isGraduateDegreeProfile() ? 'Yes' : 'No', note: isGraduateDegreeProfile() ? 'graduate_degree_from_profile' : 'not_graduate_degree_from_profile' };
@@ -1393,6 +1420,11 @@ async function answerMissing(tab, labelText) {
   const f = await findFieldByLabel(tab, labelText);
   if (!f.ok) return { ok: false, note: 'find_failed', detail: f, pending_for_main_claude: shouldQueueForMainClaude(labelText), question: labelText };
 
+  const profileSpecificText = profileSpecificTextAnswerForLabel(labelText);
+  if (profileSpecificText && (f.type === 'text' || f.type === 'textarea')) {
+    return { ok: false, ...profileSpecificText };
+  }
+
   if (f.type === 'file') {
     const isCoverLetter = /cover/i.test(lt) || /cover/i.test(f.id || '');
     const isResume = /resume|cv\b|curriculum vitae/i.test(lt) || /resume|cv\b/i.test(f.id || '');
@@ -1448,6 +1480,22 @@ async function answerMissing(tab, labelText) {
     const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
     cdp('typetext', tab, sel, value);
     return { ok: true, mode: 'date_text_fill', value };
+  }
+
+  const currentLocationFact = currentLocationFactAnswerForLabel(labelText);
+  if (currentLocationFact?.value) {
+    if (f.is_react_select) {
+      return await reactSelectOneOf(tab, f.id, [currentLocationFact.value], { mode: 'sync' });
+    }
+    if (f.type === 'select-one' || f.type === 'select') {
+      return await selectNativeOneOf(tab, f.id, [currentLocationFact.value]);
+    }
+    if (f.type === 'text' || f.type === 'textarea') {
+      const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
+      cdp('typetext', tab, sel, currentLocationFact.value);
+      return { ok: true, mode: 'current_location_fact_text', value: currentLocationFact.value, note: currentLocationFact.note };
+    }
+    return { ok: false, note: 'current_location_fact_unhandled_field', detail: { ...currentLocationFact, field: f } };
   }
 
   const standardYesNo = standardYesNoAnswerForLabel(labelText);

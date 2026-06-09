@@ -213,6 +213,18 @@ function essayAnswerFor(questionText) {
   return null;
 }
 
+function workAuthWithoutSponsorshipAnswer() {
+  const auth = PROFILE.work_authorization || {};
+  const visa = String(auth.visa_status || '').toLowerCase();
+  if (/citizen|green card|permanent resident|authorized without restriction/.test(visa)) return 'Yes';
+  if (auth.requires_sponsorship_now === false &&
+      auth.requires_sponsorship_future === false &&
+      !/f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visa)) {
+    return 'Yes';
+  }
+  return 'No';
+}
+
 async function pickComboboxInQuestion(tab, questionText, value) {
   const searchTerms = Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
   const found = await evalInTab(tab, `
@@ -470,6 +482,12 @@ async function answerMissing(tab, missingLabel) {
 
   const compensationExpectation = BANK.fallback_text?.compensation_expectations
     || "Open to discussion based on the role, location, and the company's standard internship or entry-level range.";
+
+  if (/(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i.test(ml)) {
+    const withoutSponsorshipAns = workAuthWithoutSponsorshipAnswer();
+    const combo = await pickComboboxInQuestion(tab, missingLabel, [withoutSponsorshipAns]);
+    if (combo.ok) return combo;
+  }
 
   if (/authorized.{0,40}work.{0,20}u\.?s|legally authorized.{0,40}u\.?s/i.test(ml)) {
     const authComboPrefs = /f-?1|opt|cpt/i.test(PROFILE.work_authorization?.visa_status || '')

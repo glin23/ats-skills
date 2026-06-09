@@ -103,10 +103,10 @@ test('apply_gap_report does not re-ask facts already stored in profile', () => {
 
   writeFileSync(profilePath, JSON.stringify({
     personal: {
-      address_street: '60 Hope Ave, Apt #401',
-      address_city: 'Waltham',
-      address_state: 'MA',
-      address_zip: '02453',
+      address_street: '123 Example St',
+      address_city: 'Example City',
+      address_state: 'CA',
+      address_zip: '00000',
       address_country: 'United States',
     },
     education: { gpa: '3.2' },

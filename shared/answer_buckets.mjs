@@ -36,6 +36,13 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
   } = ctx;
   const personal = PROFILE.personal || {};
   const education = PROFILE.education || {};
+  const workAuth = PROFILE.work_authorization || {};
+  const visaStatus = String(workAuth.visa_status || '').toLowerCase();
+  const authorizedWithoutSponsorship =
+    workAuth.requires_sponsorship_now === false &&
+    workAuth.requires_sponsorship_future === false &&
+    !/f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visaStatus);
+  const withoutSponsorshipAns = authorizedWithoutSponsorship ? 'Yes' : 'No';
 
   return [
     { match: /phone|mobile|telephone|cell ?phone/i, action: 'fill_phone', q: missingLabel },
@@ -47,9 +54,10 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /graduate.{0,15}2026|2026.{0,15}later/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
     { match: /confirm.{0,20}acknowledge.{0,30}internship details|hours and pay align/i, action: 'click_single_radio_in_question', q: missingLabel },
     { match: /authorized.{0,30}canada|legally.{0,15}work.{0,15}canada|reside.{0,20}canada|residency.{0,10}canada/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
+    { match: /(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i, action: 'click_radio_in_question', q: missingLabel, choice: withoutSponsorshipAns, fallback: pna },
     // Authorization separate from sponsorship: "Are you authorized to work" → Yes (F-1 OPT)
     { match: /authorized to work|legally.{0,5}work|eligible to work|right to work/i, action: 'click_radio_in_question', q: missingLabel, choice: authorizedAns, fallback: pna },
-    { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No - I am authorized to work in the U.S. without employer sponsorship', fallback: 'No' },
+    { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     { match: /require.{0,5}sponsor|need.{0,5}sponsor|sponsorship/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     { match: /work auth|visa/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },
     // Non-standard sponsorship phrasings, e.g. "require the support of X to maintain
