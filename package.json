@@ -1,8 +1,35 @@
 {
   "name": "mrweirdo-jobs",
   "version": "2.2.0",
-  "private": true,
   "description": "Resume-driven job search automation for US college students (Claude Code + Codex skill collection with a Node 24/CDP backend).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glin23/mrweirdo-jobs.git"
+  },
+  "homepage": "https://github.com/glin23/mrweirdo-jobs#readme",
+  "bugs": {
+    "url": "https://github.com/glin23/mrweirdo-jobs/issues"
+  },
+  "keywords": [
+    "codex",
+    "claude-code",
+    "jobs",
+    "skills",
+    "job-search",
+    "automation"
+  ],
+  "bin": {
+    "mrweirdo-jobs": "bin/mrweirdo-jobs.mjs"
+  },
+  "files": [
+    "bin/",
+    "setup.sh",
+    "README.md",
+    "DISCLAIMER.md",
+    "LICENSE",
+    "VERSION"
+  ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "test:smoke": "node scripts/role_guard_smoke.mjs",

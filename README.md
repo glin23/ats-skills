@@ -17,7 +17,7 @@
 Install on macOS with one command:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
+npx -y mrweirdo-jobs
 ```
 
 Then open Claude Code or Codex and run:
@@ -159,7 +159,15 @@ This is still an early, self-hosted agent. Treat the support matrix honestly:
 
 ---
 
-## Install (one command, macOS)
+## Install (macOS)
+
+Preferred:
+
+```bash
+npx -y mrweirdo-jobs
+```
+
+Fallback without npm package resolution:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)

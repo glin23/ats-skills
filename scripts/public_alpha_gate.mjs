@@ -45,12 +45,17 @@ const version = normalizeVersion(read('VERSION'));
 check('VERSION matches package.json', version === normalizeVersion(packageJson.version), `VERSION=${version}; package=${packageJson.version}`);
 check('release:alpha script exists', Boolean(packageJson.scripts?.['release:alpha']));
 check('demo:check script exists', Boolean(packageJson.scripts?.['demo:check']));
+check('package is publishable to npm', packageJson.private !== true);
+check('npx bin is declared', packageJson.bin?.['mrweirdo-jobs'] === 'bin/mrweirdo-jobs.mjs');
+check('npm package includes bin', packageJson.files?.includes('bin/'));
+check('npm package includes setup.sh', packageJson.files?.includes('setup.sh'));
 
 for (const rel of [
   'README.md',
   'DISCLAIMER.md',
   'LICENSE',
   'VERSION',
+  'bin/mrweirdo-jobs.mjs',
   'setup.sh',
   'docs/PUBLIC_ALPHA.md',
   '.github/workflows/ci.yml',
@@ -77,8 +82,16 @@ if (existsSync(join(repoRoot, 'setup.sh'))) {
 
 textMatches('README.md', /Public Alpha Status/, 'has public alpha status section');
 textMatches('README.md', /npm run release:alpha/, 'documents alpha gate');
+textMatches('README.md', /npx -y mrweirdo-jobs/, 'documents npx installer');
 textMatches('DISCLAIMER.md', /public-alpha/i, 'uses public-alpha risk wording');
 textMatches('setup.sh', /public alpha/i, 'labels installer as public alpha');
+
+if (existsSync(join(repoRoot, 'bin/mrweirdo-jobs.mjs'))) {
+  const mode = statSync(join(repoRoot, 'bin/mrweirdo-jobs.mjs')).mode & 0o777;
+  check('npx bin is executable', (mode & 0o111) !== 0, `mode=${mode.toString(8)}`);
+  const syntax = spawnSync(process.execPath, ['--check', 'bin/mrweirdo-jobs.mjs'], { cwd: repoRoot, encoding: 'utf8' });
+  check('npx bin syntax', syntax.status === 0, syntax.stderr || syntax.stdout);
+}
 
 const publicSurface = [
   'README.md',
