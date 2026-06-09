@@ -655,9 +655,20 @@ async function answerMissing(tab, missingLabel) {
       (async () => {
         const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
         const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+        // Choice comparison: unify curly quotes and strip trailing punctuation so
+        // "Yes, I'm open to relocation." matches the bucket's "Yes, I'm open to relocation".
+        const normChoice = (s) => norm(s).replace(/[\\u2018\\u2019]/g, "'").replace(/[.!]+$/, '');
+        // Safe-direction prefix match only: a LONGER option may start with our choice
+        // text (option adds trailing words), but a bare option like "Yes" must never
+        // be claimed by a longer choice — that flips the meaning of residence questions.
+        const choiceMatches = (optionText, choice) => {
+          const o = normChoice(optionText);
+          if (o === choice) return true;
+          return choice.length >= 8 && o.startsWith(choice);
+        };
         const targetQ = ${JSON.stringify(bucket.q.toLowerCase().replace(/\s+/g, ' ').slice(0, 56))};
         const rawChoices = ${JSON.stringify(bucket.choices || [bucket.choice, bucket.fallback].filter(Boolean))};
-        const choices = rawChoices.filter(Boolean).map(c => c.toLowerCase());
+        const choices = rawChoices.filter(Boolean).map(c => normChoice(c));
 
         // Find SMALLEST container with question text + has 2-12 selectable inputs OR buttons.
         const all = [...document.querySelectorAll("fieldset, div")];
@@ -676,7 +687,7 @@ async function answerMissing(tab, missingLabel) {
         const yesNoBtns = [...c.querySelectorAll("button")].filter(b => /^(yes|no|i prefer.*|decline.*|i am not a protected.*|i do not want.*|male|female)$/i.test(b.innerText.trim()));
         if (yesNoBtns.length >= 2) {
           for (const choice of choices) {
-            const btn = yesNoBtns.find(b => b.innerText.trim().toLowerCase() === choice);
+            const btn = yesNoBtns.find(b => choiceMatches(b.innerText.trim(), choice));
             if (btn) {
               const isActive = () => /(^|\\s)_active_/.test(btn.className);
               if (isActive()) return { ok:true, picked: btn.innerText.trim(), mode:'btn_widget_already_active', container_size: c.innerText.length };
@@ -712,7 +723,7 @@ async function answerMissing(tab, missingLabel) {
               if (sib) txt = sib.innerText.trim();
             }
             if (!txt && inp.nextElementSibling) txt = (inp.nextElementSibling.innerText || '').trim();
-            if (txt.toLowerCase() === choice) {
+            if (choiceMatches(txt, choice)) {
               inp.click();
               const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
               if (desc && typeof desc.set === 'function') desc.set.call(inp, true);

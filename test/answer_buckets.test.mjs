@@ -61,6 +61,13 @@ test('SF Bay relocation question offers the relocation choice list', () => {
   assert.equal(b.action, 'click_radio_in_question');
   assert.ok(Array.isArray(b.choices));
   assert.equal(b.choices[0], 'Yes, I am open to relocation');
+  // 3-option radios phrase the yes-answer differently (abby-care regression):
+  // the list must carry contraction/gerund variants so one of them lands.
+  assert.ok(b.choices.includes("Yes, I'm open to relocation"));
+  assert.ok(b.choices.includes('Yes, I am open to relocating'));
+  assert.ok(b.choices.includes('No, but I am open to relocating to the Bay Area'));
+  // Plain 'No' stays LAST so specific yes-variants always win first.
+  assert.equal(b.choices[b.choices.length - 1], 'No');
 });
 
 test('location question routes to the combobox filler with cityFull', () => {

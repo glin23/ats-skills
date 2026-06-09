@@ -73,8 +73,12 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
       q: missingLabel,
       choices: [
         'Yes, I am open to relocation',
+        "Yes, I'm open to relocation",
+        'Yes, I am open to relocating',
         "No, but I'm open to relocating to the Bay Area",
+        'No, but I am open to relocating to the Bay Area',
         'Open to relocation',
+        'Willing to relocate',
         'No'
       ]
     },
