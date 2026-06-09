@@ -12,6 +12,26 @@
 
 ---
 
+## Quick Start
+
+Install on macOS with one command:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/glin23/mrweirdo-jobs/main/setup.sh)
+```
+
+Then open Claude Code or Codex and run:
+
+```text
+/mrweirdo-jobskill
+```
+
+Requirements: macOS, Node 24+, Google Chrome, and Claude Code or Codex.
+The installer verifies your machine, links the skills, and keeps private state
+under `~/.mrweirdo-jobs/`.
+
+---
+
 ## What it does
 
 ```
