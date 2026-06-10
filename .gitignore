@@ -20,3 +20,5 @@ reports/
 log/
 .agents/
 .claude/settings.local.json
+.gstack/
+.tmp-scoring/
