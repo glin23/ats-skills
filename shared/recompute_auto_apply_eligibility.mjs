@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { dbPath } from './local_db.mjs';
+import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
@@ -30,6 +30,7 @@ const apply = boolArg('--apply');
 const json = boolArg('--json');
 const allowedRoleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
 
+initDb();
 const db = new DatabaseSync(dbPath());
 const submittedKeys = new Set(
   db.prepare(`
@@ -41,7 +42,8 @@ const submittedKeys = new Set(
 );
 const rows = db.prepare(`
   SELECT id, company, title, apply_url, ats_platform, status, fit_score,
-         role_type_match, apply_quota_limit, auto_apply_eligible, updated_at
+         recommended, role_type_match, apply_quota_limit, auto_apply_eligible,
+         legitimacy, liveness_status, updated_at
     FROM jobs
    WHERE fit_score IS NOT NULL
      AND status = '🤖 AI sourced'
@@ -63,15 +65,18 @@ const summary = {
 
 for (const row of rows) {
   const roleType = deriveRoleTypeFromJob(row);
-  const reason = eligibleReason(row, {
+  let reason = eligibleReason(row, {
     roleType,
     allowedRoleTypes,
     submittedKeys,
     minFit: MIN_FIT,
     supportedAuto: SUPPORTED_AUTO,
   });
-  const nextEligible = reason === 'eligible' ? 1 : 0;
   const currentEligible = Number(row.auto_apply_eligible || 0);
+  if (reason === 'eligible' && row.recommended == null && currentEligible === 0) {
+    reason = 'legacy_recommended_unknown';
+  }
+  const nextEligible = reason === 'eligible' ? 1 : 0;
   summary.by_reason[reason] = (summary.by_reason[reason] || 0) + 1;
 
   if (nextEligible === currentEligible) {

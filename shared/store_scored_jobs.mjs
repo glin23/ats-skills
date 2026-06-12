@@ -6,7 +6,9 @@ import { initDb, upsertJob } from './local_db.mjs';
 import { classifyRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { SUPPORTED_AUTO_PLATFORMS, platformFromUrl } from './sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
-import { unusableAutoApplyReason } from './eligibility.mjs';
+import { legitimacyBlockReason, unusableAutoApplyReason } from './eligibility.mjs';
+import { progress } from './progress.mjs';
+import { DEFAULT_LEGITIMACY, LEGITIMACY_LEVELS } from './constants.mjs';
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -26,7 +28,6 @@ function readJson(file, fallback = null) {
 }
 
 const HOME = atsHome();
-const runId = argValue('--run-id', process.env.RUN_ID || `run-${new Date().toISOString()}`);
 const threshold = Math.max(0, Number(argValue('--threshold', process.env.MRWEIRDO_MIN_FIT_SCORE || '5')));
 const toScorePath = argValue('--to-score', '/tmp/mrweirdo-onboard/to_score.json');
 const scoredPath = argValue('--scored', '/tmp/mrweirdo-onboard/scored.json');
@@ -43,6 +44,13 @@ const candidates = readJson(toScorePath, []);
 const scored = readJson(scoredPath, []);
 if (!Array.isArray(candidates)) throw new Error(`${toScorePath} must contain a JSON array`);
 if (!Array.isArray(scored)) throw new Error(`${scoredPath} must contain a JSON array`);
+const runId = argValue(
+  '--run-id',
+  process.env.RUN_ID ||
+    candidates.find((job) => job?.discovery_run_id)?.discovery_run_id ||
+    `run-${new Date().toISOString()}`
+);
+progress('store', `run_id=${runId} threshold=${threshold}`);
 
 function rowUrl(row = {}) {
   return row.apply_url || row.url || '';
@@ -92,6 +100,7 @@ const summary = {
   eligible: 0,
   by_platform: {},
   by_ineligible_reason: {},
+  by_legitimacy: {},
   skipped_unusable_apply_url: 0,
 };
 
@@ -108,6 +117,19 @@ if (scoreMissing.length > 0 && !allowPartialScores) {
 function bump(obj, key) {
   const k = String(key || 'unknown');
   obj[k] = (obj[k] || 0) + 1;
+}
+
+function normalizeLegitimacy(value) {
+  const v = String(value || '').trim().toLowerCase();
+  return LEGITIMACY_LEVELS.includes(v) ? v : DEFAULT_LEGITIMACY;
+}
+
+function normalizeLegitimacySignals(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .slice(0, 2);
 }
 
 for (const job of candidates) {
@@ -128,8 +150,11 @@ for (const job of candidates) {
   const recommended = score.recommended === true;
   const roleOk = wantedRoleTypes.has(storedRoleType) && wantedRoleTypes.has(recheckedRoleType);
   const platformOk = supportedAuto.has(platform);
+  const legitimacy = normalizeLegitimacy(score.legitimacy);
+  const legitimacy_signals = normalizeLegitimacySignals(score.legitimacy_signals);
+  const legitimacyReason = legitimacyBlockReason({ legitimacy });
   const unusableReason = unusableAutoApplyReason({ ...job, apply_url: applyUrl });
-  const eligible = passThreshold && recommended && roleOk && !capped && platformOk && !unusableReason;
+  const eligible = passThreshold && recommended && roleOk && !capped && platformOk && !legitimacyReason && !unusableReason;
 
   let reason = 'eligible';
   if (unusableReason) reason = unusableReason;
@@ -137,6 +162,7 @@ for (const job of candidates) {
   else if (!recommended) reason = 'not_recommended';
   else if (!roleOk) reason = 'role_type_not_allowed';
   else if (capped) reason = 'quota_guarded';
+  else if (legitimacyReason) reason = legitimacyReason;
   else if (!platformOk) reason = 'unsupported_ats_platform';
 
   const row = {
@@ -147,9 +173,12 @@ for (const job of candidates) {
     source: job.source || job._discovery_source || 'unknown',
     status: '🤖 AI sourced',
     fit_score: score.fit_score ?? null,
+    recommended: recommended ? 1 : 0,
     key_gaps: Array.isArray(score.key_gaps) ? score.key_gaps.join(' / ') : null,
     role_type_match: roleType,
     dim_scores: score.dim_scores || null,
+    legitimacy,
+    legitimacy_signals,
     ats_platform: platform,
     apply_quota_limit: capped ? 1 : null,
     scored: score.fit_score != null ? 1 : 0,
@@ -164,7 +193,12 @@ for (const job of candidates) {
   summary.stored += 1;
   if (eligible) summary.eligible += 1;
   bump(summary.by_platform, platform);
+  bump(summary.by_legitimacy, legitimacy);
   if (!eligible) bump(summary.by_ineligible_reason, reason);
+  if (summary.stored % 50 === 0) {
+    progress('store', `stored=${summary.stored}/${usableCandidates.length} eligible=${summary.eligible}`);
+  }
 }
 
+progress('store', `done stored=${summary.stored} eligible=${summary.eligible} skipped_unusable=${summary.skipped_unusable_apply_url}`);
 console.log(JSON.stringify(summary, null, 2));

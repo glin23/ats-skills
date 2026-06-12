@@ -7,6 +7,7 @@ import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { passesAllowedRoleType, roleTypesFromSearchIntent, roleTypeConflict } from './role_types.mjs';
 import { atsHome } from './paths.mjs';
 import { unusableAutoApplyReason } from './eligibility.mjs';
+import { progress } from './progress.mjs';
 
 const HOME = atsHome();
 const TMP_DIR = '/tmp/mrweirdo-onboard';
@@ -443,7 +444,7 @@ if (!hasArg('--run')) {
 }
 
 fs.mkdirSync(outputDir, { recursive: true });
-console.error(`[discover-candidates] sources=${sources.join(',')} keywords=${keywords.join(' | ')}`);
+progress('discovery', `sources=${sources.length} keywords=${keywords.length} run_id=${runId}`);
 const result = await discoverAll({
   keywords,
   sources,
@@ -451,7 +452,7 @@ const result = await discoverAll({
   limit_per_source: limitPerSource,
   source_window_size: sourceWindowEnabled ? sourceWindowSize : null,
   source_window_offset: sourceWindowEnabled ? sourceWindowOffset : 0,
-  onProgress: (src, count) => console.error(`  [${src}] ${count} jobs`),
+  onProgress: (src, count) => progress('discovery', `${src}: ${count} jobs`),
 });
 
 const discovered = result.jobs.map((job) => ({ ...job, discovery_run_id: runId }));
@@ -460,7 +461,7 @@ const filtered = hardFilterResult.kept;
 const unusableApplyUrlDropped = hardFilterResult.dropped.filter((row) => row.reason === 'unusable_apply_url').length;
 const roleTypeConflicts = annotateRoleTypeConflicts(filtered);
 if (roleTypeConflicts > 0) {
-  console.error(`[discover-candidates] role_type_conflicts=${roleTypeConflicts} (intern-titled rows with permanent-looking employment_type; flagged via bot_note, still eligible — human glance advised)`);
+  progress('discovery', `role_type_conflicts=${roleTypeConflicts} flagged_for_review`);
 }
 const manualOrUnsupported = filtered
   .filter((job) => !isAutoSupportedCandidate(job))
@@ -505,6 +506,7 @@ fs.writeFileSync(plan.output_files.filtered, JSON.stringify(filtered, null, 2));
 fs.writeFileSync(plan.output_files.to_score, JSON.stringify(toScore, null, 2));
 fs.writeFileSync(plan.output_files.manual_or_unsupported, JSON.stringify(manualOrUnsupported, null, 2));
 fs.writeFileSync(plan.output_files.discovery_funnel, JSON.stringify(discoveryFunnel, null, 2));
+progress('discovery', `funnel discovered=${discovered.length} kept=${filtered.length} to_score=${toScore.length} manual=${manualOrUnsupported.length} dropped=${hardFilterResult.dropped.length}`);
 
 let nextSourceWindowOffset = null;
 if (sourceWindowEnabled && explicitSourceWindowOffset == null) {

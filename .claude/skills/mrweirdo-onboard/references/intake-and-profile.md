@@ -4,13 +4,14 @@ Use this reference during `/mrweirdo-onboard` Steps 1-3.
 
 ## Hard-Boundary Questions
 
-Ask only the facts that must not be inferred:
+Ask only the facts that must not be inferred. Use one UI call for A0/A1/A2
+before discovery; do not split these into separate confirmation moments.
 
 | ID | Question | Options |
 |---|---|---|
 | A0 | Work authorization | US citizen / green card; F-1 CPT/OPT; F-1 now and future sponsorship; other |
 | A1 | Geography | current/school metro only; named metros; anywhere in the US; user-listed countries |
-| A2 | Legal attestations | ask/skip sensitive legal questions; explicitly confirm no blocking obligations/prohibited-possessor issue; other/uncertain |
+| A2 | Legal attestations | ask/skip sensitive legal questions when needed; explicitly confirm no blocking obligations/prohibited-possessor issue; other/uncertain |
 
 Parse A1 into:
 
@@ -19,7 +20,9 @@ Parse A1 into:
 - `anywhere_primary_country`: US only, relocation OK.
 - `anywhere_legal_work`: exact user-listed countries, relocation OK.
 
-Write A2 legal defaults only when explicitly confirmed. Otherwise keep nullable fields null and let drivers skip legally sensitive rows.
+Write A2 legal defaults only when explicitly confirmed. Otherwise keep nullable
+fields null and let drivers skip legally sensitive rows. The recommended A2
+default is ask/skip until a real form needs the fact.
 
 ## Profile Generation Prompt
 
@@ -70,25 +73,27 @@ Required `essay_profile.json` guidance:
 
 ## Adaptive Follow-Up Rules
 
-After the first draft, ask follow-ups only for real ambiguity. Do not re-ask hard-boundary questions unless the answer was unusable.
+After the first draft, ask follow-ups only for real ambiguity that would
+materially change discovery keywords. Do not re-ask hard-boundary questions
+unless the answer was unusable.
 
-Possible follow-ups:
+Allowed adaptive follow-ups:
 
 - Multiple functions in resume: ask target functions using three resume-derived options.
-- Multiple industries: ask industry preference using three resume-derived options.
-- Major-switch trajectory: ask whether to use old major, new direction, bridge roles, or agent recommendation.
 - Senior / mixed signals: ask internship, part-time, new-grad, or multiple.
-- Weak/no caliber signals: ask target company tier.
 
 Limits:
 
-- Maximum 5 adaptive follow-up questions.
-- Maximum 4 questions per UI call; if 5 are needed, use two calls.
+- Maximum 3 adaptive follow-up questions.
+- Maximum 1 adaptive follow-up UI call.
 - First option should be the AI-inferred default and labeled recommended.
+- Industry, company tier, and writing-emphasis ambiguity should normally be
+  inferred from the resume/self-intro, marked `[推断，可改]`, and left for the
+  soft correction window.
 
-## Confirmation Gate
+## Parse Soft Window
 
-Before discovery or auto-apply, show a concise parse summary:
+Before discovery, show a concise parse summary:
 
 - name, email, phone
 - school, major, graduation date
@@ -99,4 +104,12 @@ Before discovery or auto-apply, show a concise parse summary:
 - hard no-claims
 - exclude keywords
 
-Ask once whether the parse is correct. Continue only on explicit confirmation. If incorrect, stop and tell the user to edit the generated JSON files before rerunning.
+Do not require an independent hard confirmation before discovery. Tell the user
+discovery is read-only and can run while they correct the parse. Mark inferred
+soft fields as `[推断，可改]`. Hard-boundary facts must come from A0/A1/A2 or
+stay nullable/blocking; never mark visa, GPA, demographic, legal attestation,
+background-check, relocation, or salary-acceptance facts as inferred.
+
+If the user corrects identity facts, update the JSON and continue. If the user
+changes target direction, update JSON and rerun discovery. Identity facts are
+shown again in the queue gate before any real submission.

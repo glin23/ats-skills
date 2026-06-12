@@ -26,6 +26,27 @@ test('drops a row whose company/title is already submitted', () => {
   }), false);
 });
 
+test('drops a suspicious-legitimacy row before it enters the queue', () => {
+  assert.equal(passesQueueFilters({ ...internRow, legitimacy: 'suspicious' }, {
+    roleTypes: ['intern', 'part_time'],
+    submittedKeys: new Set(),
+    seenKeys: new Set(),
+  }), false);
+});
+
+test('drops an expired-liveness row but keeps uncertain liveness', () => {
+  assert.equal(passesQueueFilters({ ...internRow, liveness_status: 'expired' }, {
+    roleTypes: ['intern', 'part_time'],
+    submittedKeys: new Set(),
+    seenKeys: new Set(),
+  }), false);
+  assert.equal(passesQueueFilters({ ...internRow, liveness_status: 'uncertain' }, {
+    roleTypes: ['intern', 'part_time'],
+    submittedKeys: new Set(),
+    seenKeys: new Set(),
+  }), true);
+});
+
 test('drops a row already seen earlier in this queue pass (dedupe)', () => {
   const seenKeys = new Set([duplicateKey(internRow)]);
   assert.equal(passesQueueFilters(internRow, {

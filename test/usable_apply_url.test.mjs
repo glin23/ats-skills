@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
 import { discoveryApplyBucket, platformFromUrl } from '../shared/sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from '../shared/sourcing/usable_apply_url.mjs';
 
@@ -192,4 +193,116 @@ test('store_scored_jobs refuses partial scoring for usable candidates', () => {
   assert.equal(summary.score_missing_count, 1);
   assert.equal(summary.stored, 2);
   assert.equal(summary.eligible, 1);
+});
+
+test('store_scored_jobs defaults missing legitimacy to high and holds suspicious rows', () => {
+  const home = mkdtempSync(join(tmpdir(), 'mrweirdo-legitimacy-'));
+  const toScorePath = join(home, 'to_score.json');
+  const scoredPath = join(home, 'scored.json');
+  const dbPath = join(home, 'jobs.db');
+  writeFileSync(join(home, 'search_intent.json'), JSON.stringify({
+    search_intent: {
+      role_type_targets: ['intern'],
+      geographic_preference: {
+        primary_country: 'US',
+        countries_open_to: ['US'],
+      },
+    },
+  }));
+  writeFileSync(toScorePath, JSON.stringify([
+    {
+      company: 'Acme',
+      title: 'Growth Intern',
+      apply_url: 'https://boards.greenhouse.io/acme/jobs/1',
+      location: 'United States',
+      _discovery_source: 'greenhouse_bulk',
+    },
+    {
+      company: 'Beta',
+      title: 'Marketing Intern',
+      apply_url: 'https://jobs.ashbyhq.com/beta/abc/application',
+      location: 'United States',
+      _discovery_source: 'ashby_bulk',
+    },
+  ]));
+  writeFileSync(scoredPath, JSON.stringify([
+    {
+      apply_url: 'https://boards.greenhouse.io/acme/jobs/1',
+      fit_score: 7,
+      recommended: true,
+      role_type_match: 'intern',
+      dim_scores: {
+        role_fit: 7,
+        skills_match: 7,
+        location_fit: 8,
+        visa_compatible: 5,
+        seniority_match: 10,
+        exclude_check: 10,
+      },
+    },
+    {
+      apply_url: 'https://jobs.ashbyhq.com/beta/abc/application',
+      fit_score: 8,
+      recommended: true,
+      role_type_match: 'intern',
+      legitimacy: 'suspicious',
+      legitimacy_signals: ['very generic description', 'unclear timing'],
+      dim_scores: {
+        role_fit: 8,
+        skills_match: 7,
+        location_fit: 8,
+        visa_compatible: 5,
+        seniority_match: 10,
+        exclude_check: 10,
+      },
+    },
+  ]));
+
+  const env = {
+    ...process.env,
+    MRWEIRDO_HOME: home,
+    MRWEIRDO_DB_PATH: dbPath,
+    MRWEIRDO_REPO_ROOT: process.cwd(),
+  };
+  const stdout = execFileSync(process.execPath, [
+    'shared/store_scored_jobs.mjs',
+    '--run-id',
+    'test-legitimacy',
+    '--to-score',
+    toScorePath,
+    '--scored',
+    scoredPath,
+  ], {
+    cwd: process.cwd(),
+    env,
+    encoding: 'utf8',
+  });
+
+  const summary = JSON.parse(stdout);
+  assert.equal(summary.stored, 2);
+  assert.equal(summary.eligible, 1);
+  assert.equal(summary.by_legitimacy.high, 1);
+  assert.equal(summary.by_legitimacy.suspicious, 1);
+  assert.equal(summary.by_ineligible_reason.legitimacy_suspicious, 1);
+
+  const db = new DatabaseSync(dbPath);
+  const rows = db.prepare(`
+    SELECT company, auto_apply_eligible, recommended, legitimacy, legitimacy_signals
+      FROM jobs
+     ORDER BY company
+  `).all();
+  db.close();
+  assert.deepEqual(rows.map((r) => [r.company, r.auto_apply_eligible, r.recommended, r.legitimacy]), [
+    ['Acme', 1, 1, 'high'],
+    ['Beta', 0, 1, 'suspicious'],
+  ]);
+  assert.match(rows[1].legitimacy_signals, /generic description/);
+
+  const queue = execFileSync(process.execPath, ['shared/auto_apply_queue.mjs'], {
+    cwd: process.cwd(),
+    env,
+    encoding: 'utf8',
+  }).trim().split(/\n+/).filter(Boolean).map((line) => JSON.parse(line));
+  assert.equal(queue.length, 1);
+  assert.equal(queue[0].company, 'Acme');
 });

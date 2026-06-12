@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { DatabaseSync } from 'node:sqlite';
+import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { dbPath } from './local_db.mjs';
+import { atsHome } from './paths.mjs';
 import { SUBMITTED_STATUSES } from './job_identity.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
@@ -12,6 +14,17 @@ const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
   return idx >= 0 ? process.argv[idx + 1] : fallback;
+}
+
+function readLatestDiscoveryRunId() {
+  const file = '/tmp/mrweirdo-onboard/discovery_funnel.json';
+  if (!existsSync(file)) return null;
+  try {
+    const data = JSON.parse(readFileSync(file, 'utf8'));
+    return data.run_id || null;
+  } catch {
+    return null;
+  }
 }
 
 function hasArg(name) {
@@ -69,6 +82,7 @@ Options:
   --delete-unusable-url       Delete non-submitted rows whose apply_url is not a real http(s) URL.
   --retry-limit <n>           Delete non-submitted rows with >= n skip/error feedback records. Default 3.
   --min-fit <n>               Default MRWEIRDO_MIN_FIT_SCORE or 5.
+  --clear-first-run           Remove ~/.mrweirdo-jobs/.first_run after a successful applied prune.
 `);
 }
 
@@ -79,7 +93,8 @@ if (hasArg('--help') || hasArg('-h')) {
 
 const apply = hasArg('--apply');
 const json = hasArg('--json');
-const runId = argValue('--run-id', process.env.RUN_ID || null);
+const clearFirstRun = hasArg('--clear-first-run');
+const runId = argValue('--run-id', process.env.RUN_ID || readLatestDiscoveryRunId());
 const minFit = Number(argValue('--min-fit', process.env.MRWEIRDO_MIN_FIT_SCORE || '5'));
 const retryLimit = Math.max(1, Number(argValue('--retry-limit', '3')));
 
@@ -197,12 +212,22 @@ if (apply && victims.length) {
   }
 }
 
+let firstRunCleared = false;
+if (apply && clearFirstRun) {
+  const sentinel = `${atsHome()}/.first_run`;
+  if (existsSync(sentinel)) {
+    unlinkSync(sentinel);
+    firstRunCleared = true;
+  }
+}
+
 const summary = {
   apply,
   db_path: dbPath(),
   run_id: runId,
   min_fit: minFit,
   retry_limit: retryLimit,
+  first_run_cleared: firstRunCleared,
   options: opts,
   scanned: rows.length,
   delete_count: victims.length,

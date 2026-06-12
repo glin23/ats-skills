@@ -6,6 +6,7 @@
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
 import { deriveRoleTypeFromJob } from './role_types.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
+import { BLOCKING_LEGITIMACY, BLOCKING_LIVENESS } from './constants.mjs';
 
 export const DEFAULT_SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 
@@ -60,10 +61,23 @@ export function unusableAutoApplyReason(row = {}, { now = new Date() } = {}) {
   return null;
 }
 
+export function legitimacyBlockReason(row = {}) {
+  const value = String(row.legitimacy || '').trim().toLowerCase();
+  if (BLOCKING_LEGITIMACY.has(value)) return `legitimacy_${value}`;
+  return null;
+}
+
+export function livenessBlockReason(row = {}) {
+  const value = String(row.liveness_status || '').trim().toLowerCase();
+  if (BLOCKING_LIVENESS.has(value)) return `liveness_${value}`;
+  return null;
+}
+
 // Returns one of:
 //   'not_pending' | 'quota_guarded'
+//   | 'liveness_expired' | 'legitimacy_suspicious'
 //   | 'duplicate_same_company_title_already_submitted'
-//   | 'test_or_sandbox_posting' | 'expired_title_year'
+//   | 'test_or_sandbox_posting' | 'expired_title_year' | 'not_recommended'
 //   | 'role_type_not_allowed' | 'fit_below_threshold'
 //   | 'unsupported_ats_platform' | 'eligible'
 // Order matters — the first failing guard wins (matches the original).
@@ -77,9 +91,14 @@ export function eligibleReason(row = {}, {
 } = {}) {
   if (row.status !== '🤖 AI sourced') return 'not_pending';
   if (row.apply_quota_limit != null) return 'quota_guarded';
+  const livenessReason = livenessBlockReason(row);
+  if (livenessReason) return livenessReason;
+  const legitimacyReason = legitimacyBlockReason(row);
+  if (legitimacyReason) return legitimacyReason;
   const unusableReason = unusableAutoApplyReason(row, { now });
   if (unusableReason) return unusableReason;
   if (submittedKeys.has(duplicateKey(row))) return 'duplicate_same_company_title_already_submitted';
+  if (row.recommended === 0 || row.recommended === false) return 'not_recommended';
   if (!allowedRoleTypes.includes(roleType)) return 'role_type_not_allowed';
   if ((row.fit_score ?? 0) < minFit) return 'fit_below_threshold';
   const supported = supportedAuto instanceof Set
@@ -102,6 +121,8 @@ export function passesQueueFilters(row = {}, {
   now = new Date(),
 } = {}) {
   const key = duplicateKey(row);
+  if (livenessBlockReason(row)) return false;
+  if (legitimacyBlockReason(row)) return false;
   if (unusableAutoApplyReason(row, { now })) return false;
   if (submittedKeys.has(key)) return false;
   if (seenKeys.has(key)) return false;

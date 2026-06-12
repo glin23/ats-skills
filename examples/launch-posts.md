@@ -33,8 +33,8 @@ The other 5% — weird selectors, react-select v5 pickers — get
 escalated to Sonnet via screenshot.
 
 Zero npm deps. Node 24 + built-in node:sqlite.
-Current public alpha uses a resume-parse confirmation, then small-batch
-auto-submit for supported Greenhouse/Ashby rows.
+Current public alpha uses a soft parse correction window, then a hard queue
+gate before small-batch auto-submit for supported Greenhouse/Ashby rows.
 ```
 
 ### Tweet 3 (CTA + link)

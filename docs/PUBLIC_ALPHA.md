@@ -50,7 +50,7 @@ and a short self-introduction.
 - Discovery runs in realtime and advances that user's `source_cursor.json`.
 - `jobs.db` records only that user's seen/applied/skipped history.
 - If ready rows exist, Greenhouse/Ashby batch apply can submit eligible rows after
-  the user confirms the parsed profile/search intent.
+  the user reviews the queue gate identity block and explicitly starts the batch.
 - If no ready rows exist, `supervisor_status` and `apply_readiness_plan` explain
   what blocked the run and point to review or next realtime discovery.
 

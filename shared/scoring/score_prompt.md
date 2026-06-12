@@ -36,6 +36,8 @@ For each job in the batch, output one object in this exact shape (no preamble, n
   "fit_score": 7,
   "role_type_match": "intern",
   "recommended": true,
+  "legitimacy": "high",
+  "legitimacy_signals": ["specific JD with current season", "credible ATS URL"],
   "dim_scores": {
     "role_fit": 8,
     "skills_match": 7,
@@ -60,6 +62,8 @@ Return the whole batch as a JSON array `[ {...}, {...}, ... ]`.
 - `fit_score` — integer 0–10.
 - `role_type_match` — one of `"intern"`, `"part_time"`, `"new_grad_FT"`, `"other"`. Derive from job title + description versus `search_intent.role_type_targets` / `search_intent.seniority`.
 - `recommended` — boolean. **True iff every `dim_scores` value is ≥ 5 AND `fit_score` ≥ 5.** (Recall-first calibration; downstream dedupe/quota/platform guards still apply.)
+- `legitimacy` — one of `"high"`, `"caution"`, `"suspicious"`. This is a ghost-job / stale-posting signal, not a fit score. Do not adjust `fit_score` or `recommended` because of this field.
+- `legitimacy_signals` — 0-2 short factual signals from the provided batch data only. Use wording like `"title mentions 2025"`, `"description is specific about team/projects"`, `"salary range is transparent"`, or `"very generic description"`. Do not claim a job is fake.
 - `dim_scores` — all six keys required, each integer 0–10:
   - **role_fit**: does the role description match the user's `search_intent.role_categories` + `industry_targets` + `function_area`? High if the role is in one of the user's high-priority categories; medium if adjacent; low if unrelated to the user's resume trajectory.
   - **skills_match**: overlap between user resume's skills/projects and the JD's stated requirements.
@@ -97,6 +101,21 @@ Use `search_intent.caliber_signals` to keep the funnel honest:
 ## Be honest, not generous
 
 The user does NOT review these — they auto-apply when `fit_score ≥ threshold`. **False positives directly translate to wasted applications + potential ATS account flags.** When in doubt between adjacent scores, pick the lower one. When a role is clearly wrong, score it < 4 and let the rule-based gating filter it out.
+
+---
+
+## Legitimacy calibration
+
+Use only information already in the job batch. Do not WebSearch and do not
+visit the posting.
+
+- `high`: current-looking title, concrete role/team/responsibility details, credible ATS URL, or enough specificity to treat it as normal.
+- `caution`: thin or generic description, unclear timing, stale-looking but not clearly expired, or weak source context.
+- `suspicious`: strong stale/ghost signals such as an intern/student title with a past year, extremely generic description plus no concrete team/responsibilities, obvious test/sandbox wording, or conflicting title/date signals.
+
+`suspicious` rows keep their score but are held for manual review downstream.
+Phrase signals as observations, e.g. `"title contains 2025"` rather than
+`"fake job"`.
 
 ---
 

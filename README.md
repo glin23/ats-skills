@@ -38,8 +38,8 @@ This repo is ready for careful public alpha demos. The stable path is:
 1. Install with `npx -y mrweirdo-jobs`.
 2. Run `/mrweirdo-jobskill`.
 3. Provide a resume PDF path and a short self-introduction.
-4. Confirm the parsed profile/search intent.
-5. Let the agent discover, score, preview, and apply to eligible rows.
+4. Answer the three hard-boundary questions in one pass.
+5. Let the agent discover and score while you can correct inferred fields, then review the queue gate before any eligible rows are submitted.
 
 Before inviting classmates, run:
 

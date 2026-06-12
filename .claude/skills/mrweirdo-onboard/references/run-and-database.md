@@ -23,22 +23,17 @@ Use this reference during `/mrweirdo-onboard` Steps 4-11.
 Initialize or migrate the local database:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/local_db.mjs" init
-```
-
-Generate a per-run ID:
-
-```bash
-export RUN_ID="run-$(date -u +%Y%m%dT%H%M%S)-$(openssl rand -hex 4)"
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/init_db_cli.mjs
 ```
 
 Discovery:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/discover_candidates.mjs" --plan
-node "$MRWEIRDO_REPO_ROOT/shared/discover_candidates.mjs" \
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/discover_candidates.mjs --plan
+node shared/discover_candidates.mjs \
   --run \
-  --run-id "$RUN_ID" \
   --source-window-size "${MRWEIRDO_SOURCE_WINDOW_SIZE:-1000}"
 ```
 
@@ -59,15 +54,17 @@ manual rows, and score-cap drops.
 
 Before storing, make sure every usable row in `to_score.json` has one complete
 score object in `scored.json`: `apply_url`, numeric `fit_score`, boolean
-`recommended`, and `role_type_match`. If scoring was interrupted, finish the
-missing rows first. The store script intentionally fails on partial scoring
-unless `--allow-partial-scores` is passed for an explicit debug run.
+`recommended`, `role_type_match`, `dim_scores`, `legitimacy`, and
+`legitimacy_signals`. If scoring was interrupted, finish the missing rows
+first. The store script intentionally fails on partial scoring unless
+`--allow-partial-scores` is passed for an explicit debug run. Old scorer output
+without `legitimacy` is accepted as `high`.
 
 Store scored job rows and recompute eligibility:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/store_scored_jobs.mjs" \
-  --run-id "$RUN_ID" \
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/store_scored_jobs.mjs \
   --to-score /tmp/mrweirdo-onboard/to_score.json \
   --scored /tmp/mrweirdo-onboard/scored.json \
   > /tmp/mrweirdo-onboard/db_result.json
@@ -76,14 +73,21 @@ node "$MRWEIRDO_REPO_ROOT/shared/store_scored_jobs.mjs" \
 Run the guarded batch apply supervisor:
 
 ```bash
+cd "$MRWEIRDO_REPO_ROOT"
 if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
-  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
+  node shared/apply_supervisor.mjs \
     --real \
     --max "$MRWEIRDO_MAX_AUTO_APPLY"
 else
-  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+  node shared/apply_supervisor.mjs --real
 fi
 ```
+
+The real supervisor runs `shared/liveness_gate.mjs --batch` before queueing.
+Only `liveness_status='expired'` blocks; `uncertain` and `bot_challenge` remain
+eligible because the ATS driver still does the page-level verification. Use
+`--skip-liveness` only for an explicit recovery run if the liveness checker is
+misbehaving.
 
 The real batch writes a JSON summary and generates:
 
@@ -98,16 +102,17 @@ the grouped factual questions, update this user's local `profile.json` or
 gap report and run a retry batch:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/validate_user_profile.mjs"
-node "$MRWEIRDO_REPO_ROOT/shared/retry_gap_rows.mjs" \
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/validate_user_profile.mjs
+node shared/retry_gap_rows.mjs \
   --apply \
   --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
 if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
-  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" \
+  node shared/apply_supervisor.mjs \
     --real \
     --max "$MRWEIRDO_MAX_AUTO_APPLY"
 else
-  node "$MRWEIRDO_REPO_ROOT/shared/apply_supervisor.mjs" --real
+  node shared/apply_supervisor.mjs --real
 fi
 ```
 
@@ -119,22 +124,24 @@ retry.
 Generate report:
 
 ```bash
-REPORT_PATH=$(node "$MRWEIRDO_REPO_ROOT/shared/apply_report.mjs" --since "$(date -u +%Y-%m-%d)")
+cd "$MRWEIRDO_REPO_ROOT"
+REPORT_PATH=$(node shared/apply_report.mjs --since "$(date -u +%Y-%m-%d)")
 echo "$REPORT_PATH"
 ```
 
 Prune disposable discovered rows after the report:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/prune_discovered_jobs.mjs" \
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/prune_discovered_jobs.mjs \
   --apply \
-  --run-id "$RUN_ID" \
   --delete-skipped --skipped-days "${MRWEIRDO_PRUNE_SKIPPED_DAYS:-0}" \
   --delete-unusable-url \
   --delete-low-fit --low-fit-days "${MRWEIRDO_PRUNE_LOW_FIT_DAYS:-0}" \
   --delete-unsupported --unsupported-days "${MRWEIRDO_PRUNE_UNSUPPORTED_DAYS:-14}" \
   --delete-stale --stale-days "${MRWEIRDO_PRUNE_STALE_DAYS:-30}" \
   --retry-limit "${MRWEIRDO_PRUNE_RETRY_LIMIT:-3}" \
+  --clear-first-run \
   --json > /tmp/mrweirdo-onboard/prune-summary.json
 ```
 
@@ -146,7 +153,11 @@ node "$MRWEIRDO_REPO_ROOT/shared/prune_discovered_jobs.mjs" \
 - scorer sets `recommended: true`;
 - role type matches the user's `role_type_targets`;
 - company is not quota-guarded in the user's local `company_list.user.json`;
+- `liveness_status` is not `expired`; `uncertain` and `bot_challenge` are
+  visible but not blocking;
 - ATS is in the stable auto-submit set, currently Greenhouse and Ashby.
+- `legitimacy` is not `suspicious`; suspicious rows keep their fit score but
+  are held for manual review.
 
 Lever, Workday, SmartRecruiters, iCIMS, JobVite, and Handshake may be
 discovered/scored, but are not part of the stable batch auto-submit path unless
@@ -155,7 +166,11 @@ manual/single-URL helper.
 
 ## Queue Visibility
 
-Before a real batch submits, surface the queued rows to the user: company, title, fit score, ATS, and location. This is visibility for the batch, not per-application confirmation. Honor any rows the user asks to drop before the loop starts.
+Before a real batch submits, surface the queued rows to the user: company,
+title, fit score, ATS, location when available, and any abnormal
+legitimacy/liveness signal. This is visibility for the batch, not
+per-application confirmation. Honor any rows the user asks to drop before the
+loop starts. Always state that manual/unsupported rows are not auto-submitted.
 
 ## Final Summary
 

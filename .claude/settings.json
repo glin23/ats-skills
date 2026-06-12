@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash scripts/preflight.sh)",
+      "Bash(bash scripts/intake_resume.sh *)",
+      "Bash(bash scripts/secure_profile_files.sh)",
+      "Bash(node shared/doctor.mjs *)",
+      "Bash(node shared/discover_candidates.mjs *)",
+      "Bash(node shared/store_scored_jobs.mjs *)",
+      "Bash(node shared/validate_user_profile.mjs *)",
+      "Bash(node shared/init_db_cli.mjs *)",
+      "Bash(node shared/apply_report.mjs *)",
+      "Bash(node shared/apply_gap_report.mjs *)",
+      "Bash(node shared/liveness_gate.mjs *)",
+      "Bash(node shared/job_report.mjs *)",
+      "Bash(node shared/analyze_patterns.mjs *)",
+      "Bash(node shared/upskill_report.mjs *)",
+      "Bash(node shared/tracker_cli.mjs *)",
+      "Bash(node shared/queue_diagnostics.mjs *)",
+      "Bash(node shared/prune_discovered_jobs.mjs *)",
+      "Bash(node shared/apply_supervisor.mjs --dry-run)",
+      "Bash(node shared/apply_supervisor.mjs --dry-run *)",
+      "Bash(npm run status)",
+      "Read(//private/tmp/mrweirdo-onboard/**)"
+    ]
+  }
+}

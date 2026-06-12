@@ -33,9 +33,46 @@ test('quota-guarded row is blocked', () => {
   assert.equal(eligibleReason({ ...base, apply_quota_limit: 1 }, opts()), 'quota_guarded');
 });
 
+test('guard order: quota is evaluated before legitimacy', () => {
+  assert.equal(eligibleReason({
+    ...base,
+    apply_quota_limit: 1,
+    legitimacy: 'suspicious',
+  }, opts()), 'quota_guarded');
+});
+
+test('guard order: quota is evaluated before liveness', () => {
+  assert.equal(eligibleReason({
+    ...base,
+    apply_quota_limit: 1,
+    liveness_status: 'expired',
+  }, opts()), 'quota_guarded');
+});
+
+test('expired liveness blocks before legitimacy', () => {
+  assert.equal(eligibleReason({
+    ...base,
+    liveness_status: 'expired',
+    legitimacy: 'suspicious',
+  }, opts()), 'liveness_expired');
+});
+
+test('uncertain and bot-challenge liveness do not block the queue', () => {
+  assert.equal(eligibleReason({ ...base, liveness_status: 'uncertain' }, opts()), 'eligible');
+  assert.equal(eligibleReason({ ...base, liveness_status: 'bot_challenge' }, opts()), 'eligible');
+});
+
+test('suspicious legitimacy is blocked without changing fit-score logic', () => {
+  assert.equal(eligibleReason({ ...base, legitimacy: 'suspicious' }, opts()), 'legitimacy_suspicious');
+});
+
 test('already-submitted company/title is blocked (double-submit guard)', () => {
   const submittedKeys = new Set([duplicateKey(base)]);
   assert.equal(eligibleReason(base, opts({ submittedKeys })), 'duplicate_same_company_title_already_submitted');
+});
+
+test('not recommended rows are blocked even when fit is high', () => {
+  assert.equal(eligibleReason({ ...base, recommended: 0, fit_score: 9 }, opts()), 'not_recommended');
 });
 
 test('role type outside targets is blocked (FT-leak gate)', () => {
