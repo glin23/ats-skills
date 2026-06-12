@@ -2,11 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { dbPath } from './local_db.mjs';
+import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
+import { legitimacyBlockReason, livenessBlockReason } from './eligibility.mjs';
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -29,10 +30,11 @@ try {
 
 const allowedRoleTypes = roleTypesFromSearchIntent(intent.search_intent || {});
 const minFit = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
+initDb();
 const db = new DatabaseSync(dbPath());
 const row = db.prepare(`
   SELECT id, company, title, apply_url, ats_platform, fit_score, role_type_match,
-         status, auto_apply_eligible, apply_quota_limit
+         status, auto_apply_eligible, apply_quota_limit, recommended, legitimacy, liveness_status
     FROM jobs
    WHERE id = ?
 `).get(rowId);
@@ -46,6 +48,11 @@ if (!row) fail('row_not_found');
 if (row.status !== '🤖 AI sourced') fail('row_status_not_pending', { status: row.status });
 if (!SUPPORTED_AUTO_PLATFORMS.has(row.ats_platform)) fail('unsupported_ats_platform', { ats_platform: row.ats_platform });
 if (row.apply_quota_limit != null) fail('quota_guarded_row', { apply_quota_limit: row.apply_quota_limit });
+const livenessReason = livenessBlockReason(row);
+if (livenessReason) fail(livenessReason, { liveness_status: row.liveness_status });
+const legitimacyReason = legitimacyBlockReason(row);
+if (legitimacyReason) fail(legitimacyReason, { legitimacy: row.legitimacy });
+if (row.recommended === 0) fail('not_recommended');
 if ((row.fit_score ?? 0) < minFit) fail('fit_below_threshold', { fit_score: row.fit_score, min_fit: minFit });
 const storedRoleType = normalizeRoleType(row.role_type_match);
 const recheckedRoleType = deriveRoleTypeFromJob(row);
@@ -71,5 +78,6 @@ if (submitted) {
     submitted_status: submitted.status,
   });
 }
+if (Number(row.auto_apply_eligible || 0) !== 1) fail('auto_apply_not_eligible', { auto_apply_eligible: row.auto_apply_eligible });
 
 console.log(JSON.stringify({ ok: true, allowed_role_types: allowedRoleTypes, row }));

@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
+import { progress, sleepWithProgress } from './progress.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -31,6 +32,7 @@ function hasArg(name) {
 const maxRows = resolveMaxRows();
 const roleTargets = argValue('--role-targets') || process.env.MRWEIRDO_ROLE_TYPE_TARGETS || '';
 const dryRun = hasArg('--dry-run');
+const skipLiveness = hasArg('--skip-liveness') || process.env.MRWEIRDO_SKIP_LIVENESS === '1';
 const paceMinMs = Math.max(0, Number(argValue('--pace-min-ms') || process.env.MRWEIRDO_APPLY_PACE_MIN_MS || 30000));
 const paceMaxMs = Math.max(paceMinMs, Number(argValue('--pace-max-ms') || process.env.MRWEIRDO_APPLY_PACE_MAX_MS || 90000));
 
@@ -83,10 +85,6 @@ function parseLastJson(text) {
 
 function todayUtc() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function jitterMs() {
@@ -177,9 +175,9 @@ function acquireBatchLock() {
 
 mkdirSync(tmpDir, { recursive: true });
 
-console.error(`[apply-batch] repo=${repoRoot}`);
-console.error(`[apply-batch] home=${home}`);
-console.error(`[apply-batch] max=${formatMaxRows(maxRows)} role_targets=${roleTargets || '(from search_intent)'} dry_run=${dryRun}`);
+progress('apply', `repo=${repoRoot}`);
+progress('apply', `home=${home}`);
+progress('apply', `max=${formatMaxRows(maxRows)} role_targets=${roleTargets || '(from search_intent)'} dry_run=${dryRun} skip_liveness=${skipLiveness}`);
 
 if (!dryRun) {
   acquireBatchLock();
@@ -198,40 +196,49 @@ if (!dryRun) {
   if (preflight.stdout) process.stdout.write(preflight.stdout);
   if (preflight.stderr) process.stderr.write(preflight.stderr);
   if (preflight.code !== 0) fail('supervisor_preflight', preflight);
+
+  if (!skipLiveness) {
+    const liveness = runNode(['shared/liveness_gate.mjs', '--batch', '--json']);
+    if (liveness.stdout) process.stdout.write(liveness.stdout);
+    if (liveness.stderr) process.stderr.write(liveness.stderr);
+    if (liveness.code !== 0) fail('liveness_gate', liveness);
+  } else {
+    progress('apply', 'liveness gate skipped by --skip-liveness');
+  }
 }
 
 const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary']);
 if (queueRun.stderr) process.stderr.write(queueRun.stderr);
 if (queueRun.code !== 0) fail('auto_apply_queue', queueRun);
 const rows = limitRows(parseJsonLines(queueRun.stdout), maxRows);
-console.error(`[apply-batch] queue_rows=${rows.length}`);
+progress('apply', `queue_rows=${rows.length}`);
 if (maxRows != null && rows.length < maxRows) {
   const diag = runNode(['shared/queue_diagnostics.mjs', '--json']);
   if (diag.code === 0) {
     const parsed = parseLastJson(diag.stdout) || {};
-    console.error(`[apply-batch] ready rows below requested batch: requested=${maxRows}, eligible=${rows.length}`);
-    if (parsed.by_reason) console.error(`[apply-batch] queue reasons: ${JSON.stringify(parsed.by_reason)}`);
+    progress('apply', `ready rows below requested batch: requested=${maxRows}, eligible=${rows.length}`);
+    if (parsed.by_reason) progress('apply', 'queue reasons', parsed.by_reason);
     if (parsed.near_misses) {
       const rescoreCount = parsed.near_misses.rescore_candidates_fit_one_below?.count ?? 0;
       const platformCount = parsed.near_misses.platform_expansion_candidates?.count ?? 0;
-      console.error(`[apply-batch] review hints: rescore_fit_${(parsed.min_fit ?? 5) - 1}_to_${parsed.min_fit ?? 5}=${rescoreCount}, unsupported_platform_fit_ge_${parsed.min_fit ?? 5}=${platformCount}`);
+      progress('apply', `review hints rescore_fit_${(parsed.min_fit ?? 5) - 1}_to_${parsed.min_fit ?? 5}=${rescoreCount} unsupported_platform_fit_ge_${parsed.min_fit ?? 5}=${platformCount}`);
     }
     const reviewArgs = ['shared/queue_review_report.mjs'];
     if (dryRun) reviewArgs.push('--output', join(tmpDir, `queue-review-dry-run-${Date.now()}.html`));
     const review = runNode(reviewArgs);
     if (review.code === 0) {
-      console.error(`[apply-batch] queue review HTML: ${review.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
+      progress('apply', `queue review HTML: ${review.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
     } else {
-      console.error(`[apply-batch] queue review HTML generation failed; continuing`);
+      progress('apply', 'queue review HTML generation failed; continuing');
       if (review.stderr) process.stderr.write(review.stderr);
     }
     const readinessArgs = ['shared/apply_readiness_plan.mjs', '--target', String(maxRows)];
     if (dryRun) readinessArgs.push('--output', join(tmpDir, `readiness-plan-dry-run-${Date.now()}.html`));
     const readiness = runNode(readinessArgs);
     if (readiness.code === 0) {
-      console.error(`[apply-batch] readiness report HTML: ${readiness.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
+      progress('apply', `readiness report HTML: ${readiness.stdout.trim().split(/\r?\n/).filter(Boolean).pop()}`);
     } else {
-      console.error('[apply-batch] readiness report generation failed; continuing');
+      progress('apply', 'readiness report generation failed; continuing');
       if (readiness.stderr) process.stderr.write(readiness.stderr);
     }
   }
@@ -241,7 +248,7 @@ const summaries = [];
 const batchStartedAt = new Date().toISOString();
 for (let i = 0; i < rows.length; i += 1) {
   const row = rows[i];
-  console.error(`[apply-batch] row ${i + 1}/${rows.length}: ${row.id} ${row.company} — ${row.title}`);
+  progress('apply', `row ${i + 1}/${rows.length}: ${row.id} ${row.company} - ${row.title}`);
 
   const validate = runNode(['shared/validate_auto_row.mjs', '--row-id', String(row.id)]);
   if (validate.stdout) process.stdout.write(validate.stdout);
@@ -270,7 +277,16 @@ for (let i = 0; i < rows.length; i += 1) {
   }
 
   if (dryRun) {
-    summaries.push({ row_id: row.id, action: 'dry_run_validated' });
+    summaries.push({
+      row_id: row.id,
+      company: row.company,
+      title: row.title,
+      fit_score: row.fit_score,
+      ats_platform: row.ats_platform,
+      location: row.location || null,
+      legitimacy: row.legitimacy || 'high',
+      action: 'dry_run_validated',
+    });
     continue;
   }
 
@@ -286,7 +302,18 @@ for (let i = 0; i < rows.length; i += 1) {
   if (record.code !== 0) fail(`record_apply_outcome row ${row.id}`, record);
 
   const recorded = parseLastJson(record.stdout) || { action: 'recorded_unknown' };
-  summaries.push({ row_id: row.id, company: row.company, title: row.title, result_file: resultFile, ...recorded });
+  let jobReportPath = null;
+  if (recorded.action === 'submitted') {
+    const jobReport = runNode(['shared/job_report.mjs', '--row-id', String(row.id), '--append-submission']);
+    if (jobReport.stdout) process.stdout.write(jobReport.stdout);
+    if (jobReport.stderr) process.stderr.write(jobReport.stderr);
+    if (jobReport.code === 0) {
+      jobReportPath = jobReport.stdout.trim().split(/\r?\n/).filter(Boolean).pop() || null;
+    } else {
+      progress('apply', `job report generation failed for row ${row.id}; continuing`);
+    }
+  }
+  summaries.push({ row_id: row.id, company: row.company, title: row.title, result_file: resultFile, job_report_path: jobReportPath, ...recorded });
 
   if (recorded.action === 'submitted') {
     appendFileSync(
@@ -302,8 +329,11 @@ for (let i = 0; i < rows.length; i += 1) {
 
   if (i < rows.length - 1 && paceMaxMs > 0) {
     const delay = jitterMs();
-    console.error(`[apply-batch] pacing ${Math.round(delay / 1000)}s before next row`);
-    await sleep(delay);
+    await sleepWithProgress(delay, {
+      stage: 'apply',
+      label: '防风控等待',
+      next: `${rows[i + 1].company} (${i + 2}/${rows.length})`,
+    });
   }
 }
 
@@ -333,7 +363,7 @@ if (!dryRun) {
   if (gaps.stdout) process.stdout.write(gaps.stdout);
   if (gaps.stderr) process.stderr.write(gaps.stderr);
   if (gaps.code === 0) gapReport = parseLastJson(gaps.stdout);
-  else console.error('[apply-batch] apply gap report generation failed; continuing');
+  else progress('apply', 'apply gap report generation failed; continuing');
 }
 
 console.log(JSON.stringify({

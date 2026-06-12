@@ -27,7 +27,8 @@ description: v2 auto-submit version of mrweirdo-ashby. Fills an Ashby ATS applic
 - Caller provided a concrete `ROW_ID` from `/mrweirdo-onboard`'s queue
 - The DB row still has `auto_apply_eligible=1`, `status='🤖 AI sourced'`,
   `role_type_match IN ('intern','part_time','new_grad_FT')` according to the
-  user's selected `role_type_targets`, and `apply_quota_limit IS NULL`
+  user's selected `role_type_targets`, `apply_quota_limit IS NULL`, and
+  `legitimacy != 'suspicious'`, `liveness_status != 'expired'`
 - Row passed all gating in onboard Step 8 (fit_score ≥ threshold, recommended, target role type, NOT large-cap, supported platform)
 
 If any pre-condition fails on entry, log skip + return — do NOT attempt to fill.
@@ -35,7 +36,8 @@ If any pre-condition fails on entry, log skip + return — do NOT attempt to fil
 Run this guard before opening the URL:
 
 ```bash
-node "$MRWEIRDO_REPO_ROOT/shared/validate_auto_row.mjs" --row-id "$ROW_ID"
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/validate_auto_row.mjs --row-id "$ROW_ID"
 ```
 
 If it fails, return that reason to the onboard loop and do not navigate.
@@ -182,6 +184,19 @@ Parse `$SUCCESS`:
   - Do NOT click Submit again
   - Emit `{"outcome":"skip","reason":"submit_verify_fail",...}` and let the onboard recorder mark the DB row.
   - Forensic screenshots both saved
+
+## Report Hook
+
+After the onboard caller gets a successful recorder result, it appends the
+submission audit:
+
+```bash
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/job_report.mjs --row-id "$ROW_ID" --append-submission
+```
+
+`record_apply_outcome.mjs` remains the single DB status writer; this report hook
+only reads execution artifacts and updates the row's `report_path`.
 
 ---
 

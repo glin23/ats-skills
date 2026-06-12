@@ -123,6 +123,9 @@ const validations = queueRows.map((row) => {
 });
 
 const syntaxFiles = [
+  'shared/constants.mjs',
+  'shared/progress.mjs',
+  'shared/init_db_cli.mjs',
   'shared/role_types.mjs',
   'shared/job_identity.mjs',
   'shared/auto_apply_queue.mjs',
@@ -133,6 +136,11 @@ const syntaxFiles = [
   'shared/supervisor_status.mjs',
   'shared/apply_supervisor.mjs',
   'shared/apply_batch.mjs',
+  'shared/liveness_gate.mjs',
+  'shared/job_report.mjs',
+  'shared/analyze_patterns.mjs',
+  'shared/upskill_report.mjs',
+  'shared/tracker_cli.mjs',
   'shared/queue_diagnostics.mjs',
   'shared/queue_review_report.mjs',
   'shared/apply_readiness_plan.mjs',

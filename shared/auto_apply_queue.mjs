@@ -2,19 +2,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { dbPath } from './local_db.mjs';
+import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { passesQueueFilters, duplicateKey } from './eligibility.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
+import { BLOCKING_LEGITIMACY, BLOCKING_LIVENESS, DEFAULT_LEGITIMACY } from './constants.mjs';
 
 const HOME = atsHome();
 const MAX_ROWS = resolveMaxRows();
 const MIN_FIT = Math.max(0, Number(process.env.MRWEIRDO_MIN_FIT_SCORE || 5));
 const SUPPORTED_AUTO = new Set(SUPPORTED_AUTO_PLATFORMS);
 const CANDIDATE_LIMIT = MAX_ROWS == null ? -1 : MAX_ROWS * 20;
+const BLOCKING_LEGITIMACY_VALUES = [...BLOCKING_LEGITIMACY];
 
 function readIntent() {
   try {
@@ -26,12 +28,17 @@ function readIntent() {
 
 const roleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
 const platformPlaceholders = [...SUPPORTED_AUTO].map(() => '?').join(',');
+const legitimacyPlaceholders = BLOCKING_LEGITIMACY_VALUES.map(() => '?').join(',');
+const BLOCKING_LIVENESS_VALUES = [...BLOCKING_LIVENESS];
+const livenessPlaceholders = BLOCKING_LIVENESS_VALUES.map(() => '?').join(',');
 
+initDb();
 const db = new DatabaseSync(dbPath());
 const candidates = db.prepare(`
   WITH ranked AS (
-    SELECT id, company, title, apply_url, ats_platform, fit_score, role_type_match,
-           auto_apply_eligible, apply_quota_limit, updated_at,
+    SELECT id, company, title, apply_url, location, ats_platform, fit_score, recommended,
+           role_type_match, auto_apply_eligible, apply_quota_limit,
+           legitimacy, legitimacy_signals, liveness_status, liveness_checked_at, updated_at,
            ROW_NUMBER() OVER (
              PARTITION BY lower(trim(company)), lower(trim(title))
              ORDER BY fit_score DESC,
@@ -49,15 +56,26 @@ const candidates = db.prepare(`
      WHERE status = '🤖 AI sourced'
        AND fit_score >= ?
        AND ats_platform IN (${platformPlaceholders})
+       AND COALESCE(auto_apply_eligible, 0) = 1
        AND apply_quota_limit IS NULL
+       AND lower(COALESCE(legitimacy, ?)) NOT IN (${legitimacyPlaceholders})
+       AND lower(COALESCE(liveness_status, '')) NOT IN (${livenessPlaceholders})
   )
-  SELECT id, company, title, apply_url, ats_platform, fit_score, role_type_match,
-         auto_apply_eligible, apply_quota_limit
+  SELECT id, company, title, apply_url, location, ats_platform, fit_score, recommended,
+         role_type_match, auto_apply_eligible, apply_quota_limit,
+         legitimacy, legitimacy_signals, liveness_status, liveness_checked_at
     FROM ranked
    WHERE rn = 1
    ORDER BY fit_score DESC, updated_at DESC
    LIMIT ?
-`).all(MIN_FIT, ...SUPPORTED_AUTO, CANDIDATE_LIMIT);
+`).all(
+  MIN_FIT,
+  ...SUPPORTED_AUTO,
+  DEFAULT_LEGITIMACY,
+  ...BLOCKING_LEGITIMACY_VALUES,
+  ...BLOCKING_LIVENESS_VALUES,
+  CANDIDATE_LIMIT
+);
 
 const submittedKeys = new Set(
   db.prepare(`

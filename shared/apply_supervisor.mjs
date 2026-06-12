@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
+import { progress } from './progress.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -51,6 +52,7 @@ Options:
   --role-targets LIST      Comma-separated: intern,part_time,new_grad_FT.
   --cdp-port PORT          Preferred Chrome CDP port. Defaults to ATS_CDP_PORT or 9222.
   --no-launch-cdp          Do not try to launch Chrome; only check the existing endpoint.
+  --skip-liveness          Skip the Phase 2 URL liveness gate for this batch.
   --pace-min-ms N          Forwarded to apply_batch.
   --pace-max-ms N          Forwarded to apply_batch.
 `);
@@ -77,7 +79,7 @@ async function cdpReady(port) {
 }
 
 async function launchAndCheck(port) {
-  console.error(`[apply-supervisor] launching Chrome CDP on port ${port}`);
+  progress('supervisor', `launching Chrome CDP on port ${port}`);
   const result = run('bash', ['shared/chrome-cdp-launcher.sh'], { ATS_CDP_PORT: String(port) });
   if ((result.status ?? 1) !== 0) return false;
   return cdpReady(port);
@@ -96,7 +98,7 @@ function printCdpRecovery(port, maxRows, roleTargets) {
 
 async function ensureCdp(preferredPort) {
   if (await cdpReady(preferredPort)) {
-    console.error(`[apply-supervisor] CDP ready on port ${preferredPort}`);
+    progress('supervisor', `CDP ready on port ${preferredPort}`);
     return preferredPort;
   }
 
@@ -153,12 +155,13 @@ if (realRun) {
 const applyArgs = ['shared/apply_batch.mjs', '--role-targets', roleTargets];
 if (maxRows != null) applyArgs.push('--max', String(maxRows));
 if (dryRun) applyArgs.push('--dry-run');
+if (hasArg('--skip-liveness')) applyArgs.push('--skip-liveness');
 for (const name of ['--pace-min-ms', '--pace-max-ms']) {
   const value = argValue(name);
   if (value != null) applyArgs.push(name, value);
 }
 
-console.error(`[apply-supervisor] mode=${dryRun ? 'dry-run' : 'real'} max=${formatMaxRows(maxRows)} role_targets=${roleTargets}`);
+progress('supervisor', `mode=${dryRun ? 'dry-run' : 'real'} max=${formatMaxRows(maxRows)} role_targets=${roleTargets}`);
 const apply = run(process.execPath, applyArgs, {
   ATS_CDP_PORT: cdpPort,
   MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),

@@ -2,11 +2,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { dbPath } from './local_db.mjs';
+import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
-import { eligibleReason } from './eligibility.mjs';
+import { eligibleReason, legitimacyBlockReason } from './eligibility.mjs';
 import { KNOWN_UNSUPPORTED_PLATFORMS, SUPPORTED_AUTO_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
@@ -56,6 +56,11 @@ function exampleShape(r) {
     search_source: r.search_source,
     discovery_apply_bucket: discoveryApplyBucket(r),
     fit_score: r.fit_score,
+    recommended: r.recommended == null ? null : Boolean(r.recommended),
+    legitimacy: r.legitimacy || 'high',
+    legitimacy_signals: r.legitimacy_signals || null,
+    liveness_status: r.liveness_status || null,
+    liveness_checked_at: r.liveness_checked_at || null,
     role_type_match: r.role_type_match,
     derived_role_type: deriveRoleTypeFromJob(r),
   };
@@ -73,6 +78,7 @@ function examplesFor(rows, reason, limit = 8) {
 }
 
 const allowedRoleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
+initDb();
 const db = new DatabaseSync(dbPath());
 const submittedKeys = new Set(
   db.prepare(`
@@ -85,7 +91,8 @@ const submittedKeys = new Set(
 
 const rows = db.prepare(`
   SELECT id, company, title, apply_url, ats_platform, search_source, status, fit_score,
-         role_type_match, apply_quota_limit, auto_apply_eligible, updated_at
+         recommended, role_type_match, apply_quota_limit, auto_apply_eligible, legitimacy,
+         legitimacy_signals, liveness_status, liveness_checked_at, updated_at
     FROM jobs
    WHERE fit_score IS NOT NULL
    ORDER BY fit_score DESC, updated_at DESC, id ASC
@@ -99,6 +106,7 @@ const rescoreCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && !legitimacyBlockReason(row)
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) === MIN_FIT - 1;
@@ -109,6 +117,7 @@ const platformExpansionCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && !legitimacyBlockReason(row)
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
@@ -119,6 +128,7 @@ const manualOnlyCandidates = pendingRows.filter((row) => {
     && row.apply_quota_limit == null
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
+    && !legitimacyBlockReason(row)
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
     && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
@@ -135,6 +145,8 @@ const summary = {
   by_reason: {},
   by_platform: {},
   by_fit_score: {},
+  by_legitimacy: {},
+  by_liveness: {},
   examples: {},
   near_misses: {
     rescore_candidates_fit_one_below: {
@@ -163,6 +175,8 @@ for (const row of annotated) {
   bump(summary.by_reason, row.reason);
   bump(summary.by_platform, row.ats_platform);
   bump(summary.by_fit_score, row.fit_score ?? 'missing');
+  bump(summary.by_legitimacy, row.legitimacy || 'high');
+  bump(summary.by_liveness, row.liveness_status || 'unchecked');
 }
 
 for (const row of platformExpansionCandidates) {

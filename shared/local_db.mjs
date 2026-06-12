@@ -28,6 +28,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import { atsHome } from './paths.mjs';
+import { DEFAULT_OUTCOME_STATUS } from './constants.mjs';
 
 export const dbPath = () => process.env.MRWEIRDO_DB_PATH || join(atsHome(), 'jobs.db');
 
@@ -62,11 +63,16 @@ function initSchema(d) {
       status TEXT NOT NULL DEFAULT '🤖 AI sourced',
 
       fit_score INTEGER,
+      recommended INTEGER,
       key_gaps TEXT,
       role_type_match TEXT,
       skip_reason TEXT,
       user_note TEXT,
       dim_scores TEXT,
+      legitimacy TEXT DEFAULT 'high',
+      legitimacy_signals TEXT,
+      liveness_status TEXT,
+      liveness_checked_at TEXT,
 
       salary_min REAL,
       salary_max REAL,
@@ -91,6 +97,14 @@ function initSchema(d) {
       search_source TEXT,
       discovery_run_id TEXT,
       auto_submitted_at TEXT,
+      report_path TEXT,
+
+      -- tracker/outcome metadata. The emoji status column remains the
+      -- application-state source of truth; outcome_status is follow-up context.
+      outcome_status TEXT DEFAULT 'pending',
+      outcome_updated_at TEXT,
+      last_followup_at TEXT,
+      followup_count INTEGER NOT NULL DEFAULT 0,
 
       -- discovery freshness metadata
       first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -114,6 +128,28 @@ function initSchema(d) {
   // Step 2: v2 migration — add columns idempotently for any pre-v2 db.
   // SQLite throws on duplicate column; catch and continue.
   const v2Columns = [
+    "location TEXT",
+    "source TEXT",
+    "recommended INTEGER",
+    "key_gaps TEXT",
+    "role_type_match TEXT",
+    "skip_reason TEXT",
+    "user_note TEXT",
+    "dim_scores TEXT",
+    "salary_min REAL",
+    "salary_max REAL",
+    "salary_currency TEXT",
+    "salary_interval TEXT",
+    "hourly_rate REAL",
+    "ats_platform TEXT",
+    "apply_quota_limit INTEGER",
+    "apply_quota_period TEXT",
+    "apply_quota_note TEXT",
+    "submitted_at TEXT",
+    "confirmed_at TEXT",
+    "confirmation_email_id TEXT",
+    "confirmation_url TEXT",
+    "bot_note TEXT",
     "scored INTEGER NOT NULL DEFAULT 0",
     "auto_apply_eligible INTEGER",
     "search_source TEXT",
@@ -125,6 +161,17 @@ function initSchema(d) {
     "first_seen_at TEXT",
     "last_seen_at TEXT",
     "seen_count INTEGER NOT NULL DEFAULT 1",
+    "legitimacy TEXT DEFAULT 'high'",
+    "legitimacy_signals TEXT",
+    "liveness_status TEXT",
+    "liveness_checked_at TEXT",
+    "report_path TEXT",
+    "outcome_status TEXT DEFAULT 'pending'",
+    "outcome_updated_at TEXT",
+    "last_followup_at TEXT",
+    "followup_count INTEGER NOT NULL DEFAULT 0",
+    "created_at TEXT",
+    "updated_at TEXT",
   ];
   for (const colDef of v2Columns) {
     try {
@@ -138,10 +185,14 @@ function initSchema(d) {
     UPDATE jobs
        SET first_seen_at = COALESCE(first_seen_at, created_at, updated_at, datetime('now')),
            last_seen_at = COALESCE(last_seen_at, updated_at, created_at, datetime('now')),
-           seen_count = COALESCE(seen_count, 1)
+           seen_count = COALESCE(seen_count, 1),
+           outcome_status = COALESCE(outcome_status, '${DEFAULT_OUTCOME_STATUS}'),
+           followup_count = COALESCE(followup_count, 0)
      WHERE first_seen_at IS NULL
         OR last_seen_at IS NULL
-        OR seen_count IS NULL;
+        OR seen_count IS NULL
+        OR outcome_status IS NULL
+        OR followup_count IS NULL;
   `);
 
   // Step 3: indexes + views (run AFTER columns exist).
@@ -152,6 +203,8 @@ function initSchema(d) {
     CREATE INDEX IF NOT EXISTS idx_jobs_discovery_run_id ON jobs(discovery_run_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_last_seen_at ON jobs(last_seen_at);
     CREATE INDEX IF NOT EXISTS idx_jobs_scored ON jobs(scored);
+    CREATE INDEX IF NOT EXISTS idx_jobs_liveness_status ON jobs(liveness_status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_outcome_status ON jobs(outcome_status);
 
     -- Datasette-friendly views (v1)
     CREATE VIEW IF NOT EXISTS v_ai_sourced AS
@@ -179,6 +232,24 @@ function initSchema(d) {
        ORDER BY fit_score DESC;
     CREATE VIEW IF NOT EXISTS v_auto_submitted AS
       SELECT * FROM jobs WHERE auto_submitted_at IS NOT NULL ORDER BY auto_submitted_at DESC;
+    CREATE VIEW IF NOT EXISTS v_outcomes AS
+      SELECT
+        COALESCE(outcome_status, 'pending') AS outcome_status,
+        COUNT(*) AS count,
+        SUM(CASE WHEN status IN ('✅ 已投', '✅ 已确认') THEN 1 ELSE 0 END) AS submitted_rows,
+        MAX(COALESCE(outcome_updated_at, submitted_at, auto_submitted_at, updated_at)) AS latest_event_at
+      FROM jobs
+      GROUP BY COALESCE(outcome_status, 'pending')
+      ORDER BY count DESC, outcome_status ASC;
+    CREATE VIEW IF NOT EXISTS v_followup_due AS
+      SELECT *
+        FROM jobs
+       WHERE status IN ('✅ 已投', '✅ 已确认')
+         AND COALESCE(outcome_status, 'pending') = 'pending'
+         AND submitted_at IS NOT NULL
+         AND datetime(submitted_at) <= datetime('now', '-7 days')
+         AND COALESCE(followup_count, 0) < 2
+       ORDER BY submitted_at ASC;
 
     CREATE INDEX IF NOT EXISTS idx_feedback_job_id ON feedback(job_id);
     CREATE INDEX IF NOT EXISTS idx_feedback_ts ON feedback(ts);
@@ -207,8 +278,9 @@ function _bindable(obj) {
 
 const UPSERT_COLUMNS = [
   'company', 'title', 'apply_url', 'location', 'source', 'status',
-  'fit_score', 'key_gaps', 'role_type_match', 'skip_reason', 'user_note',
-  'dim_scores', 'salary_min', 'salary_max', 'salary_currency',
+  'fit_score', 'recommended', 'key_gaps', 'role_type_match', 'skip_reason', 'user_note',
+  'dim_scores', 'legitimacy', 'legitimacy_signals',
+  'salary_min', 'salary_max', 'salary_currency',
   'salary_interval', 'hourly_rate', 'ats_platform',
   'apply_quota_limit', 'apply_quota_period', 'apply_quota_note',
   // v2
@@ -223,6 +295,9 @@ function buildUpsertParams(job) {
   // dim_scores may come in as object — stringify
   if (params.dim_scores && typeof params.dim_scores === 'object') {
     params.dim_scores = JSON.stringify(params.dim_scores);
+  }
+  if (params.legitimacy_signals && typeof params.legitimacy_signals === 'object') {
+    params.legitimacy_signals = JSON.stringify(params.legitimacy_signals);
   }
   return params;
 }
@@ -355,6 +430,13 @@ function _rowToJob(row) {
   if (out.dim_scores) {
     try {
       out.dim_scores = JSON.parse(out.dim_scores);
+    } catch {
+      /* leave as string */
+    }
+  }
+  if (out.legitimacy_signals) {
+    try {
+      out.legitimacy_signals = JSON.parse(out.legitimacy_signals);
     } catch {
       /* leave as string */
     }
