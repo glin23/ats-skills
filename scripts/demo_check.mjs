@@ -81,8 +81,33 @@ check('node_24_or_newer', nodeMajor >= 24, `node=${process.version}`);
 
 const setupSyntax = run('bash', ['-n', 'setup.sh']);
 check('setup_syntax', setupSyntax.code === 0, setupSyntax.stderr.trim());
+const preflightSyntax = run('bash', ['-n', 'scripts/preflight.sh']);
+check('preflight_syntax', preflightSyntax.code === 0, preflightSyntax.stderr.trim());
+const intakeSyntax = run('bash', ['-n', 'scripts/intake_resume.sh']);
+check('intake_resume_syntax', intakeSyntax.code === 0, intakeSyntax.stderr.trim());
+const secureProfileSyntax = run('bash', ['-n', 'scripts/secure_profile_files.sh']);
+check('secure_profile_files_syntax', secureProfileSyntax.code === 0, secureProfileSyntax.stderr.trim());
 
-for (const skillName of ['mrweirdo-jobskill', 'mrweirdo-onboard', 'mrweirdo-doctor']) {
+for (const file of [
+  'shared/liveness_gate.mjs',
+  'shared/job_report.mjs',
+  'shared/analyze_patterns.mjs',
+  'shared/tracker_cli.mjs',
+  'shared/upskill_report.mjs',
+]) {
+  const syntax = run(process.execPath, ['--check', file]);
+  check(`syntax_${file.replace(/[^a-z0-9]+/gi, '_')}`, syntax.code === 0, syntax.stderr.trim());
+}
+
+for (const skillName of [
+  'mrweirdo-jobskill',
+  'mrweirdo-onboard',
+  'mrweirdo-doctor',
+  'mrweirdo-tracker',
+  'mrweirdo-expand',
+  'mrweirdo-upskill',
+  'mrweirdo-materials',
+]) {
   check(`skill_source_${skillName}`, existsSync(join(repoRoot, '.claude/skills', skillName, 'SKILL.md')));
 }
 
@@ -165,7 +190,7 @@ if (json) {
     console.log(`ready rows: ${facts.ready_rows}${facts.eligible_rows != null ? ` / eligible ${facts.eligible_rows}` : ''}`);
   }
   console.log('');
-  console.log('Live demo flow: type /mrweirdo-jobskill, upload resume, add a short self-introduction, confirm the parsed profile, then run the eligible batch.');
+  console.log('Live demo flow: type /mrweirdo-jobskill, send resume path plus a short self-introduction, answer the three hard-boundary questions, then review the queue gate before the eligible batch.');
 }
 
 process.exit(result.ok ? 0 : 1);
