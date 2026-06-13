@@ -465,7 +465,7 @@ export const fetchYCJobs = fetchYcJobs;
 
 // ---------- CLI smoke test ----------
 // Usage:
-//   node yc_workatastartup.mjs --keywords "Product Manager Intern,Operations Intern,Growth Intern,Founding" --max 60
+//   node yc_workatastartup.mjs --keywords "Software Engineering Intern,Accounting Intern,Nursing Intern" --max 60
 //   node yc_workatastartup.mjs --batches "Spring 2026,Winter 2026,Summer 2025" --max 200
 //   node yc_workatastartup.mjs --seed-only --max 1000   # emit seed file only
 if (import.meta.url === `file://${process.argv[1]}`) {

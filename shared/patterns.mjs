@@ -107,7 +107,7 @@ function suggestionForReason(reason, count) {
     return `Set target_filters.visa_must_sponsor: true — "${reason}" hit ${count}x`;
   }
   if (r.includes('swe') || r.includes('engineer')) {
-    return `Add engineering keywords to target_filters.exclude_keywords — "${reason}" hit ${count}x`;
+    return `Review whether engineering-related titles are outside the user's target-function anchor before adding any exclude keyword — "${reason}" hit ${count}x`;
   }
   return `Raise target_filters.min_fit_score or refine filters — "${reason}" hit ${count}x`;
 }

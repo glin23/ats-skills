@@ -41,7 +41,7 @@
     }
   ],
   "why_role_bank": {
-    "_notes": "Keys should be derived from this user's target functions, e.g. product, growth, operations, data, design, engineering, clinical, research.",
+    "_notes": "Keys should be derived from this user's target functions, e.g. software engineering, accounting, marketing, nursing, design, operations, consulting, clinical, research.",
     "example_role_family": {
       "angle": "",
       "supporting_proof_points": [],
@@ -101,7 +101,7 @@
     "third_party_accounts": {
       "status": "unknown",
       "accounts": [],
-      "note": "Some product/community roles require a real account/profile on their own platform (e.g. a game profile, a marketplace seller ID). Ask-or-skip; never invent an account identifier."
+      "note": "Some community, creator, platform, or domain-specific roles require a real account/profile on their own platform (e.g. a game profile, a marketplace seller ID). Ask-or-skip; never invent an account identifier."
     },
     "personal_preferences": {
       "status": "unknown",

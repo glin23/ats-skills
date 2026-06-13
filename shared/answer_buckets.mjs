@@ -109,9 +109,9 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /linkedin/i, action: 'fill_text_in_question', q: missingLabel, value: linkedin },
     { match: /portfolio|website/i, action: 'fill_text_in_question', q: missingLabel, value: personal.portfolio || linkedin },
     // Major / field of study — tested BEFORE university/school so "major" wins.
-    { match: /\bmajor\b|field of study|area of study|course of study|what.{0,15}studying/i, action: 'fill_text_in_question', q: missingLabel, value: education.minor ? `${education.major || 'Business'} (minor: ${education.minor})` : (education.major || 'Business') },
-    { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: education.school || 'Your School' },
-    { match: /^degree|degree$/i, action: 'fill_text_in_question', q: missingLabel, value: `${education.degree || 'Bachelor of Science'} in ${education.major || 'Business'}` },
+    { match: /\bmajor\b|field of study|area of study|course of study|what.{0,15}studying/i, action: 'fill_text_in_question', q: missingLabel, value: education.minor && education.major ? `${education.major} (minor: ${education.minor})` : (education.major || '') },
+    { match: /university|school/i, action: 'fill_text_in_question', q: missingLabel, value: education.school || '' },
+    { match: /^degree|degree$/i, action: 'fill_text_in_question', q: missingLabel, value: education.degree || '' },
     { match: /graduation date|when do you expect to graduate|expected graduation|graduation (month|year)|anticipated graduation/i, action: 'fill_text_in_question', q: missingLabel, value: ctx.graduationDate || 'May 2027' },
     // Name fields — extremely common on Ashby; resolve from profile, never pending.
     // Order matters: "preferred"/"legal" qualifiers must be tested before the plain forms.

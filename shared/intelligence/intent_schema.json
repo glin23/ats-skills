@@ -53,12 +53,12 @@
 
     "search_intent": {
       "type": "object",
-      "description": "AI-derived signal of what jobs this user is actually looking for. Designed to be major-agnostic — works equally for Business / CS / Nursing / Fine Arts / Engineering / Pre-Law / etc.",
+      "description": "AI-derived signal of what jobs this user is actually looking for. Designed to be major-agnostic and function-agnostic — works equally for Business / CS / Accounting / Marketing / Nursing / Fine Arts / Engineering / Pre-Law / Public Health / Journalism / etc. Target function is anchored on the user's explicit direction first, then resume evidence; the major is evidence, not destiny.",
       "required": ["role_categories", "seniority", "geographic_preference"],
       "properties": {
         "role_categories": {
           "type": "array",
-          "description": "Specific role titles to search for, derived from the resume's actual trajectory. NOT preset enums — generated per resume. Examples: 'Product Manager Intern' / 'Clinical Research Coordinator Intern' / 'Curatorial Assistant Internship' / 'Mechanical Design Engineer Intern'.",
+          "description": "Specific role titles to search for, derived from the user's self-reported target functions plus resume-supported evidence. NOT preset enums and not major-derived defaults. Examples: 'Software Engineering Intern' / 'Accounting Intern' / 'Clinical Research Coordinator Intern' / 'Curatorial Assistant Internship' / 'Mechanical Design Engineer Intern'. Exploratory low-priority categories must still be adjacent to the target-function anchor.",
           "items": {
             "type": "object",
             "required": ["title_pattern", "priority"],
@@ -70,11 +70,11 @@
               "priority": {
                 "type": "string",
                 "enum": ["high", "medium", "low"],
-                "description": "high = direct match to resume; medium = adjacent / stretch; low = exploratory."
+                "description": "high = direct target-function match; medium = adjacent / stretch within the same or nearby function family; low = exploratory but still adjacent. Low does not mean cross-functional."
               },
               "rationale": {
                 "type": "string",
-                "description": "1-sentence why-this-fits-the-resume. Used in audit + debugging."
+                "description": "1-sentence why this fits the user's target-function anchor and resume evidence. Used in audit + debugging."
               }
             }
           }
@@ -84,10 +84,40 @@
           "description": "Industries / sectors the user appears oriented toward. Free-text, not preset. Examples: 'AI/ML', 'Consumer Healthcare', 'Nonprofit Advocacy', 'Architecture & Design', 'Public Policy'.",
           "items": { "type": "string" }
         },
+        "target_function_anchor": {
+          "type": "object",
+          "description": "Functional boundary used by discovery, scoring, and auto-apply gating. If the user explicitly stated target functions, those win over major-derived guesses. Resume evidence can broaden to adjacent functions, but cannot override an explicit target.",
+          "properties": {
+            "self_reported_target_functions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Functions the user explicitly wants, in the user's wording. Examples: ['Operations', 'Product Management'] or ['Software Engineering']."
+            },
+            "resume_supported_functions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Functions supported by resume experience, projects, coursework, licenses, or portfolio evidence."
+            },
+            "adjacent_functions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Nearby functions that can be searched/scored as adjacent. Examples: Ops/PM may include BizOps, Strategy, APM, Program Management; SWE may include Backend, Frontend, Full-Stack, Platform, DevOps, QA, or technical internships."
+            },
+            "excluded_functions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Functions that should not enter auto-apply because they are too far from the anchor. Must not be inferred solely from major; derive from explicit target direction plus role_categories."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Short explanation of the direct/adjacent/excluded boundary."
+            }
+          }
+        },
         "function_area": {
           "type": ["array", "null"],
           "items": { "type": "string" },
-          "description": "Array of function preferences (multi-select per the onboarding questionnaire B1). Examples: ['Product'] / ['Product', 'Operations/Growth'] / ['Engineering', 'Research']. Null only if user truly has no functional preference (rare). Free-text values supported (users can add custom via Other, e.g. 'Investment Banking')."
+          "description": "Array of user target-function preferences in free text. Examples: ['Software Engineering'] / ['Accounting'] / ['Operations', 'Product Management'] / ['Nursing'] / ['Design'] / ['Consulting']. Null only if user truly has no functional preference. Do not derive this solely from major."
         },
         "target_cycle": {
           "type": ["array", "null"],
@@ -97,7 +127,7 @@
         "target_company_tiers": {
           "type": ["array", "null"],
           "items": { "type": "string", "enum": ["early_startup", "mid_stage", "large_public", "all"] },
-          "description": "Company-tier preferences (multi-select per B5). Empty/null = no preference. ['early_startup', 'large_public'] = barbell pattern."
+          "description": "Company-tier preferences only when the user states or strongly implies them. Empty/null = no preference. Do not assume startup interest."
         },
         "salary_floor_hourly": {
           "type": ["number", "null"],
@@ -105,7 +135,7 @@
         },
         "exclude_role_keywords": {
           "type": "array",
-          "description": "Role title fragments that should DROP results (whole-word, case-insensitive). Derived from the resume's profile — e.g., a marketing student should exclude 'software engineer' because mis-classification noise hurts conversion.",
+          "description": "Role title fragments that should DROP results (whole-word, case-insensitive). Derived from the target-function anchor and obvious noise. Do not use one universal exclusion list: a SWE-seeking user must not exclude 'software engineer', while an Ops/PM-seeking user may exclude distant engineering/clinical/design/data roles when those are outside the stated target.",
           "items": { "type": "string" }
         },
         "geographic_preference": {

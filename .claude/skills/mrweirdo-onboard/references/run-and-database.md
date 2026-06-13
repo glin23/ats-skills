@@ -152,6 +152,9 @@ node shared/prune_discovered_jobs.mjs \
 - fit score is at or above the configured threshold, default 5;
 - scorer sets `recommended: true`;
 - role type matches the user's `role_type_targets`;
+- function relevance is not `function_relevance_too_distant` under
+  `shared/function_relevance.mjs`; unknown/ambiguous relevance is held as
+  non-blocking and left to the scorer/user-visible review path;
 - company is not quota-guarded in the user's local `company_list.user.json`;
 - `liveness_status` is not `expired`; `uncertain` and `bot_challenge` are
   visible but not blocking;

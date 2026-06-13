@@ -8,6 +8,7 @@ import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } f
 import { normalizeCompany, normalizeTitle } from './job_identity.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 import { legitimacyBlockReason, livenessBlockReason } from './eligibility.mjs';
+import { assessFunctionRelevance, FUNCTION_RELEVANCE_TOO_DISTANT_REASON } from './function_relevance.mjs';
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -54,6 +55,10 @@ const legitimacyReason = legitimacyBlockReason(row);
 if (legitimacyReason) fail(legitimacyReason, { legitimacy: row.legitimacy });
 if (row.recommended === 0) fail('not_recommended');
 if ((row.fit_score ?? 0) < minFit) fail('fit_below_threshold', { fit_score: row.fit_score, min_fit: minFit });
+const functionRelevance = assessFunctionRelevance(row, intent);
+if (functionRelevance.status === 'too_distant') {
+  fail(FUNCTION_RELEVANCE_TOO_DISTANT_REASON, { function_relevance: functionRelevance });
+}
 const storedRoleType = normalizeRoleType(row.role_type_match);
 const recheckedRoleType = deriveRoleTypeFromJob(row);
 if (storedRoleType && !allowedRoleTypes.includes(storedRoleType)) {

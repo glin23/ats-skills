@@ -7,6 +7,7 @@ import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { passesQueueFilters, duplicateKey } from './eligibility.mjs';
+import { functionRelevanceBlockReason } from './function_relevance.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 import { BLOCKING_LEGITIMACY, BLOCKING_LIVENESS, DEFAULT_LEGITIMACY } from './constants.mjs';
@@ -26,7 +27,8 @@ function readIntent() {
   }
 }
 
-const roleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
+const intentDoc = readIntent();
+const roleTypes = roleTypesFromSearchIntent(intentDoc.search_intent || {});
 const platformPlaceholders = [...SUPPORTED_AUTO].map(() => '?').join(',');
 const legitimacyPlaceholders = BLOCKING_LEGITIMACY_VALUES.map(() => '?').join(',');
 const BLOCKING_LIVENESS_VALUES = [...BLOCKING_LIVENESS];
@@ -89,6 +91,7 @@ const submittedKeys = new Set(
 const rows = [];
 const queuedKeys = new Set();
 for (const row of candidates) {
+  if (functionRelevanceBlockReason(row, intentDoc)) continue;
   if (!passesQueueFilters(row, { roleTypes, submittedKeys, seenKeys: queuedKeys })) continue;
   rows.push(row);
   queuedKeys.add(duplicateKey(row));

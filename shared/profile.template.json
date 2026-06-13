@@ -93,13 +93,13 @@
       "用于 mrweirdo-jobs sourcing + AI matching。",
       "role_types mirrors search_intent.role_type_targets after onboarding; leave empty in the template.",
       "role_types 决定 AI 接受什么类型的岗位；不在列表里的 role 会被 AI 自动 fit_score ≤ 3。",
-      "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。"
+      "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。必须按用户目标职能生成；模板不预设任何职能排除。"
     ],
     "role_types": [],
     "locations": ["US", "Remote-US", "United States"],
     "countries_open_to": ["US"],
     "relocation_policy": "anywhere_primary_country",
-    "exclude_keywords": ["SWE", "Software Engineer", "Sales Engineer"],
+    "exclude_keywords": [],
     "min_fit_score": 5,
     "visa_must_sponsor": false,
 

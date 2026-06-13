@@ -10,7 +10,7 @@
  *   import { fetchWellfoundJobs } from './wellfound_search.mjs';
  *
  *   const result = await fetchWellfoundJobs({
- *     keywords: ['Product Manager Intern'],
+ *     keywords: ['Software Engineering Intern'],
  *     limit: 200,
  *   });
  *
@@ -25,8 +25,8 @@
  *   //       recommended_next_step: '...' }
  *
  *   // CLI smoke test:
- *   //   node shared/sourcing/wellfound_search.mjs --keywords "Product Manager Intern"
- *   //   node shared/sourcing/wellfound_search.mjs --keywords "Product Manager Intern,Operations Intern,Growth Intern"
+ *   //   node shared/sourcing/wellfound_search.mjs --keywords "Software Engineering Intern"
+ *   //   node shared/sourcing/wellfound_search.mjs --keywords "Accounting Intern,Marketing Intern,Nursing Intern"
  *
  * Job shape (when populated) matches the unified contract used by
  * remoteok_api.mjs / greenhouse_board_api.mjs:
@@ -263,8 +263,8 @@ export function filterByRoleType(jobs, roleTypes = ['intern', 'new_grad_FT']) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // CLI smoke test
-//   node shared/sourcing/wellfound_search.mjs --keywords "Product Manager Intern"
-//   node shared/sourcing/wellfound_search.mjs --keywords "PM Intern,Ops Intern,Growth Intern"
+//   node shared/sourcing/wellfound_search.mjs --keywords "Software Engineering Intern"
+//   node shared/sourcing/wellfound_search.mjs --keywords "Accounting Intern,Marketing Intern,Nursing Intern"
 // stderr: human-readable progress + gate diagnosis
 // stdout: JSON { total, status, sample }
 // Exit codes:
@@ -286,7 +286,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   const keywords = keywordsRaw
     ? keywordsRaw.split(',').map((s) => s.trim()).filter(Boolean)
-    : ['Product Manager Intern', 'Operations Intern', 'Growth Intern'];
+    : ['Intern'];
 
   process.stderr.write(`[wellfound] smoke test — keywords: ${JSON.stringify(keywords)}\n`);
   process.stderr.write(`[wellfound] User-Agent that future CDP impl will use:\n  ${USER_AGENT}\n`);

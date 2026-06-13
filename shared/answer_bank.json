@@ -20,7 +20,7 @@
     {
       "match": "what would make joining chai a win.?win",
       "answer_template": "A win for {{COMPANY_PRETTY}} would be getting an intern who learns fast, communicates clearly, and can take a loosely defined problem through research, execution, and iteration. A win for me would be learning from a strong team while contributing real work that makes the team faster or more informed.",
-      "tags": ["chai", "win_win", "ai_product"]
+      "tags": ["chai", "win_win", "ai"]
     },
     {
       "match": "contrarian position|big bet",
@@ -94,7 +94,7 @@
     },
     {
       "match": "(years? of experience.{0,40}relevant|total years? of experience|experience you have that are relevant)",
-      "answer_template": "I have about 1-2 years of relevant project, internship, and startup experience across product, growth, operations, AI tooling, and business research. I am still early-career, but I have already shipped projects, worked on GTM and operations tasks, and completed analytical work in internship settings.",
+      "answer_template": "My relevant experience comes from the projects, coursework, and roles listed in my resume, especially {{LATEST_TITLE}} at {{LATEST_COMPANY}}. I am still early-career, so I would describe my experience in terms of concrete resume-backed work rather than claiming a fixed number of years unless a recruiter needs a specific format.",
       "tags": ["experience_years", "student_context"]
     },
     {

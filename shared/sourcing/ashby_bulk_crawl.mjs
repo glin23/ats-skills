@@ -25,7 +25,7 @@
  *
  *   const { jobs, errors, tenants_attempted, tenants_with_jobs } =
  *     await bulkFetchAshby({
- *       keywords: ['Product Manager Intern', 'APM Intern', 'Operations Intern'],
+ *       keywords: ['Software Engineering Intern', 'Accounting Intern', 'Nursing Intern'],
  *       concurrency: 10,        // default
  *       limit: 5000,            // hard cap on returned jobs, default 5000
  *       onProgress: (n, total) => process.stderr.write(`\r${n}/${total}`),
@@ -34,7 +34,7 @@
  * From CLI (smoke test):
  *
  *   node shared/sourcing/ashby_bulk_crawl.mjs \
- *     --keywords "Product Manager Intern,APM,Operations Intern" \
+ *     --keywords "Software Engineering Intern,Accounting Intern,Nursing Intern" \
  *     --concurrency 10 \
  *     --tenant-limit 100      # crawl a window of N tenants (debugging)
  *
@@ -75,8 +75,8 @@ export async function loadTenants() {
 
 /**
  * Build a case-insensitive word-boundary regex per keyword. Spaces in the
- * keyword become `\s+` so "Product Manager Intern" still matches "Product
- *  Manager  Intern". Special regex chars are escaped.
+ * keyword become `\s+` so "Software Engineering Intern" still matches
+ * "Software  Engineering  Intern". Special regex chars are escaped.
  */
 function compileKeywordMatchers(keywords) {
   return keywords
@@ -205,7 +205,7 @@ export async function bulkFetchAshby({
 // ---------- CLI smoke test ----------
 //
 //   node shared/sourcing/ashby_bulk_crawl.mjs \
-//     --keywords "Product Manager Intern,APM,Operations Intern" \
+//     --keywords "Software Engineering Intern,Accounting Intern,Nursing Intern" \
 //     --concurrency 10 \
 //     --tenant-limit 100
 //

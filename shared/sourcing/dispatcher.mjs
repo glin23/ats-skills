@@ -10,7 +10,7 @@
 // Usage:
 //   import { discoverAll, ALL_SOURCES } from './dispatcher.mjs';
 //   const result = await discoverAll({
-//     keywords: ['Product Manager Intern', 'APM Intern'],
+//     keywords: ['Software Engineering Intern', 'Accounting Intern'],
 //     intent,
 //     sources: ['remoteok', 'greenhouse_bulk', 'ashby_bulk', 'lever_bulk', 'yc_waas'],
 //     concurrency_per_source: 10,
@@ -210,7 +210,7 @@ function _clientSideKeywordFilter(jobs, keywords) {
 // CLI entry: smoke-test the dispatcher across all sources.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const argv = process.argv.slice(2);
-  let keywords = ['Product Manager Intern'];
+  let keywords = ['Intern'];
   let sources = DEFAULT_SOURCES;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--keywords') keywords = argv[++i].split(',').map((s) => s.trim());

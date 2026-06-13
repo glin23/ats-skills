@@ -36,6 +36,10 @@ Principles:
 
 - Serve any US college student: business, CS, nursing, engineering, arts, public health, journalism, etc.
 - Read the resume's actual trajectory. Do not hard-code PM/growth/startup assumptions.
+- Treat the user's self-reported target functions as the anchor when provided.
+  The major is evidence, not destiny: never infer that the target function must
+  equal the major, and never override an explicit target function just because
+  the degree points elsewhere.
 - Use specific role titles recruiters post, not generic "internship".
 - Prefer honesty over flattery. Caliber and gaps must reflect the real resume.
 - Never invent personal info. Unknown facts stay null or become ask/skip blockers.
@@ -60,8 +64,20 @@ Required `search_intent.json` guidance:
 
 - Set `role_type_targets` using only `intern`, `part_time`, `new_grad_FT`.
 - Keep legacy `seniority` aligned: `intern`, `part_time`, `intern_or_part_time`, `new_grad_FT`, or `both`.
-- Generate 5-10 `role_categories`: high direct matches, medium adjacent roles, and a few low exploratory roles.
-- Generate `exclude_role_keywords` only for obvious noise.
+- Generate 5-10 `role_categories` from the user's self-reported target
+  functions plus resume-supported evidence:
+  - high = direct target-function match;
+  - medium = clearly adjacent function;
+  - low = exploratory but still adjacent to the target function.
+- Do not create cross-functional exploratory categories. For example, an
+  Operations/PM target can include Ops, PM, BizOps, Strategy, APM, or Program
+  Management, but not SWE, Nursing, Design, or Data unless the user explicitly
+  asks for those functions. A SWE target can include Software Engineering,
+  Backend, Frontend, Full-Stack, Platform, DevOps, QA, or closely adjacent
+  technical roles, but not unrelated marketing/accounting/nursing/design roles.
+- Generate `exclude_role_keywords` only for obvious noise or functions that are
+  clearly outside the user's target-function anchor. Do not add exclusions just
+  because the user's major differs from the target function.
 - Default `geographic_preference.primary_country` to US unless the user says otherwise.
 - Use the hard-boundary geography answer for metros, countries, relocation policy, and remote acceptability.
 

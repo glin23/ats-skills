@@ -209,7 +209,7 @@ function roleCategoryBases(intentDoc = {}) {
 }
 
 function derivedKeywords(roleTypes, intentDoc = {}) {
-  const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'APM Intern', 'Summer'];
+  const internKws = ['Intern', 'Internship', 'Co-op', 'Coop', 'Summer'];
   const bases = roleCategoryBases(intentDoc);
   const profilePartTimeKws = bases.flatMap((base) => [
     `${base} Part-time`,

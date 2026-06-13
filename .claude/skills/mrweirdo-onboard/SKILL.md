@@ -1,6 +1,6 @@
 ---
 name: mrweirdo-onboard
-description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, self-introduction intake, student job/internship discovery, scoring, guarded queue preview, and explicit-gated auto-apply. Uses one intake prompt, one hard-boundary AskUserQuestion call, a soft parse correction window, and one queue gate before any real submissions. Do NOT trigger for a single URL/manual application; route those to mrweirdo-greenhouse, mrweirdo-ashby, or mrweirdo-lever.
+description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for first-run setup, resume intake, optional self-introduction intake, student job/internship discovery, scoring, guarded queue preview, and explicit-gated auto-apply. Uses one intake prompt, one hard-boundary AskUserQuestion call, a soft parse correction window, and one queue gate before any real submissions. Do NOT trigger for a single URL/manual application; route those internally to the dedicated ATS skill.
 ---
 
 # Mr. Weirdo Jobs Onboard
@@ -29,13 +29,26 @@ Use this skill when:
 - user wants the end-to-end resume-driven discovery + scoring + guarded batch
   apply loop.
 
+When invoked with no concrete request yet, show a single AskUserQuestion main
+menu with exactly these five choices and no slash commands:
+
+1. `开始找实习 / Onboard` (recommended): continue directly into the full
+   onboard flow, starting at Step 0/Step 1, with no command for the user to type.
+2. `进度跟踪 / Tracker`: route internally to `mrweirdo-tracker`.
+3. `扩充写作画像 / Expand`: route internally to `mrweirdo-expand`.
+4. `技能提升 / Upskill`: route internally to `mrweirdo-upskill`.
+5. `起草申请材料 / Materials`: route internally to `mrweirdo-materials`.
+
+Do not show ATS platform commands in this menu. The one-off ATS skills,
+confirmation sync, quota cherry-pick, doctor preflight, and `*-auto` engines
+remain available for internal routing, but are not user-facing menu items.
+
 Do not use this skill for:
 
-- one URL/manual apply: route to `mrweirdo-greenhouse`, `mrweirdo-ashby`, or
-  `mrweirdo-lever`;
-- large-company quota slots: route to `mrweirdo-cherry-pick`;
-- install readiness only: route to `mrweirdo-doctor`;
-- Gmail confirmation sync only: route to `mrweirdo-confirm`.
+- one URL/manual apply: route internally to the dedicated one-off ATS skill;
+- large-company quota slots: route internally to `mrweirdo-cherry-pick`;
+- install readiness only: route internally to `mrweirdo-doctor`;
+- Gmail confirmation sync only: route internally to `mrweirdo-confirm`.
 
 ## Defaults And Safety
 
@@ -71,10 +84,11 @@ Show a short preamble. For first run:
 ```text
 Welcome to Mr. Weirdo Jobs.
 
-Send me your resume PDF path and a short self-introduction in one message.
-I will ask the three hard-boundary questions I must not infer, then start
-read-only discovery while you still have a correction window. Before any real
-submission, I will show the exact queue and identity block and wait for "开始".
+Send me your resume PDF path. You may add one or two optional sentences about
+what roles you want, but the resume path is the only required input.
+I will ask the hard-boundary questions I must not infer, then start read-only
+discovery while you still have a correction window. Before any real submission,
+I will show the exact queue and identity block and wait for "开始".
 ```
 
 Then run:
@@ -91,10 +105,10 @@ Stop on any failure and tell the user what to fix.
 Ask for one intake message:
 
 ```text
-Paste the absolute path to your resume PDF, then write 5-10 sentences about
-who you are, what internships/part-time roles you want, experiences companies
-should notice, preferred industries/functions, and anything applications should
-emphasize.
+Paste the absolute path to your resume PDF. Optional: add one or two sentences
+about target roles, preferred industries/functions, or anything applications
+should emphasize. If you skip the extra context, I will infer safely from the
+resume and leave unknown personal facts blank.
 ```
 
 Copy the resume:
@@ -107,8 +121,10 @@ bash scripts/intake_resume.sh "<path from user>"
 Read `references/intake-and-profile.md`. Use exactly one AskUserQuestion call
 with the three hard-boundary questions A0/A1/A2. For A2, the recommended
 default is ask/skip sensitive legal questions when a form actually needs them.
-Do not ask soft preference questions here unless the answer would materially
-change discovery keywords and fits the one adaptive follow-up call budget.
+Do not require a self-introduction. Treat `self_intro_raw` as optional and allow
+it to be empty. Do not ask soft preference questions here unless the answer
+would materially change discovery keywords and fits the one adaptive follow-up
+call budget.
 
 If `~/.mrweirdo-jobs/documents/` exists and is non-empty, mention that
 `/mrweirdo-expand` can enrich writing memory later. Do not block onboarding on
@@ -116,7 +132,8 @@ that branch.
 
 ## Step 2 - Generate Local JSON
 
-Read the resume PDF in the main agent session. Generate:
+Read the resume PDF in the main agent session. Use any optional self-introduction
+only as extra evidence. Generate:
 
 - `$MRWEIRDO_HOME/profile.json`
 - `$MRWEIRDO_HOME/search_intent.json`
@@ -125,6 +142,11 @@ Read the resume PDF in the main agent session. Generate:
 Use `references/intake-and-profile.md`, `shared/profile.template.json`, and
 `shared/intelligence/intent_schema.json`. Mark inferred soft fields in your
 summary as `[推断，可改]`; do not mark hard-boundary facts as inferred.
+When no self-introduction was provided, generate `essay_profile.json` from the
+resume only: infer writing voice, positioning, and proof points only where the
+resume supports them; put genuinely unknown writing facts in
+`dynamic_questions_to_ask_later` and sensitive/unverified claims in
+`hard_no_claims`. Do not block onboarding just because `self_intro_raw` is empty.
 
 Important runtime shape:
 
@@ -277,8 +299,8 @@ as full address, earliest start date, high-school city/state, government
 relative/compliance facts, language or skill level, GPA, logistics, or location
 commitments.
 
-Open-text answers are agent work. Draft from the resume, self-introduction,
-`essay_profile.json`, `answer_bank.json`, and
+Open-text answers are agent work. Draft from the resume, optional
+self-introduction, `essay_profile.json`, `answer_bank.json`, and
 `shared/references/truthfulness.md`. For `agent_attestation` and
 `agent_profile_backed`, fill only from the local profile or driver coverage.
 

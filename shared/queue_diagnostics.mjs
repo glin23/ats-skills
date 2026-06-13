@@ -7,6 +7,7 @@ import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { eligibleReason, legitimacyBlockReason } from './eligibility.mjs';
+import { assessFunctionRelevance, FUNCTION_RELEVANCE_TOO_DISTANT_REASON } from './function_relevance.mjs';
 import { KNOWN_UNSUPPORTED_PLATFORMS, SUPPORTED_AUTO_PLATFORMS, discoveryApplyBucket } from './sourcing/apply_url_classification.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
@@ -36,7 +37,9 @@ function isAlreadySubmitted(row, submittedKeys) {
   return submittedKeys.has(duplicateKey(row));
 }
 
-function reasonFor(row, allowedRoleTypes, submittedKeys) {
+function reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) {
+  const functionRelevance = assessFunctionRelevance(row, intentDoc);
+  if (functionRelevance.status === 'too_distant') return FUNCTION_RELEVANCE_TOO_DISTANT_REASON;
   const roleType = deriveRoleTypeFromJob(row);
   return eligibleReason(row, {
     roleType,
@@ -63,6 +66,7 @@ function exampleShape(r) {
     liveness_checked_at: r.liveness_checked_at || null,
     role_type_match: r.role_type_match,
     derived_role_type: deriveRoleTypeFromJob(r),
+    function_relevance: r.function_relevance || null,
   };
 }
 
@@ -77,7 +81,8 @@ function examplesFor(rows, reason, limit = 8) {
   return examplesForRows(rows.filter((r) => r.reason === reason), limit);
 }
 
-const allowedRoleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
+const intentDoc = readIntent();
+const allowedRoleTypes = roleTypesFromSearchIntent(intentDoc.search_intent || {});
 initDb();
 const db = new DatabaseSync(dbPath());
 const submittedKeys = new Set(
@@ -99,7 +104,16 @@ const rows = db.prepare(`
 `).all();
 
 const pendingRows = rows.filter((row) => row.status === '🤖 AI sourced');
-const annotated = pendingRows.map((row) => ({ ...row, reason: reasonFor(row, allowedRoleTypes, submittedKeys) }));
+const annotated = pendingRows.map((row) => {
+  const functionRelevance = assessFunctionRelevance(row, intentDoc);
+  return {
+    ...row,
+    function_relevance: functionRelevance,
+    reason: functionRelevance.status === 'too_distant'
+      ? FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+      : reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc),
+  };
+});
 const rescoreCandidates = pendingRows.filter((row) => {
   const roleType = deriveRoleTypeFromJob(row);
   return SUPPORTED_AUTO.has(row.ats_platform)
@@ -107,8 +121,9 @@ const rescoreCandidates = pendingRows.filter((row) => {
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
     && !legitimacyBlockReason(row)
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) === MIN_FIT - 1;
 });
 const platformExpansionCandidates = pendingRows.filter((row) => {
@@ -118,8 +133,9 @@ const platformExpansionCandidates = pendingRows.filter((row) => {
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
     && !legitimacyBlockReason(row)
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
 });
 const manualOnlyCandidates = pendingRows.filter((row) => {
@@ -129,8 +145,9 @@ const manualOnlyCandidates = pendingRows.filter((row) => {
     && allowedRoleTypes.includes(roleType)
     && !isAlreadySubmitted(row, submittedKeys)
     && !legitimacyBlockReason(row)
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'expired_title_year'
-    && reasonFor(row, allowedRoleTypes, submittedKeys) !== 'test_or_sandbox_posting'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'expired_title_year'
+    && reasonFor(row, allowedRoleTypes, submittedKeys, intentDoc) !== 'test_or_sandbox_posting'
     && (row.fit_score ?? 0) >= MIN_FIT;
 });
 const summary = {

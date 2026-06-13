@@ -7,6 +7,7 @@ import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, roleTypesFromSearchIntent } from './role_types.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
 import { eligibleReason } from './eligibility.mjs';
+import { assessFunctionRelevance, FUNCTION_RELEVANCE_TOO_DISTANT_REASON } from './function_relevance.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
 
 const HOME = atsHome();
@@ -28,7 +29,8 @@ function boolArg(name) {
 
 const apply = boolArg('--apply');
 const json = boolArg('--json');
-const allowedRoleTypes = roleTypesFromSearchIntent(readIntent().search_intent || {});
+const intentDoc = readIntent();
+const allowedRoleTypes = roleTypesFromSearchIntent(intentDoc.search_intent || {});
 
 initDb();
 const db = new DatabaseSync(dbPath());
@@ -65,13 +67,16 @@ const summary = {
 
 for (const row of rows) {
   const roleType = deriveRoleTypeFromJob(row);
-  let reason = eligibleReason(row, {
-    roleType,
-    allowedRoleTypes,
-    submittedKeys,
-    minFit: MIN_FIT,
-    supportedAuto: SUPPORTED_AUTO,
-  });
+  const functionRelevance = assessFunctionRelevance(row, intentDoc);
+  let reason = functionRelevance.status === 'too_distant'
+    ? FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+    : eligibleReason(row, {
+      roleType,
+      allowedRoleTypes,
+      submittedKeys,
+      minFit: MIN_FIT,
+      supportedAuto: SUPPORTED_AUTO,
+    });
   const currentEligible = Number(row.auto_apply_eligible || 0);
   if (reason === 'eligible' && row.recommended == null && currentEligible === 0) {
     reason = 'legacy_recommended_unknown';
@@ -94,6 +99,7 @@ for (const row of rows) {
     from: currentEligible,
     to: nextEligible,
     reason,
+    function_relevance: functionRelevance,
   };
   changes.push(change);
   if (nextEligible) summary.enable += 1;

@@ -29,10 +29,13 @@ test('tracker follow-up drafts avoid empty checking-in language', () => {
   assert.match(text, /--followup-sent/);
 });
 
-test('jobskill menu exposes landed Phase 2 and Phase 3 commands without coming-soon labels', () => {
+test('jobskill menu exposes five choice labels without user-facing slash commands', () => {
   const text = read('.claude/skills/mrweirdo-jobskill/SKILL.md');
-  for (const command of ['/mrweirdo-tracker', '/mrweirdo-expand', '/mrweirdo-upskill', '/mrweirdo-materials']) {
-    assert.match(text, new RegExp(command.replace('/', '\\/')));
+  for (const label of ['开始找实习 / Onboard', '进度跟踪 / Tracker', '扩充写作画像 / Expand', '技能提升 / Upskill', '起草申请材料 / Materials']) {
+    assert.match(text, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  for (const command of ['/mrweirdo-tracker', '/mrweirdo-expand', '/mrweirdo-upskill', '/mrweirdo-materials', '/mrweirdo-greenhouse', '/mrweirdo-ashby', '/mrweirdo-lever']) {
+    assert.doesNotMatch(text, new RegExp(command.replace('/', '\\/')));
   }
   assert.doesNotMatch(text, /即将上线/);
 });

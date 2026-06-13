@@ -40,7 +40,7 @@
  *
  * CLI
  *   node shared/sourcing/lever_bulk_crawl.mjs \
- *     --keywords "Product Manager Intern,APM Intern" \
+ *     --keywords "Software Engineering Intern,Accounting Intern" \
  *     [--limit 5000] [--concurrency 10] [--max-tenants 100]
  *
  *   - stderr: progress + summary
@@ -193,7 +193,7 @@ export async function bulkFetchLever(opts = {}) {
 
 // ---------- CLI smoke test ----------
 // Usage:
-//   node shared/sourcing/lever_bulk_crawl.mjs --keywords "Product Manager Intern,APM Intern"
+//   node shared/sourcing/lever_bulk_crawl.mjs --keywords "Software Engineering Intern,Accounting Intern"
 //   node shared/sourcing/lever_bulk_crawl.mjs --keywords "..." --max-tenants 100
 
 function _parseArgs(argv) {

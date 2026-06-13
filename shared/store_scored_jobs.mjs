@@ -7,6 +7,7 @@ import { classifyRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { SUPPORTED_AUTO_PLATFORMS, platformFromUrl } from './sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { legitimacyBlockReason, unusableAutoApplyReason } from './eligibility.mjs';
+import { assessFunctionRelevance, FUNCTION_RELEVANCE_TOO_DISTANT_REASON } from './function_relevance.mjs';
 import { progress } from './progress.mjs';
 import { DEFAULT_LEGITIMACY, LEGITIMACY_LEVELS } from './constants.mjs';
 
@@ -154,10 +155,15 @@ for (const job of candidates) {
   const legitimacy_signals = normalizeLegitimacySignals(score.legitimacy_signals);
   const legitimacyReason = legitimacyBlockReason({ legitimacy });
   const unusableReason = unusableAutoApplyReason({ ...job, apply_url: applyUrl });
-  const eligible = passThreshold && recommended && roleOk && !capped && platformOk && !legitimacyReason && !unusableReason;
+  const functionRelevance = assessFunctionRelevance(job, intentDoc);
+  const functionRelevanceReason = functionRelevance.status === 'too_distant'
+    ? FUNCTION_RELEVANCE_TOO_DISTANT_REASON
+    : null;
+  const eligible = passThreshold && recommended && roleOk && !capped && platformOk && !legitimacyReason && !unusableReason && !functionRelevanceReason;
 
   let reason = 'eligible';
   if (unusableReason) reason = unusableReason;
+  else if (functionRelevanceReason) reason = functionRelevanceReason;
   else if (!passThreshold) reason = 'fit_below_threshold';
   else if (!recommended) reason = 'not_recommended';
   else if (!roleOk) reason = 'role_type_not_allowed';
@@ -185,7 +191,9 @@ for (const job of candidates) {
     auto_apply_eligible: eligible ? 1 : 0,
     search_source: job._discovery_source || job.search_source || job.source || 'unknown',
     discovery_run_id: runId,
-    user_note: score.honest_reason || null,
+    user_note: functionRelevanceReason
+      ? `${score.honest_reason || ''}${score.honest_reason ? ' ' : ''}[${FUNCTION_RELEVANCE_TOO_DISTANT_REASON}: ${functionRelevance.reason}]`
+      : (score.honest_reason || null),
   };
 
   const result = upsertJob(row);

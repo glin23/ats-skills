@@ -15,7 +15,7 @@
  *   import { bulkFetchGreenhouse } from './greenhouse_bulk_crawl.mjs';
  *   const { jobs, errors, companies_attempted, companies_with_jobs } =
  *     await bulkFetchGreenhouse({
- *       keywords: ['Product Manager Intern', 'APM Intern', 'Operations Intern'],
+ *       keywords: ['Software Engineering Intern', 'Accounting Intern', 'Nursing Intern'],
  *       concurrency: 10,
  *       limit: 5000,
  *       onProgress: ({ done, total, found }) =>
@@ -24,7 +24,7 @@
  *
  * ── Usage (CLI smoke test) ────────────────────────────────────────────
  *   node shared/sourcing/greenhouse_bulk_crawl.mjs \
- *     --keywords "Product Manager Intern,APM Intern,Operations Intern" \
+ *     --keywords "Software Engineering Intern,Accounting Intern,Nursing Intern" \
  *     --max-companies 200 \
  *     --concurrency 10
  *

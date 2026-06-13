@@ -127,6 +127,7 @@ const syntaxFiles = [
   'shared/progress.mjs',
   'shared/init_db_cli.mjs',
   'shared/role_types.mjs',
+  'shared/function_relevance.mjs',
   'shared/job_identity.mjs',
   'shared/auto_apply_queue.mjs',
   'shared/recompute_auto_apply_eligibility.mjs',
