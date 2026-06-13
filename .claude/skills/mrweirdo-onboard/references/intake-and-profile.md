@@ -55,6 +55,18 @@ Required `profile.json` shape:
   - `requires_sponsorship_now`: boolean or null.
   - `requires_sponsorship_future`: boolean or null.
   - Do not emit only `status`, `needs_sponsor`, or `sponsor_when`; the application drivers do not rely on those legacy keys.
+
+Example runtime shape:
+
+```json
+"work_authorization": {
+  "visa_status": "F-1 OPT eligible",
+  "authorized_to_work_us": true,
+  "requires_sponsorship_now": false,
+  "requires_sponsorship_future": true
+}
+```
+
 - `legal_attestations`: nullable unless explicitly confirmed.
 - `demographics`: nullable unless explicit.
 - `experience_summary`: top recent experiences with key skills.

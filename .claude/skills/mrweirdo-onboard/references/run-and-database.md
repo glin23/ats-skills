@@ -1,6 +1,6 @@
 # Run And Database Reference
 
-Use this reference during `/mrweirdo-onboard` Steps 4-11.
+Use this reference during `/mrweirdo-onboard` Steps 4-7.
 
 ## Local State Contract
 
@@ -8,6 +8,7 @@ Use this reference during `/mrweirdo-onboard` Steps 4-11.
 - Default state path is `$MRWEIRDO_HOME`, usually `~/.mrweirdo-jobs`.
 - The main database is `$MRWEIRDO_HOME/jobs.db`.
 - The source window cursor is `$MRWEIRDO_HOME/source_cursor.json`.
+- Temporary run artifacts live in `/tmp/mrweirdo-onboard`.
 - There is no shared company cache, no remote backend, and no bundled demo corpus.
 - Checked-in public board slug lists are source enumerators only, not per-user
   job results and not shared company caches.
@@ -52,6 +53,13 @@ Discovery also writes `/tmp/mrweirdo-onboard/discovery_funnel.json`, which
 shows the run's raw discovery count, hard-filter drops, auto-supported rows,
 manual rows, and score-cap drops.
 
+The user can watch the live dashboard with:
+
+```bash
+cd "$MRWEIRDO_REPO_ROOT"
+npm run status
+```
+
 Before storing, make sure every usable row in `to_score.json` has one complete
 score object in `scored.json`: `apply_url`, numeric `fit_score`, boolean
 `recommended`, `role_type_match`, `dim_scores`, `legitimacy`, and
@@ -59,6 +67,10 @@ score object in `scored.json`: `apply_url`, numeric `fit_score`, boolean
 first. The store script intentionally fails on partial scoring unless
 `--allow-partial-scores` is passed for an explicit debug run. Old scorer output
 without `legitimacy` is accepted as `high`.
+
+Required scored row fields are `apply_url`, numeric `fit_score`, boolean
+`recommended`, `role_type_match`, `dim_scores`, `legitimacy`, and
+`legitimacy_signals`.
 
 Store scored job rows and recompute eligibility:
 
@@ -89,6 +101,9 @@ eligible because the ATS driver still does the page-level verification. Use
 `--skip-liveness` only for an explicit recovery run if the liveness checker is
 misbehaving.
 
+The permission prompt for `--real` is intentional and acts as the second
+spending gate. Do not add it to `.claude/settings.json`.
+
 The real batch writes a JSON summary and generates:
 
 ```text
@@ -116,10 +131,13 @@ else
 fi
 ```
 
-Do not ask the user to write open-text answers such as ISA/cover-letter style
-prompts when the resume and self-introduction contain enough material. Those
-belong in the agent work bucket and should be answered or templated before the
-retry.
+Do not ask the user to write open-text answers such as inline essays,
+cover-letter style prompts, or other `agent_open_text` fields when the resume,
+optional self-introduction, local profile, `essay_profile.json`, and
+`answer_bank.json` contain enough grounded material. Those belong in the agent
+work bucket and should be answered or templated before the retry. For
+`agent_attestation` and `agent_profile_backed`, fill only from the local profile
+or driver coverage, and follow `shared/references/truthfulness.md`.
 
 Generate report:
 

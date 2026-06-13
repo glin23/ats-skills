@@ -8,14 +8,8 @@ description: Main entry skill for Mr. Weirdo Jobs after install. Trigger for fir
 This is the main local skill after install. Every run belongs to the person
 running the skill; all state stays on this machine.
 
-State defaults:
-
-- `$MRWEIRDO_HOME`, usually `~/.mrweirdo-jobs`
-- `$MRWEIRDO_HOME/jobs.db`
-- `$MRWEIRDO_HOME/source_cursor.json`
-- temporary run artifacts in `/tmp/mrweirdo-onboard`
-
-The flow is: intake -> parse soft window -> discovery/scoring -> queue gate ->
+State defaults and run artifacts are in `references/run-and-database.md`. The
+flow is: intake -> parse soft window -> discovery/scoring -> queue gate ->
 guarded apply -> missing-info retry -> report/prune. The only hard business
 confirmation before spending applications is the queue gate in Step 5.
 
@@ -191,16 +185,8 @@ resume supports them; put genuinely unknown writing facts in
 `dynamic_questions_to_ask_later` and sensitive/unverified claims in
 `hard_no_claims`. Do not block onboarding just because `self_intro_raw` is empty.
 
-Important runtime shape:
-
-```json
-"work_authorization": {
-  "visa_status": "F-1 OPT eligible",
-  "authorized_to_work_us": true,
-  "requires_sponsorship_now": false,
-  "requires_sponsorship_future": true
-}
-```
+The required `work_authorization` runtime shape is in
+`references/intake-and-profile.md`; do not emit legacy-only keys.
 
 After writing:
 
@@ -294,11 +280,6 @@ raw <R> -> hard-filter dropped <D> -> auto-supported <A> -> manual <M> -> to sco
 看板：`npm run status`
 ```
 
-```bash
-cd "$MRWEIRDO_REPO_ROOT"
-npm run status
-```
-
 Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
 `shared/scoring/score_prompt.md`. After each batch, output one line:
 
@@ -306,10 +287,8 @@ Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
 [Step 4/7] 评分进度 / Scoring - 100/216 | fit≥5 暂计 N | 下一批 50
 ```
 
-Do not continue until every usable row has a complete score object in
-`/tmp/mrweirdo-onboard/scored.json`: `apply_url`, numeric `fit_score`, boolean
-`recommended`, `role_type_match`, `dim_scores`, `legitimacy`, and
-`legitimacy_signals`.
+Do not continue until every usable row has the complete score object required in
+`references/run-and-database.md`.
 
 Store:
 
@@ -397,11 +376,8 @@ else
 fi
 ```
 
-The permission prompt for `--real` is intentional and acts as the second
-spending gate. Do not add it to `.claude/settings.json`. The real batch runs a
-serial liveness gate before queueing and only blocks `expired`; `uncertain` and
-`bot_challenge` rows continue to the ATS driver. Use `--skip-liveness` only as
-an explicit escape hatch when the check itself is broken.
+Follow `references/run-and-database.md` for the `--real` permission prompt,
+serial liveness gate, and `--skip-liveness` escape hatch.
 
 ## Step 6 - Missing Info Follow-Up And Retry
 
@@ -412,13 +388,9 @@ After every real batch, inspect:
 /tmp/mrweirdo-onboard/apply-gap-report.md
 ```
 
-Before asking the user anything, handle open-text answers as agent work. Draft
-inline essays, cover-letter style prompts, and other `agent_open_text` fields
-from the resume, optional self-introduction, local profile,
-`essay_profile.json`, `answer_bank.json`, and
-`shared/references/truthfulness.md`. Do not invent facts. For
-`agent_attestation` and `agent_profile_backed`, fill only from the local profile
-or driver coverage.
+Before asking the user anything, handle open-text answers as agent work per
+`references/run-and-database.md` and `shared/references/truthfulness.md`; do not
+invent facts.
 
 If `condensed_missing_questions` is non-empty, ask at most four grouped
 questions from that list in one AskUserQuestion call. Present them by impact,

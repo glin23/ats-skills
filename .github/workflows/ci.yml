@@ -13,8 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Unit tests (node --test)
-        run: node --test test/*.test.mjs
+      - name: Unit tests
+        run: npm test
       - name: Role-guard smoke test
         run: node scripts/role_guard_smoke.mjs
       - name: Public alpha release gate
