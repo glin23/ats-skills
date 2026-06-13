@@ -17,23 +17,24 @@ test('job_report writes markdown, machine summary, and report_path only', () => 
   }).status, 0);
 
   const dbFile = join(home, 'jobs.db');
-  const db = new DatabaseSync(dbFile);
-  db.prepare(`
-    INSERT INTO jobs(company, title, apply_url, location, source, status, fit_score,
-                     recommended, key_gaps, role_type_match, dim_scores, legitimacy,
-                     legitimacy_signals, ats_platform, outcome_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    'Acme',
-    'Marketing Intern',
+	  const db = new DatabaseSync(dbFile);
+	  db.prepare(`
+	    INSERT INTO jobs(company, title, apply_url, location, source, status, fit_score,
+	                     recommended, key_alignment, key_gaps, role_type_match, dim_scores,
+	                     legitimacy, legitimacy_signals, ats_platform, outcome_status)
+	    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	  `).run(
+	    'Acme',
+	    'Marketing Intern',
     'https://boards.greenhouse.io/acme/jobs/1',
     'New York, NY',
     'greenhouse',
-    '🤖 AI sourced',
-    8,
-    1,
-    'SQL not visible / Tableau missing',
-    'intern',
+	    '🤖 AI sourced',
+	    8,
+	    1,
+	    'brand internship aligns with marketing role',
+	    'SQL not visible / Tableau missing',
+	    'intern',
     JSON.stringify({ role_fit: 8, location_fit: 9 }),
     'caution',
     JSON.stringify(['salary not listed']),
@@ -54,8 +55,13 @@ test('job_report writes markdown, machine summary, and report_path only', () => 
   assert.equal(parsed.paths.length, 1);
   assert.ok(existsSync(parsed.paths[0]));
 
-  const markdown = readFileSync(parsed.paths[0], 'utf8');
-  const summary = parseMachineSummary(markdown);
+	  const markdown = readFileSync(parsed.paths[0], 'utf8');
+	  assert.match(markdown, /岗位快照 \/ Job Snapshot/);
+	  assert.match(markdown, /匹配摘要 \/ Fit/);
+	  assert.match(markdown, /brand internship aligns with marketing role/);
+	  assert.match(markdown, /安全信号 \/ Safety/);
+	  assert.match(markdown, /提交记录 \/ Submission/);
+	  const summary = parseMachineSummary(markdown);
   assert.equal(summary.row_id, rowId);
   assert.equal(summary.company, 'Acme');
   assert.deepEqual(Object.keys(summary).sort(), [

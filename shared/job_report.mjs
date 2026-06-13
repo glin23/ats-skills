@@ -116,11 +116,19 @@ function mdEscape(value) {
 function renderDimTable(dimScores) {
   const dim = dimScores && typeof dimScores === 'object' ? dimScores : {};
   const rows = Object.entries(dim);
-  if (!rows.length) return '_No dimension scores stored._';
+  if (!rows.length) return '_暂无维度分数 / No dimension scores stored._';
   return [
-    '| Dimension | Score |',
+    '| 维度 / Dimension | 分数 / Score |',
     '|---|---:|',
     ...rows.map(([key, value]) => `| ${mdEscape(key)} | ${mdEscape(value)} |`),
+  ].join('\n');
+}
+
+function renderKeyValueTable(rows) {
+  return [
+    '| 项目 | 内容 |',
+    '|---|---|',
+    ...rows.map(([key, value]) => `| ${mdEscape(key)} | ${mdEscape(value || '-')} |`),
   ].join('\n');
 }
 
@@ -144,12 +152,34 @@ function renderMachineSummary(row, { dimScores, gapFields }) {
     gap_fields: gapFields || [],
   };
   return [
+    '<details>',
+    '<summary>Machine Summary / tooling</summary>',
+    '',
     '## Machine Summary',
     '',
     '```yaml',
     ...Object.entries(data).map(([key, value]) => `${key}: ${yamlValue(value)}`),
     '```',
+    '',
+    '</details>',
   ].join('\n');
+}
+
+function renderSubmissionAudit(submission, submittedAt) {
+  const latest = submission.latest || null;
+  const outcome = latest
+    ? [latest.outcome || latest.action || 'unknown', latest.reason || latest.post_url || latest.url || ''].filter(Boolean).join(' / ')
+    : '';
+  const rows = [
+    ['结果文件 / Result file', submission.result_file || 'not found'],
+    ['记录结果 / Recorder outcome', outcome || 'not found'],
+    ['提交时间 / Submitted at', submittedAt || 'not recorded'],
+  ];
+  const table = renderKeyValueTable(rows);
+  const screenshots = submission.screenshots?.length
+    ? ['截图 / Screenshots', ...submission.screenshots.map((shot) => `- ${shot}`)].join('\n')
+    : '';
+  return screenshots ? `${table}\n\n${screenshots}` : table;
 }
 
 export function parseMachineSummary(markdown) {
@@ -178,56 +208,60 @@ export function parseMachineSummary(markdown) {
 function renderReport(row, { appendSubmission = false } = {}) {
   const dimScores = parseJson(row.dim_scores, {});
   const legitimacySignals = parseJson(row.legitimacy_signals, []);
-	  const submission = appendSubmission ? summarizeSubmission(row.id) : { gap_fields: [] };
-	  const keyAlignment = splitGaps(row.key_alignment);
-	  const keyGaps = splitGaps(row.key_gaps);
+  const submission = appendSubmission ? summarizeSubmission(row.id) : { gap_fields: [] };
+  const keyAlignment = splitGaps(row.key_alignment);
+  const keyGaps = splitGaps(row.key_gaps);
   const gapFields = [...new Set([...keyGaps, ...(submission.gap_fields || [])])];
   const submittedAt = row.submitted_at || row.auto_submitted_at || '';
-  const auditLines = [];
-  if (appendSubmission) {
-    auditLines.push(`- Result file: ${submission.result_file || '(not found)'}`);
-    auditLines.push(`- Recorder outcome: ${submission.latest ? JSON.stringify(submission.latest) : '(not found)'}`);
-    auditLines.push(`- Submitted at: ${submittedAt || '(not recorded)'}`);
-    if (submission.screenshots?.length) {
-      for (const shot of submission.screenshots) auditLines.push(`- Screenshot: ${shot}`);
-    }
-  }
+  const headerMeta = [
+    `Row ${row.id}`,
+    row.ats_platform || 'ATS unknown',
+    row.fit_score != null ? `fit ${row.fit_score}` : 'fit n/a',
+    row.status || 'status unknown',
+  ].filter(Boolean).join(' | ');
 
   const sections = [
-    `# ${row.company || 'Unknown Company'} - ${row.title || 'Unknown Role'}`,
+    `# 岗位快照 / Job Snapshot - ${row.company || 'Unknown Company'} - ${row.title || 'Unknown Role'}`,
     '',
-    '## Job Summary',
+    `> ${headerMeta}`,
     '',
-    `- Row ID: ${row.id}`,
-    `- Company: ${row.company || ''}`,
-    `- Title: ${row.title || ''}`,
-    `- Location: ${row.location || ''}`,
-    `- ATS: ${row.ats_platform || ''}`,
-    `- Source: ${row.search_source || row.source || ''}`,
-    `- Apply URL: ${row.apply_url || ''}`,
+    '## 1. 岗位信息 / Job',
     '',
-    '## Fit Summary',
+    renderKeyValueTable([
+      ['Company', row.company || ''],
+      ['Role', row.title || ''],
+      ['Location', row.location || ''],
+      ['ATS', row.ats_platform || ''],
+      ['Source', row.search_source || row.source || ''],
+      ['Apply URL', row.apply_url || ''],
+    ]),
     '',
-	    `- Fit score: ${row.fit_score ?? ''}`,
-	    `- Role type: ${row.role_type_match || ''}`,
-	    `- Key alignment: ${keyAlignment.length ? keyAlignment.join(' / ') : 'none recorded'}`,
-	    '',
+    '## 2. 匹配摘要 / Fit',
+    '',
+    renderKeyValueTable([
+      ['Fit score', row.fit_score ?? ''],
+      ['Role type', row.role_type_match || ''],
+      ['Key alignment', keyAlignment.length ? keyAlignment.join(' / ') : 'none recorded'],
+    ]),
+    '',
+    '## 3. 评分维度 / Score Breakdown',
+    '',
     renderDimTable(dimScores),
     '',
-    '## Key Gaps',
+    '## 4. 缺口 / Gaps',
     '',
-    keyGaps.length ? keyGaps.map((gap) => `- ${gap}`).join('\n') : '_No key gaps stored._',
+    keyGaps.length ? keyGaps.map((gap) => `- ${gap}`).join('\n') : '_暂无关键缺口 / No key gaps stored._',
     '',
-    '## Legitimacy',
+    '## 5. 安全信号 / Safety',
     '',
-    `- Level: ${row.legitimacy || 'high'}`,
-    ...(Array.isArray(legitimacySignals) && legitimacySignals.length
-      ? legitimacySignals.slice(0, 2).map((signal) => `- Signal: ${signal}`)
-      : ['- Signal: none recorded']),
+    renderKeyValueTable([
+      ['Legitimacy', row.legitimacy || 'high'],
+      ['Signals', Array.isArray(legitimacySignals) && legitimacySignals.length ? legitimacySignals.slice(0, 2).join(' / ') : 'none recorded'],
+    ]),
     '',
-    '## Submission Audit',
+    '## 6. 提交记录 / Submission',
     '',
-    auditLines.length ? auditLines.join('\n') : '_No submission audit appended yet._',
+    appendSubmission ? renderSubmissionAudit(submission, submittedAt) : '_本报告尚未追加提交记录 / No submission audit appended yet._',
     '',
     renderMachineSummary(row, { dimScores, gapFields }),
     '',
@@ -239,7 +273,7 @@ function renderReport(row, { appendSubmission = false } = {}) {
 function selectByRowId(db, rowId) {
   return db.prepare(`
     SELECT id, company, title, apply_url, location, source, search_source,
-	           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
+           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
            legitimacy, legitimacy_signals, status, outcome_status,
            submitted_at, auto_submitted_at, report_path, discovery_run_id
       FROM jobs
@@ -251,7 +285,7 @@ function selectBatch(db, runId) {
   if (runId) {
     return db.prepare(`
       SELECT id, company, title, apply_url, location, source, search_source,
-	             ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
+             ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
              legitimacy, legitimacy_signals, status, outcome_status,
              submitted_at, auto_submitted_at, report_path, discovery_run_id
         FROM jobs
@@ -262,7 +296,7 @@ function selectBatch(db, runId) {
   }
   return db.prepare(`
     SELECT id, company, title, apply_url, location, source, search_source,
-	           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
+           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
            legitimacy, legitimacy_signals, status, outcome_status,
            submitted_at, auto_submitted_at, report_path, discovery_run_id
       FROM jobs

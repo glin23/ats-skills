@@ -63,6 +63,30 @@ Do not use this skill for:
 - Do not run real apply batches in background mode. The user should see row
   progress and have an interrupt window.
 
+## Output Presentation Rules
+
+All user-facing progress, summaries, questions, queue previews, and final
+reports should use the same compact terminal style:
+
+```text
+[Step X/7] <短标题> - <正在做什么> (~<大概多久>)
+```
+
+Presentation rules:
+
+- Lead with the current step, one-line status, and the user's single next action.
+- Put key counts in a compact funnel line or small table before details.
+- Keep tables to seven columns or fewer. Put anomalies below the table as short
+  tagged lines.
+- Do not paste raw JSON, database rows, or unformatted command output to the
+  user. Read artifacts, then summarize them.
+- Use CN-leaning bilingual labels: short Chinese first, English when it helps
+  scanning (for example `自动投 / auto`, `manual 清单 / manual`).
+- Prefer calm labels over paragraphs: `状态`, `你要做`, `结果`, `路径`, `下一步`.
+- Keep queue gate and final report clean. They are the main product moments.
+- Never change the meaning of the queue gate, identity block, counts, consent,
+  eligibility, thresholds, or apply flow while improving presentation.
+
 ## References
 
 Read these only when needed:
@@ -82,13 +106,24 @@ Read these only when needed:
 Show a short preamble. For first run:
 
 ```text
-Welcome to Mr. Weirdo Jobs.
+[Step 0/7] 启动 / Ready check - 确认本机环境 (~30 sec)
 
-Send me your resume PDF path. You may add one or two optional sentences about
-what roles you want, but the resume path is the only required input.
-I will ask the hard-boundary questions I must not infer, then start read-only
-discovery while you still have a correction window. Before any real submission,
-I will show the exact queue and identity block and wait for "开始".
+Mr. Weirdo Jobs 已准备开始。
+
+你只需要给我一件东西：
+| 必填 | 内容 |
+|---|---|
+| 简历 PDF 路径 | 例如 `/Users/you/Resume.pdf` |
+
+可选：再加 1-2 句目标方向/偏好；不写也可以，我会只从简历安全推断。
+
+接下来我会：
+1. 读取简历并生成本地 profile。
+2. 只问不能安全推断的硬边界问题。
+3. 开始只读 discovery + scoring。
+4. 在真实提交前给你 queue gate；你回复"开始"才会投。
+
+你要做：发我简历 PDF 的绝对路径。
 ```
 
 Then run:
@@ -105,10 +140,16 @@ Stop on any failure and tell the user what to fix.
 Ask for one intake message:
 
 ```text
-Paste the absolute path to your resume PDF. Optional: add one or two sentences
-about target roles, preferred industries/functions, or anything applications
-should emphasize. If you skip the extra context, I will infer safely from the
-resume and leave unknown personal facts blank.
+[Step 1/7] 简历 intake - 建立本地画像 (~1-2 min)
+
+请发一条消息：
+
+| 类型 | 是否必填 | 说明 |
+|---|---:|---|
+| 简历 PDF 绝对路径 | 必填 | 用来生成 profile/search intent |
+| 目标方向/偏好 | 可选 | 1-2 句即可；不写不阻塞 |
+
+我不会编造未知个人事实；简历里没有、又不能安全推断的内容会留空或后面统一问。
 ```
 
 Copy the resume:
@@ -183,6 +224,24 @@ Show a concise parse summary before discovery:
 - writing themes and hard no-claims;
 - exclude keywords.
 
+Use this layout:
+
+```text
+[Step 3/7] 解析检查 / Parse window - 先给你扫一眼 (~30 sec)
+
+| 模块 | 读到的内容 | 备注 |
+|---|---|---|
+| 身份 | <name> / <email> / <phone> | queue gate 会再复核 |
+| 学校 | <school> / <major> / <graduation> | [推断，可改] where applicable |
+| 工作授权 | <visa> / sponsorship <yes/no> | 不从专业推断 |
+| 目标方向 | <functions / role categories> | 跟用户自报 + 简历走 |
+| 地点 | <geo / relocation policy> | 影响 discovery |
+| 写作素材 | <themes> | 只用有证据的内容 |
+| 不写/不投 | <hard no-claims / excluded keywords> | 安全边界 |
+
+你要做：如果身份或方向不对，直接纠正；否则我继续只读找岗。
+```
+
 Do not wait for a separate parse confirmation. Say:
 
 ```text
@@ -206,9 +265,34 @@ node shared/discover_candidates.mjs \
   --source-window-size "${MRWEIRDO_SOURCE_WINDOW_SIZE:-1000}"
 ```
 
-After discovery, summarize the funnel in Chinese: raw discovered, hard-filter
-dropped, auto-supported rows, manual rows, and rows to score. Tell the user
-they can watch the live dashboard with:
+Before discovery, tell the user:
+
+```text
+[Step 4/7] 找岗 + 打分 / Discovery & scoring - 生成候选队列 (~5-15 min)
+
+状态：先只读抓岗位，不会提交申请。
+你可以去做别的；我会用漏斗数字汇报进度。
+```
+
+After discovery, summarize the funnel in Chinese with this compact shape: raw
+discovered, hard-filter dropped, auto-supported rows, manual rows, and rows to
+score. Tell the user they can watch the live dashboard with:
+
+```text
+[Step 4/7] Discovery 漏斗
+
+raw <R> -> hard-filter dropped <D> -> auto-supported <A> -> manual <M> -> to score <S>
+
+| 阶段 | 数量 | 含义 |
+|---|---:|---|
+| raw | <R> | 初始发现 |
+| hard-filter dropped | <D> | 明显不合适/不可用 |
+| auto-supported | <A> | 平台可自动投 |
+| manual | <M> | 需要人工处理 |
+| to score | <S> | 进入打分 |
+
+看板：`npm run status`
+```
 
 ```bash
 cd "$MRWEIRDO_REPO_ROOT"
@@ -219,7 +303,7 @@ Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
 `shared/scoring/score_prompt.md`. After each batch, output one line:
 
 ```text
-评分进度: 100/216（fit≥5 暂计 N）
+[Step 4/7] 评分进度 / Scoring - 100/216 | fit≥5 暂计 N | 下一批 50
 ```
 
 Do not continue until every usable row has a complete score object in
@@ -238,7 +322,22 @@ node shared/store_scored_jobs.mjs \
 ```
 
 Summarize stored count, eligible count, manual/unsupported count, quota-guarded
-count, suspicious count, and the DB path.
+count, suspicious count, and the DB path with this layout:
+
+```text
+[Step 4/7] 入库完成 / Stored
+
+| 指标 | 数量 |
+|---|---:|
+| stored | <N> |
+| auto-eligible | <N> |
+| manual/unsupported | <N> |
+| quota protected | <N> |
+| suspicious review | <N> |
+
+路径：DB `<path>`
+下一步：queue gate，给你看将要自动投的具体队列。
+```
 
 ## Step 5 - Queue Gate
 
@@ -255,13 +354,31 @@ location when available, and mark abnormal liveness/legitimacy fields when
 present. If more than seven columns would be needed, keep the main table compact
 and list only abnormal rows below it.
 
-Always include this identity block and fixed statement:
+Always present the queue gate as the clean hero moment. Use this structure,
+while preserving the identity block, counts, manual/quota/suspicious meanings,
+cover-letter disclosure, and "开始" consent:
+
+Always include this identity block and fixed statement inside the queue gate:
 
 ```text
+[Step 5/7] Queue gate - 最终确认后才真实提交 (~1 min review)
+
+身份 / Identity
 将以以下身份提交：<name> / <email> / <phone> / <visa 状态>
+
+本批次 / Batch counts
 自动投 <N> 行 | manual 清单 <M> 行（不会替你投）| quota 保护 <Q> 行 | suspicious 待复核 <S> 行
+
+自动投队列 / Auto queue
+| # | Company | Role | Fit | ATS | Location | Flags |
+|---:|---|---|---:|---|---|---|
+| 1 | <company> | <title> | <score> | <ats> | <location> | <ok/anomaly> |
+
+规则 / Rules
 只有标记 auto 的行会被自动提交；manual 清单在 /tmp/mrweirdo-onboard/manual_or_unsupported.json，系统不会替你处理。
 对需要 cover letter 的岗位，我会基于你的简历/profile/essay_profile/answer_bank 与岗位匹配证据自动生成并附上 cover letter；不会编造个人或公司事实。
+
+你要做 / Action
 回复"开始"执行，或先指出需要修改的行/字段。
 ```
 
@@ -310,6 +427,21 @@ facts that cannot be safely inferred from the resume or existing profile, and
 do not use a fixed checklist. If a category appears as a singleton, keep it as
 its own clear question instead of forcing it into an unnatural group.
 
+Use this user-facing lead-in before the one AskUserQuestion call:
+
+```text
+[Step 6/7] 补缺口 / Missing info - 一次补最有用的信息 (~2 min)
+
+我已经先自动起草开放题；这里只问必须由你确认、且能解锁最多岗位的事实。
+
+| 优先级 | 要补的信息 | 可解锁 | 覆盖哪些原始缺口 |
+|---:|---|---:|---|
+| 1 | <one grouped question> | <N> 个岗位 | <categories> |
+| 2 | <one grouped question> | <N> 个岗位 | <categories> |
+
+你要做：一次性回答下面这些分组问题；不知道的可以留空，我不会编。
+```
+
 Never list each job's missing fields line by line for the user. The user should
 see the minimal cross-application question set, not a manual application audit.
 Leave lower-impact grouped questions for a later batch.
@@ -353,11 +485,29 @@ node shared/prune_discovered_jobs.mjs \
   --json > /tmp/mrweirdo-onboard/prune-summary.json
 ```
 
-End with:
+End with a compact final report, not raw JSON:
 
-- funnel summary from discovery -> scored -> queued -> submitted -> gaps;
-- report path, DB path, and prune one-line summary;
-- `manual_or_unsupported.json` location;
-- next steps: run `/mrweirdo-confirm` after 48h to sync confirmations,
-  `/mrweirdo-tracker` to record OA/interview/rejection progress once available,
-  and inspect manual rows separately.
+```text
+[Step 7/7] 本轮完成 / Batch report - 结果与下一步 (~1 min)
+
+漏斗 / Funnel
+discovered <D> -> scored <S> -> queued <Q> -> submitted <A> -> gaps <G>
+
+| 结果 | 数量 | 说明 |
+|---|---:|---|
+| 已提交 | <N> | driver 验证成功 |
+| 缺信息 | <N> | 已归纳到 Step 6 |
+| manual | <N> | 不会自动处理 |
+| quota/suspicious | <N> | 保护/复核 |
+
+路径 / Files
+- 本轮报告：`<REPORT_PATH>`
+- DB：`<DB_PATH>`
+- manual 清单：`/tmp/mrweirdo-onboard/manual_or_unsupported.json`
+- prune：<one-line summary>
+
+下一步 / Next
+- 48h 后同步确认邮件：`/mrweirdo-confirm`
+- 有 OA/interview/rejection 后记录进度：`/mrweirdo-tracker`
+- manual 清单里的岗位单独处理
+```
