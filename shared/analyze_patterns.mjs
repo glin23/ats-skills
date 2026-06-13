@@ -5,8 +5,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { DEFAULT_OUTCOME_STATUS } from './constants.mjs';
+import { onboardTmpDir } from './onboard_tmp.mjs';
 
-const TMP = '/tmp/mrweirdo-onboard';
+const TMP = onboardTmpDir();
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);

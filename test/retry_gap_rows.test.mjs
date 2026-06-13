@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { onboardTestEnv } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -65,11 +66,7 @@ test('retry_gap_rows requeues only skipped missing-info rows', () => {
     '--gap-report', gapPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: dbFile,
-    },
+    env: onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbFile }),
     encoding: 'utf8',
   });
 

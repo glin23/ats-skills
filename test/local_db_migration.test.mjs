@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('old jobs.db migrates Phase 2 columns and views idempotently', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-db-'));
@@ -29,7 +30,7 @@ test('old jobs.db migrates Phase 2 columns and views idempotently', () => {
   for (let i = 0; i < 2; i += 1) {
     const result = spawnSync(process.execPath, ['shared/init_db_cli.mjs'], {
       cwd: process.cwd(),
-      env: { ...process.env, MRWEIRDO_HOME: home },
+      env: onboardTestEnv(home),
       encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr);

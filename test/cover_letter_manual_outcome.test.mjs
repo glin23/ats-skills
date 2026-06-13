@@ -5,20 +5,19 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-
-const MANUAL_REVIEW_PATH = '/tmp/mrweirdo-onboard/manual_or_unsupported.json';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('required cover letter without generated PDF is recorded as manual-visible review item', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-cover-manual-'));
   const dbPath = join(home, 'jobs.db');
+  const runTmp = join(home, 'run-tmp');
   const resultFile = join(home, 'driver-result.jsonl');
-  rmSync(MANUAL_REVIEW_PATH, { force: true });
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
+  const manualReviewPath = join(runTmp, 'manual_or_unsupported.json');
+  rmSync(manualReviewPath, { force: true });
+  const env = onboardTestEnv(home, {
     MRWEIRDO_DB_PATH: dbPath,
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+    MRWEIRDO_ONBOARD_TMP_DIR: runTmp,
+  });
   execFileSync(process.execPath, ['shared/init_db_cli.mjs'], { cwd: process.cwd(), env });
   const db = new DatabaseSync(dbPath);
   db.prepare(`
@@ -51,8 +50,8 @@ test('required cover letter without generated PDF is recorded as manual-visible 
   assert.equal(row.skip_reason, 'cover_letter_required_not_generated');
   assert.equal(row.auto_apply_eligible, 0);
 
-  assert.equal(existsSync(MANUAL_REVIEW_PATH), true);
-  const manual = JSON.parse(readFileSync(MANUAL_REVIEW_PATH, 'utf8'));
+  assert.equal(existsSync(manualReviewPath), true);
+  const manual = JSON.parse(readFileSync(manualReviewPath, 'utf8'));
   assert.equal(manual.length, 1);
   assert.equal(manual[0].row_id, rowId);
   assert.equal(manual[0].reason, 'cover_letter_required_not_generated');

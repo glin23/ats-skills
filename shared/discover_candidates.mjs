@@ -8,9 +8,10 @@ import { passesAllowedRoleType, roleTypesFromSearchIntent, roleTypeConflict } fr
 import { atsHome } from './paths.mjs';
 import { unusableAutoApplyReason } from './eligibility.mjs';
 import { progress } from './progress.mjs';
+import { onboardTmpDir } from './onboard_tmp.mjs';
 
 const HOME = atsHome();
-const TMP_DIR = '/tmp/mrweirdo-onboard';
+const TMP_DIR = onboardTmpDir();
 const ALWAYS_EXCLUDE_ROLE_KEYWORDS = [
   'BCBA',
   'cashier',

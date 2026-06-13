@@ -5,9 +5,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
 import { buildMissingFieldRanking, condenseMissingQuestions } from './missing_field_questions.mjs';
 import { atsHome } from './paths.mjs';
+import { onboardTmpDir } from './onboard_tmp.mjs';
 
 const HOME = atsHome();
-const TMP = '/tmp/mrweirdo-onboard';
+const TMP = onboardTmpDir();
 const PROFILE = readJson(path.join(HOME, 'profile.json'), {});
 
 function argValue(name, fallback = null) {

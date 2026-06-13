@@ -5,10 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
+import { onboardTestEnv } from './helpers.mjs';
 
 function initHome() {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-tracker-'));
-  const env = { ...process.env, MRWEIRDO_HOME: home };
+  const env = onboardTestEnv(home);
   const init = spawnSync(process.execPath, ['shared/init_db_cli.mjs'], {
     cwd: process.cwd(),
     env,

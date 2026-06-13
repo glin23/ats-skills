@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
+import { onboardTmpPath } from './onboard_tmp.mjs';
 
-const DEFAULT_GAP_REPORT = '/tmp/mrweirdo-onboard/apply-gap-report.json';
+const DEFAULT_GAP_REPORT = onboardTmpPath('apply-gap-report.json');
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);

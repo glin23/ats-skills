@@ -15,10 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
 import { progress, sleepWithProgress } from './progress.mjs';
+import { onboardTmpDir } from './onboard_tmp.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
-const tmpDir = '/tmp/mrweirdo-onboard';
+const tmpDir = onboardTmpDir();
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
+import { onboardTestEnv } from './helpers.mjs';
 
 function runNode(args, env) {
   return execFileSync(process.execPath, args, {
@@ -17,12 +18,7 @@ function runNode(args, env) {
 test('recompute does not upgrade legacy recommended-null rows that were already disabled', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-recompute-'));
   const dbPath = join(home, 'jobs.db');
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
-    MRWEIRDO_DB_PATH: dbPath,
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+  const env = onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbPath });
 
   writeFileSync(join(home, 'search_intent.json'), JSON.stringify({
     search_intent: {
@@ -89,12 +85,7 @@ test('recompute does not upgrade legacy recommended-null rows that were already 
 test('recompute and queue keep function-distant rows out of auto-apply', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-recompute-function-'));
   const dbPath = join(home, 'jobs.db');
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
-    MRWEIRDO_DB_PATH: dbPath,
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+  const env = onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbPath });
 
   writeFileSync(join(home, 'search_intent.json'), JSON.stringify({
     search_intent: {

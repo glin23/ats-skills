@@ -5,10 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('auto queue keeps unchecked and uncertain liveness rows but drops expired', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-live-queue-'));
-  const env = { ...process.env, MRWEIRDO_HOME: home, MRWEIRDO_MAX_AUTO_APPLY: '0' };
+  const env = onboardTestEnv(home, { MRWEIRDO_MAX_AUTO_APPLY: '0' });
   writeFileSync(join(home, 'search_intent.json'), JSON.stringify({
     search_intent: { role_type_targets: ['intern'] },
   }));

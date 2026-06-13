@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { discoveryApplyBucket, platformFromUrl } from '../shared/sourcing/apply_url_classification.mjs';
 import { hasUsableApplyUrl } from '../shared/sourcing/usable_apply_url.mjs';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('hasUsableApplyUrl accepts only real http(s) URLs', () => {
   assert.equal(hasUsableApplyUrl('https://boards.greenhouse.io/acme/jobs/1'), true);
@@ -97,12 +98,7 @@ test('store_scored_jobs skips candidates without usable apply URLs', () => {
     scoredPath,
   ], {
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-	      MRWEIRDO_HOME: home,
-	      MRWEIRDO_DB_PATH: dbPath,
-	      MRWEIRDO_REPO_ROOT: process.cwd(),
-	    },
+    env: onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbPath }),
     encoding: 'utf8',
   });
 
@@ -155,12 +151,7 @@ test('store_scored_jobs refuses partial scoring for usable candidates', () => {
     },
   ]));
 
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
-    MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+  const env = onboardTestEnv(home);
   const result = spawnSync(process.execPath, [
     'shared/store_scored_jobs.mjs',
     '--run-id',
@@ -264,12 +255,7 @@ test('store_scored_jobs defaults missing legitimacy to high and holds suspicious
     },
   ]));
 
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
-    MRWEIRDO_DB_PATH: dbPath,
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+  const env = onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbPath });
   const stdout = execFileSync(process.execPath, [
     'shared/store_scored_jobs.mjs',
     '--run-id',

@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath, initDb } from './local_db.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
+import { onboardTmpPath } from './onboard_tmp.mjs';
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -19,7 +20,7 @@ const rowId = Number(argValue('--row-id') || process.env.ROW_ID || 0);
 const resultFile = argValue('--result-file');
 if (!rowId || !resultFile) usage();
 
-const MANUAL_REVIEW_PATH = '/tmp/mrweirdo-onboard/manual_or_unsupported.json';
+const MANUAL_REVIEW_PATH = onboardTmpPath('manual_or_unsupported.json');
 const MANUAL_REVIEW_REASONS = new Set([
   'cover_letter_required_not_generated',
   'cover_letter_file_required',

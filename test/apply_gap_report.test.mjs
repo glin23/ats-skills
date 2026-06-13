@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { QUESTION_GROUPS, condenseMissingQuestions, validateQuestionGroups } from '../shared/missing_field_questions.mjs';
+import { onboardTestEnv } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_QUESTION_TEMPLATES = {
@@ -125,11 +126,7 @@ test('apply_gap_report separates factual user gaps from agent-fillable fields', 
     '--md-output', mdPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
@@ -148,11 +145,7 @@ test('apply_gap_report separates factual user gaps from agent-fillable fields', 
     '--md-output', mdFromDirPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
@@ -229,11 +222,7 @@ test('apply_gap_report does not re-ask facts already stored in profile', () => {
     '--md-output', mdPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
@@ -295,11 +284,7 @@ test('apply_gap_report ranks missing fields by distinct row ids', () => {
     '--md-output', mdPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
@@ -414,11 +399,7 @@ test('apply_gap_report condenses ABCDEFG categories without hard-bundling availa
     '--md-output', mdPath,
   ], {
     cwd: ROOT,
-    env: {
-      ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-    },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 

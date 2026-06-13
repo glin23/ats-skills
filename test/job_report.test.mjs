@@ -6,10 +6,11 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { parseMachineSummary } from '../shared/job_report.mjs';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('job_report writes markdown, machine summary, and report_path only', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-report-'));
-  const env = { ...process.env, MRWEIRDO_HOME: home };
+  const env = onboardTestEnv(home);
   assert.equal(spawnSync(process.execPath, ['shared/init_db_cli.mjs'], {
     cwd: process.cwd(),
     env,

@@ -10,6 +10,7 @@ import { legitimacyBlockReason, unusableAutoApplyReason } from './eligibility.mj
 import { assessFunctionRelevance, FUNCTION_RELEVANCE_TOO_DISTANT_REASON } from './function_relevance.mjs';
 import { progress } from './progress.mjs';
 import { DEFAULT_LEGITIMACY, LEGITIMACY_LEVELS } from './constants.mjs';
+import { onboardTmpPath } from './onboard_tmp.mjs';
 
 function argValue(name, fallback = null) {
   const idx = process.argv.indexOf(name);
@@ -30,8 +31,8 @@ function readJson(file, fallback = null) {
 
 const HOME = atsHome();
 const threshold = Math.max(0, Number(argValue('--threshold', process.env.MRWEIRDO_MIN_FIT_SCORE || '5')));
-const toScorePath = argValue('--to-score', '/tmp/mrweirdo-onboard/to_score.json');
-const scoredPath = argValue('--scored', '/tmp/mrweirdo-onboard/scored.json');
+const toScorePath = argValue('--to-score', onboardTmpPath('to_score.json'));
+const scoredPath = argValue('--scored', onboardTmpPath('scored.json'));
 const quotaPath = argValue('--company-list', path.join(HOME, 'company_list.user.json'));
 const allowPartialScores = hasArg('--allow-partial-scores') || process.env.MRWEIRDO_ALLOW_PARTIAL_SCORES === '1';
 const supportedAuto = new Set((argValue('--supported-auto', [...SUPPORTED_AUTO_PLATFORMS].join(',')) || '')

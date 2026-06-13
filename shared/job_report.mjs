@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { dbPath, initDb } from './local_db.mjs';
 import { atsHome } from './paths.mjs';
 import { DEFAULT_OUTCOME_STATUS } from './constants.mjs';
+import { onboardTmpPath } from './onboard_tmp.mjs';
 
 const MACHINE_KEYS = new Set([
   'row_id',
@@ -94,7 +95,7 @@ function splitGaps(value) {
 }
 
 function summarizeSubmission(rowId) {
-  const resultFile = `/tmp/mrweirdo-onboard/apply-result-${rowId}.jsonl`;
+  const resultFile = onboardTmpPath(`apply-result-${rowId}.jsonl`);
   const entries = readJsonLines(resultFile);
   const latest = [...entries].reverse().find((entry) => entry?.outcome || entry?.action) || null;
   const screenshots = [...collectStrings(entries, (s) => /\.(png|jpe?g)$/i.test(s) || s.includes('/screenshots/'))];

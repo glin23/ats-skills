@@ -6,6 +6,7 @@ import { atsHome } from './paths.mjs';
 import { SUBMITTED_STATUSES } from './job_identity.mjs';
 import { hasUsableApplyUrl } from './sourcing/usable_apply_url.mjs';
 import { SUPPORTED_AUTO_PLATFORMS } from './sourcing/apply_url_classification.mjs';
+import { onboardTmpPath } from './onboard_tmp.mjs';
 
 const PENDING_STATUS = '🤖 AI sourced';
 const SKIPPED_STATUS = '⚠️ 跳过未投';
@@ -17,7 +18,7 @@ function argValue(name, fallback = null) {
 }
 
 function readLatestDiscoveryRunId() {
-  const file = '/tmp/mrweirdo-onboard/discovery_funnel.json';
+  const file = onboardTmpPath('discovery_funnel.json');
   if (!existsSync(file)) return null;
   try {
     const data = JSON.parse(readFileSync(file, 'utf8'));

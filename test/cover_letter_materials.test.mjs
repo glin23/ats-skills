@@ -9,6 +9,7 @@ import {
   markCoverLetterUsed,
   writeCoverLetterArtifact,
 } from '../shared/cover_letter_materials.mjs';
+import { onboardTestEnv } from './helpers.mjs';
 
 function sampleProfile() {
   return {
@@ -100,12 +101,7 @@ test('D1 cover letter generation uses allowed sources and avoids unsupported com
 test('materialize_cover_letter reads stored key_alignment for row-scoped evidence', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-cover-cli-'));
   const dbPath = join(home, 'jobs.db');
-  const env = {
-    ...process.env,
-    MRWEIRDO_HOME: home,
-    MRWEIRDO_DB_PATH: dbPath,
-    MRWEIRDO_REPO_ROOT: process.cwd(),
-  };
+  const env = onboardTestEnv(home, { MRWEIRDO_DB_PATH: dbPath });
   writeFileSync(join(home, 'profile.json'), JSON.stringify(sampleProfile()));
   writeFileSync(join(home, 'essay_profile.json'), JSON.stringify(sampleEssayProfile()));
   execFileSync(process.execPath, ['shared/init_db_cli.mjs'], { cwd: process.cwd(), env });

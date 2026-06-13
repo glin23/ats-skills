@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { sourceWindow, normalizedOffset } from '../shared/sourcing/source_window.mjs';
+import { onboardTestEnv } from './helpers.mjs';
 
 test('sourceWindow rotates and wraps source lists', () => {
   const items = ['a', 'b', 'c', 'd', 'e'];
@@ -44,7 +45,7 @@ test('discover_candidates plan reads local source cursor without mutating it', (
     '1000',
   ], {
     cwd: process.cwd(),
-    env: { ...process.env, MRWEIRDO_HOME: home, MRWEIRDO_REPO_ROOT: process.cwd() },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
@@ -83,7 +84,7 @@ test('discover_candidates run advances local source cursor after completion', ()
     outputDir,
   ], {
     cwd: process.cwd(),
-    env: { ...process.env, MRWEIRDO_HOME: home, MRWEIRDO_REPO_ROOT: process.cwd() },
+    env: onboardTestEnv(home),
     encoding: 'utf8',
   });
 
