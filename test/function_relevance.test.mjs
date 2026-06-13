@@ -77,6 +77,26 @@ test('unknown long-tail anchors soft-pass instead of being hard-killed', () => {
   assert.equal(functionRelevanceBlockReason({ title: 'Software Engineering Intern' }, nursingIntent), null);
 });
 
+test('long-tail anchors can get deterministic protection through explicit excluded_functions', () => {
+  const nursingIntent = {
+    search_intent: {
+      function_area: ['Nursing'],
+      role_categories: [{ title_pattern: 'Nursing Intern', priority: 'high' }],
+      target_function_anchor: {
+        self_reported_target_functions: ['Nursing'],
+        resume_supported_functions: ['Clinical Care'],
+        adjacent_functions: ['Patient Care'],
+        excluded_functions: ['Software Engineering'],
+        rationale: 'Nursing target; SWE is outside the requested clinical-care direction.',
+      },
+    },
+  };
+  const result = assessFunctionRelevance({ title: 'Software Engineering Intern' }, nursingIntent);
+  assert.equal(result.status, 'too_distant');
+  assert.equal(result.reason, 'title_family_explicitly_excluded:swe');
+  assert.equal(functionRelevanceBlockReason({ title: 'Software Engineering Intern' }, nursingIntent), FUNCTION_RELEVANCE_TOO_DISTANT_REASON);
+});
+
 test('ambiguous titles stay unknown, never too_distant', () => {
   for (const title of ['Business Analyst Intern', 'Product Analyst Intern', 'Operations Engineer Intern']) {
     const result = assessFunctionRelevance({ title }, opsPmIntent);

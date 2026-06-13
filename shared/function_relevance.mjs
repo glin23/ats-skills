@@ -1,5 +1,9 @@
 export const FUNCTION_RELEVANCE_TOO_DISTANT_REASON = 'function_relevance_too_distant';
 
+// The deterministic named anchor map is intentionally high-confidence:
+// ops_pm and swe currently have named anchor families. Other target functions
+// rely on explicit target_function_anchor.excluded_functions plus the scorer;
+// unknown relevance remains non-blocking.
 const FAMILY_PATTERNS = {
   ops_pm: [
     /\b(product management|product manager|associate product manager|apm)\b/i,
@@ -200,7 +204,7 @@ export function assessFunctionRelevance(row = {}, intentDoc = {}) {
   if (directMatches.length > 0) {
     return { ...base, status: 'direct', reason: 'title_matches_target_function_anchor' };
   }
-  if (allowed.size === 0 || families.size === 0) return base;
+  if (families.size === 0) return base;
 
   for (const family of families) {
     if (allowed.has(family)) {
@@ -213,6 +217,8 @@ export function assessFunctionRelevance(row = {}, intentDoc = {}) {
       return { ...base, status: 'too_distant', reason: `title_family_explicitly_excluded:${family}` };
     }
   }
+
+  if (allowed.size === 0) return base;
 
   const distant = unionDistantFamilies(allowed);
   for (const family of families) {

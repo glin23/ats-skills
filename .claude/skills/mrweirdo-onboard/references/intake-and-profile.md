@@ -64,6 +64,14 @@ Required `search_intent.json` guidance:
 
 - Set `role_type_targets` using only `intern`, `part_time`, `new_grad_FT`.
 - Keep legacy `seniority` aligned: `intern`, `part_time`, `intern_or_part_time`, `new_grad_FT`, or `both`.
+- Always produce `target_function_anchor` per
+  `shared/intelligence/intent_schema.json`: include
+  `self_reported_target_functions`, `resume_supported_functions`,
+  `adjacent_functions`, `excluded_functions`, and `rationale`. In
+  `excluded_functions`, list functions that clearly sit outside the user's
+  target-function anchor and should not auto-submit, such as SWE/Nursing/Design/Data
+  for an Operations/PM target. Never populate exclusions solely from the user's
+  major; use explicit target direction plus resume-supported evidence.
 - Generate 5-10 `role_categories` from the user's self-reported target
   functions plus resume-supported evidence:
   - high = direct target-function match;

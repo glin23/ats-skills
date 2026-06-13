@@ -136,7 +136,9 @@ Read the resume PDF in the main agent session. Use any optional self-introductio
 only as extra evidence. Generate:
 
 - `$MRWEIRDO_HOME/profile.json`
-- `$MRWEIRDO_HOME/search_intent.json`
+- `$MRWEIRDO_HOME/search_intent.json` with required `target_function_anchor`
+  (`self_reported_target_functions`, `resume_supported_functions`,
+  `adjacent_functions`, `excluded_functions`, `rationale`)
 - `$MRWEIRDO_HOME/essay_profile.json`
 
 Use `references/intake-and-profile.md`, `shared/profile.template.json`, and
