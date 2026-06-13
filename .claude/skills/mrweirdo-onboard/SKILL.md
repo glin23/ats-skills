@@ -302,12 +302,12 @@ from the resume, optional self-introduction, local profile,
 `agent_attestation` and `agent_profile_backed`, fill only from the local profile
 or driver coverage.
 
-If `missing_field_ranking` / `user_questions` is non-empty, condense the
-user-fillable categories into the smallest grouped question set available for
-this batch, then ask at most four grouped questions in one AskUserQuestion call.
-Present them by impact, using the report's distinct unlock counts, for example
-`补 <field> 可解锁 <N> 个岗位`. Ask only facts that cannot be safely inferred
-from the resume or existing profile, and do not use a fixed checklist.
+If `condensed_missing_questions` is non-empty, ask at most four grouped
+questions from that list in one AskUserQuestion call. Present them by impact,
+using `unblocks_n_jobs`, for example `补 <field> 可解锁 <N> 个岗位`. Ask only
+facts that cannot be safely inferred from the resume or existing profile, and
+do not use a fixed checklist. If a category appears as a singleton, keep it as
+its own clear question instead of forcing it into an unnatural group.
 
 Never list each job's missing fields line by line for the user. The user should
 see the minimal cross-application question set, not a manual application audit.

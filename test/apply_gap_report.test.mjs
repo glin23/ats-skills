@@ -5,8 +5,81 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { QUESTION_GROUPS, condenseMissingQuestions, validateQuestionGroups } from '../shared/missing_field_questions.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const TEST_QUESTION_TEMPLATES = {
+  user_full_address: {
+    priority: 1,
+    profile_paths: ['personal.address_street', 'personal.address_city', 'personal.address_state', 'personal.address_zip', 'personal.address_country'],
+    question: 'full address',
+    answer_type: 'short_text',
+  },
+  user_earliest_start_date: {
+    priority: 2,
+    profile_paths: ['standard_qa.earliest_start_date'],
+    question: 'earliest start date',
+    answer_type: 'short_text',
+  },
+  user_high_school_location: {
+    priority: 3,
+    profile_paths: ['standard_qa.high_school_location'],
+    question: 'high school location',
+    answer_type: 'short_text',
+  },
+  user_government_relative_compliance: {
+    priority: 4,
+    profile_paths: ['legal_attestations.relatives_in_federal_government_or_contractors'],
+    question: 'government relative compliance',
+    answer_type: 'yes_no_plus_detail',
+  },
+  user_language_or_skill_level: {
+    priority: 5,
+    profile_paths: ['standard_qa.language_proficiency'],
+    question: 'language or skill level',
+    answer_type: 'short_text',
+  },
+  user_compliance_relationship_or_restriction: {
+    priority: 6,
+    profile_paths: ['legal_attestations.conflicting_obligations', 'standard_qa.company_relationships'],
+    question: 'compliance relationship or restriction',
+    answer_type: 'yes_no_plus_detail',
+  },
+  user_gpa: {
+    priority: 7,
+    profile_paths: ['education.gpa'],
+    question: 'gpa',
+    answer_type: 'short_text',
+  },
+  user_logistics_fact: {
+    priority: 8,
+    profile_paths: ['standard_qa.location_logistics'],
+    question: 'logistics fact',
+    answer_type: 'short_text',
+  },
+  user_work_location_commitment: {
+    priority: 9,
+    profile_paths: ['standard_qa.work_location_commitments'],
+    question: 'work location commitment',
+    answer_type: 'short_text',
+  },
+  user_external_form_completion: {
+    priority: 10,
+    profile_paths: ['standard_qa.external_form_confirmations'],
+    question: 'external form completion',
+    answer_type: 'yes_no',
+  },
+  unknown_user_fact: {
+    priority: 20,
+    profile_paths: ['standard_qa.custom_facts'],
+    question: 'unknown user fact',
+    answer_type: 'short_text',
+  },
+};
+
+function sorted(values) {
+  return [...values].sort((a, b) => a.localeCompare(b));
+}
 
 test('apply_gap_report separates factual user gaps from agent-fillable fields', () => {
   const root = mkdtempSync(join(tmpdir(), 'mrw-gap-'));
@@ -248,4 +321,126 @@ test('apply_gap_report ranks missing fields by distinct row ids', () => {
   ]);
   assert.equal(report.grouped_counts.user_earliest_start_date, 3);
   assert.ok(!report.missing_field_ranking.some((item) => item.category === 'agent_attestation'));
+});
+
+test('question group profile_paths must match covered category profile paths', () => {
+  assert.doesNotThrow(() => validateQuestionGroups(QUESTION_GROUPS, TEST_QUESTION_TEMPLATES));
+  const invalidGroups = [
+    {
+      ...QUESTION_GROUPS[0],
+      profile_paths: ['standard_qa.wrong_path'],
+    },
+  ];
+  assert.throws(
+    () => validateQuestionGroups(invalidGroups, TEST_QUESTION_TEMPLATES),
+    /profile_paths must match/,
+  );
+});
+
+test('condensed missing questions cover every present user-fillable category', () => {
+  const categories = Object.keys(TEST_QUESTION_TEMPLATES);
+  for (let mask = 1; mask < (1 << categories.length); mask += 1) {
+    const present = categories.filter((_, idx) => mask & (1 << idx));
+    const entries = present.map((category, idx) => ({
+      category,
+      row_id: 1000 + idx,
+    }));
+    const questions = condenseMissingQuestions(entries, TEST_QUESTION_TEMPLATES);
+    const covered = sorted(questions.flatMap((question) => question.covers_categories));
+    assert.deepEqual(covered, sorted(present), `coverage mismatch for ${present.join(', ')}`);
+  }
+});
+
+test('apply_gap_report condenses ABCDEFG categories without hard-bundling availability and education', () => {
+  const root = mkdtempSync(join(tmpdir(), 'mrw-gap-condensed-'));
+  const home = join(root, 'home');
+  const resultDir = join(root, 'run');
+  const profilePath = join(home, 'profile.json');
+  const summaryPath = join(resultDir, 'summary.json');
+  const jsonPath = join(resultDir, 'gap.json');
+  const mdPath = join(resultDir, 'gap.md');
+
+  mkdirSync(home, { recursive: true });
+  mkdirSync(resultDir, { recursive: true });
+  writeFileSync(profilePath, JSON.stringify({}));
+
+  const rows = [
+    [101, [
+      { label: 'What is your primary mailing address?' },
+      { label: 'What is your earliest start date for this position?' },
+    ]],
+    [102, [
+      { label: 'What is your full permanent address (Street, City, State, Zip)?' },
+      { label: 'This role is hybrid based in New York. Are you comfortable working onsite?' },
+    ]],
+    [103, [
+      { label: 'This role is hybrid based in New York. Are you comfortable working onsite?' },
+      { label: 'What is your proficiency level in Spanish?' },
+    ]],
+    [104, [
+      { label: 'This role is hybrid based in New York. Are you comfortable working onsite?' },
+      { label: "Do you have reliable transportation or a driver's license?" },
+    ]],
+    [105, [
+      { label: 'What is your earliest start date for this position?' },
+      { label: 'What is your GPA?' },
+    ]],
+    [106, [
+      { label: 'What is your GPA?' },
+      { label: 'What high school did you attend? Please include city/state.' },
+    ]],
+    [107, [
+      { label: 'What is your proficiency level in Spanish?' },
+    ]],
+  ];
+
+  const summaryRows = [];
+  for (const [rowId, remaining] of rows) {
+    const resultPath = join(resultDir, `apply-result-${rowId}.jsonl`);
+    writeFileSync(resultPath, `${JSON.stringify({
+      outcome: 'skip',
+      reason: 'incomplete_form',
+      job_id: rowId,
+      remaining,
+    })}\n`);
+    summaryRows.push({ row_id: rowId, result_file: resultPath });
+  }
+  writeFileSync(summaryPath, JSON.stringify({ rows: summaryRows }));
+
+  const run = spawnSync(process.execPath, [
+    'shared/apply_gap_report.mjs',
+    '--summary', summaryPath,
+    '--json-output', jsonPath,
+    '--md-output', mdPath,
+  ], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      MRWEIRDO_HOME: home,
+      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
+    },
+    encoding: 'utf8',
+  });
+
+  assert.equal(run.status, 0, run.stderr);
+  const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
+  const locationGroup = report.condensed_missing_questions.find((item) => item.group_id === 'location_and_logistics');
+  assert.deepEqual(locationGroup.covers_categories, [
+    'user_full_address',
+    'user_work_location_commitment',
+    'user_logistics_fact',
+  ]);
+  assert.equal(locationGroup.unblocks_n_jobs, 4);
+
+  const singletonCategories = sorted(report.singleton_missing_categories);
+  assert.deepEqual(singletonCategories, sorted([
+    'user_earliest_start_date',
+    'user_gpa',
+    'user_high_school_location',
+    'user_language_or_skill_level',
+  ]));
+  assert.ok(!report.condensed_missing_questions.some((item) => item.group_id === 'availability_and_education'));
+  assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_earliest_start_date').unblocks_n_jobs, 2);
+  assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_gpa').unblocks_n_jobs, 2);
+  assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_language_or_skill_level').unblocks_n_jobs, 2);
 });
