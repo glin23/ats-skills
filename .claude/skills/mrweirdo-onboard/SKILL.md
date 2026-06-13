@@ -261,6 +261,7 @@ Always include this identity block and fixed statement:
 将以以下身份提交：<name> / <email> / <phone> / <visa 状态>
 自动投 <N> 行 | manual 清单 <M> 行（不会替你投）| quota 保护 <Q> 行 | suspicious 待复核 <S> 行
 只有标记 auto 的行会被自动提交；manual 清单在 /tmp/mrweirdo-onboard/manual_or_unsupported.json，系统不会替你处理。
+对需要 cover letter 的岗位，我会基于你的简历/profile/essay_profile/answer_bank 与岗位匹配证据自动生成并附上 cover letter；不会编造个人或公司事实。
 回复"开始"执行，或先指出需要修改的行/字段。
 ```
 

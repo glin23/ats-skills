@@ -45,6 +45,7 @@ test('store_scored_jobs skips candidates without usable apply URLs', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-usable-url-'));
   const toScorePath = join(home, 'to_score.json');
   const scoredPath = join(home, 'scored.json');
+  const dbPath = join(home, 'jobs.db');
   writeFileSync(join(home, 'search_intent.json'), JSON.stringify({
     search_intent: {
       role_type_targets: ['intern'],
@@ -73,10 +74,11 @@ test('store_scored_jobs skips candidates without usable apply URLs', () => {
   writeFileSync(scoredPath, JSON.stringify([
     {
       apply_url: 'https://boards.greenhouse.io/acme/jobs/1',
-      fit_score: 5,
-      recommended: true,
-      role_type_match: 'intern',
-    },
+	      fit_score: 5,
+	      recommended: true,
+	      role_type_match: 'intern',
+	      key_alignment: ['analytics coursework aligns with growth reporting'],
+	    },
     {
       apply_url: 'NO_URL:yc_waas:94401',
       fit_score: 7,
@@ -97,19 +99,23 @@ test('store_scored_jobs skips candidates without usable apply URLs', () => {
     cwd: process.cwd(),
     env: {
       ...process.env,
-      MRWEIRDO_HOME: home,
-      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
-      MRWEIRDO_REPO_ROOT: process.cwd(),
-    },
+	      MRWEIRDO_HOME: home,
+	      MRWEIRDO_DB_PATH: dbPath,
+	      MRWEIRDO_REPO_ROOT: process.cwd(),
+	    },
     encoding: 'utf8',
   });
 
   const summary = JSON.parse(stdout);
   assert.equal(summary.candidate_count, 2);
-  assert.equal(summary.stored, 1);
-  assert.equal(summary.eligible, 1);
-  assert.equal(summary.skipped_unusable_apply_url, 1);
-});
+	  assert.equal(summary.stored, 1);
+	  assert.equal(summary.eligible, 1);
+	  assert.equal(summary.skipped_unusable_apply_url, 1);
+	  const db = new DatabaseSync(dbPath);
+	  const row = db.prepare('SELECT key_alignment FROM jobs WHERE company = ?').get('Acme');
+	  db.close();
+	  assert.equal(row.key_alignment, 'analytics coursework aligns with growth reporting');
+	});
 
 test('store_scored_jobs refuses partial scoring for usable candidates', () => {
   const home = mkdtempSync(join(tmpdir(), 'mrweirdo-partial-score-'));

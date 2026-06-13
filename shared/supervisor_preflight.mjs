@@ -83,7 +83,6 @@ const allowedRoleTypes = roleTargetsEnv
   ? roleTargetsEnv.split(',').map((s) => s.trim()).filter(Boolean)
   : roleTypesFromSearchIntent(intent.search_intent || {});
 const resumePath = profile?.resume_path || join(home, 'resume.pdf');
-const coverLetterPath = profile?.cover_letter_path || join(home, 'cover_letter.pdf');
 
 const queueRun = runNode(['shared/auto_apply_queue.mjs', '--summary'], {
   MRWEIRDO_MAX_AUTO_APPLY: maxRows == null ? '0' : String(maxRows),
@@ -150,10 +149,13 @@ const syntaxFiles = [
   'shared/record_apply_outcome.mjs',
   'shared/apply_report.mjs',
   'shared/answer_templates.mjs',
-  'shared/greenhouse_value_rules.mjs',
-  'shared/ashby_apply_driver.mjs',
-  'shared/greenhouse_apply_driver.mjs',
-];
+	  'shared/greenhouse_value_rules.mjs',
+	  'shared/cover_letter_materials.mjs',
+	  'shared/materialize_cover_letter.mjs',
+	  'shared/ashby_apply_driver.mjs',
+	  'shared/greenhouse_apply_driver.mjs',
+	  'shared/lever_apply_driver.mjs',
+	];
 const syntax = syntaxFiles.map((file) => {
   const r = runNode(['--check', file]);
   return { file, ok: r.code === 0, stderr: r.stderr.trim() };
@@ -183,12 +185,10 @@ for (const warning of profileValidation.warnings || []) {
     detail: warning.message,
   });
 }
-if (!existsSync(coverLetterPath)) {
-  warnings.push({
-    name: 'cover_letter_missing',
-    detail: 'Rows with required cover-letter uploads will be skipped until profile.cover_letter_path or ~/.mrweirdo-jobs/cover_letter.pdf exists.',
-  });
-}
+warnings.push({
+  name: 'cover_letter_d1_generation',
+  detail: 'Rows with required cover-letter uploads use D1 row-scoped generation during the batch; no global cover_letter.pdf is required for auto-apply.',
+});
 if (maxRows != null && queueRows.length > 0 && queueRows.length < maxRows) {
   warnings.push({
     name: 'ready_rows_below_requested_batch',

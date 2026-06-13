@@ -38,9 +38,10 @@ test('old jobs.db migrates Phase 2 columns and views idempotently', () => {
   const migrated = new DatabaseSync(dbFile);
   const columns = new Set(migrated.prepare(`PRAGMA table_info(jobs)`).all().map((row) => row.name));
   for (const name of [
-    'liveness_status',
-    'liveness_checked_at',
-    'report_path',
+	    'liveness_status',
+	    'liveness_checked_at',
+	    'key_alignment',
+	    'report_path',
     'outcome_status',
     'outcome_updated_at',
     'last_followup_at',

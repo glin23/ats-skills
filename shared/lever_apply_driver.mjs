@@ -32,6 +32,11 @@ const ESSAY_PROFILE = readJson(ESSAY_PROFILE_PATH, {});
 const SEARCH_INTENT = readJson(SEARCH_INTENT_PATH, {});
 const BANK = readJson(ANSWER_BANK_PATH, {});
 const RESUME = PROFILE.resume_path || join(HOME, 'resume.pdf');
+const DEFAULT_COVER_LETTER = join(HOME, 'cover_letter.pdf');
+const STATIC_COVER_LETTER_ALLOWED = process.env.MRWEIRDO_DISABLE_STATIC_COVER_LETTER !== '1';
+const COVER_LETTER = process.env.MRWEIRDO_COVER_LETTER_PATH ||
+  (STATIC_COVER_LETTER_ALLOWED ? (PROFILE.cover_letter_path || (existsSync(DEFAULT_COVER_LETTER) ? DEFAULT_COVER_LETTER : '')) : '');
+let coverLetterUploaded = false;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function readJson(file, fallback = {}) {
@@ -167,6 +172,30 @@ function optionTexts(field = {}) {
   }).filter(Boolean);
 }
 
+function isCoverLetterField(field = {}) {
+  const text = [field.label, field.id, field.name].map((v) => String(v || '')).join(' ').toLowerCase();
+  return /cover.{0,20}letter|coverletter/.test(text);
+}
+
+function selectorForField(field = {}) {
+  const id = String(field.id || field.name || '').trim();
+  if (!id) return '';
+  const escaped = id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(id)) return `#${id}, [name="${escaped}"]`;
+  return `[id="${escaped}"], [name="${escaped}"]`;
+}
+
+function collectAnswerPassUnresolved(answerPass = {}) {
+  return [
+    ...(Array.isArray(answerPass.unresolved) ? answerPass.unresolved : []),
+    ...(Array.isArray(answerPass.still_missing) ? answerPass.still_missing : []),
+    ...(Array.isArray(answerPass.first_pass?.unresolved) ? answerPass.first_pass.unresolved : []),
+    ...(Array.isArray(answerPass.first_pass?.still_missing) ? answerPass.first_pass.still_missing : []),
+    ...(Array.isArray(answerPass.second_pass?.unresolved) ? answerPass.second_pass.unresolved : []),
+    ...(Array.isArray(answerPass.second_pass?.still_missing) ? answerPass.second_pass.still_missing : []),
+  ];
+}
+
 function chooseOption(field, preferences) {
   const opts = optionTexts(field);
   if (!opts.length) return preferences[0] || '';
@@ -255,8 +284,29 @@ async function answerRemaining(tab) {
   const unresolved = [];
   const filled = [];
 
-  for (const field of missing) {
-    const answer = answerForField(field);
+	  for (const field of missing) {
+	    if (field.type === 'file' && isCoverLetterField(field)) {
+	      if (!COVER_LETTER || !existsSync(COVER_LETTER)) {
+	        unresolved.push({
+	          ...field,
+	          note: 'cover_letter_required_not_generated',
+	          manual_required: true,
+	          detail: process.env.MRWEIRDO_COVER_LETTER_GENERATION_REASON || 'no_d1_cover_letter_path',
+	        });
+	        continue;
+	      }
+	      const selector = selectorForField(field);
+	      const upload = selector ? cdp('upload', tab, selector, COVER_LETTER) : { code: 1, stdout: '', stderr: 'missing selector' };
+	      if (upload.code === 0) {
+	        coverLetterUploaded = true;
+	        filled.push({ label: field.label, result: parseJson(upload.stdout, upload.stdout), mode: 'cover_letter_upload' });
+	      } else {
+	        unresolved.push({ ...field, note: 'cover_letter_upload_failed', manual_required: true, stderr: upload.stderr, stdout: upload.stdout });
+	      }
+	      await sleep(150);
+	      continue;
+	    }
+	    const answer = answerForField(field);
     if (!answer) {
       unresolved.push(field);
       continue;
@@ -356,11 +406,13 @@ async function main() {
         second_pass: await answerRemaining(tab),
       };
     }
-    const unresolved = answerPass.second_pass?.still_missing || answerPass.still_missing || [];
-    if (unresolved.length > 0) {
-      outcome({ outcome: 'skip', reason: 'incomplete_form', fill, answer_pass: answerPass, remaining: unresolved });
-      return;
-    }
+	    const unresolved = answerPass.second_pass?.still_missing || answerPass.still_missing || [];
+	    if (unresolved.length > 0) {
+	      const allUnresolved = collectAnswerPassUnresolved(answerPass);
+	      const manualCoverLetter = allUnresolved.some((field) => field?.note === 'cover_letter_required_not_generated');
+	      outcome({ outcome: 'skip', reason: manualCoverLetter ? 'cover_letter_required_not_generated' : 'incomplete_form', fill, answer_pass: answerPass, remaining: unresolved });
+	      return;
+	    }
 
     const captcha = await evalInTab(tab, `(() => {
       const selectors = ['iframe[src*="recaptcha"]', 'iframe[src*="hcaptcha"]', '[id*="captcha" i]'];
@@ -410,10 +462,11 @@ async function main() {
         url: applyUrl,
         post_url: page.url,
         screenshot_pre: preShot,
-        screenshot_post: postShot,
-        fill,
-        answer_pass: answerPass,
-      });
+	        screenshot_post: postShot,
+	        fill,
+	        answer_pass: answerPass,
+	        cover_letter_uploaded: coverLetterUploaded,
+	      });
       return;
     }
 

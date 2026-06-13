@@ -133,6 +133,14 @@ function normalizeLegitimacySignals(value) {
     .slice(0, 2);
 }
 
+function normalizeStringEvidence(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean).join(' / ') || null;
+  }
+  if (typeof value === 'string') return value.trim() || null;
+  return null;
+}
+
 for (const job of candidates) {
   if (!hasUsableApplyUrl(job)) {
     summary.skipped_unusable_apply_url += 1;
@@ -178,9 +186,10 @@ for (const job of candidates) {
     location: job.location,
     source: job.source || job._discovery_source || 'unknown',
     status: '🤖 AI sourced',
-    fit_score: score.fit_score ?? null,
-    recommended: recommended ? 1 : 0,
-    key_gaps: Array.isArray(score.key_gaps) ? score.key_gaps.join(' / ') : null,
+	    fit_score: score.fit_score ?? null,
+	    recommended: recommended ? 1 : 0,
+	    key_alignment: normalizeStringEvidence(score.key_alignment),
+	    key_gaps: normalizeStringEvidence(score.key_gaps),
     role_type_match: roleType,
     dim_scores: score.dim_scores || null,
     legitimacy,

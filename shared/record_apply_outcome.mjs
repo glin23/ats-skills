@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath, initDb } from './local_db.mjs';
 import { normalizeCompany, normalizeTitle, SUBMITTED_STATUSES } from './job_identity.mjs';
@@ -17,6 +18,15 @@ function usage() {
 const rowId = Number(argValue('--row-id') || process.env.ROW_ID || 0);
 const resultFile = argValue('--result-file');
 if (!rowId || !resultFile) usage();
+
+const MANUAL_REVIEW_PATH = '/tmp/mrweirdo-onboard/manual_or_unsupported.json';
+const MANUAL_REVIEW_REASONS = new Set([
+  'cover_letter_required_not_generated',
+  'cover_letter_file_required',
+  'cover_letter_generation_failed',
+  'cover_letter_input_not_found',
+  'cover_letter_upload_failed',
+]);
 
 function parseOutcome(text) {
   const parsed = [];
@@ -39,6 +49,33 @@ function parseOutcome(text) {
 function compactDetail(value) {
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return text.length > 600 ? `${text.slice(0, 597)}...` : text;
+}
+
+function appendManualReviewRow(reason, detail = outcome) {
+  if (!MANUAL_REVIEW_REASONS.has(reason)) return;
+  try {
+    mkdirSync(dirname(MANUAL_REVIEW_PATH), { recursive: true });
+    let existing = [];
+    if (existsSync(MANUAL_REVIEW_PATH)) {
+      const parsed = JSON.parse(readFileSync(MANUAL_REVIEW_PATH, 'utf8') || '[]');
+      existing = Array.isArray(parsed) ? parsed : [];
+    }
+    const withoutDuplicate = existing.filter((item) => Number(item.row_id || item.id || 0) !== rowId);
+    withoutDuplicate.push({
+      row_id: rowId,
+      id: rowId,
+      company: row.company,
+      title: row.title,
+      reason,
+      manual_apply_required: true,
+      source: 'auto_apply_driver',
+      detail,
+      added_at: new Date().toISOString(),
+    });
+    writeFileSync(MANUAL_REVIEW_PATH, JSON.stringify(withoutDuplicate, null, 2));
+  } catch {
+    // The DB skip reason remains visible; the manual review file is best-effort.
+  }
 }
 
 const output = readFileSync(resultFile, 'utf8');
@@ -78,10 +115,11 @@ function markSkipped(reason, detail = outcome, action = 'skipped') {
            auto_apply_eligible = 0,
            updated_at = datetime('now')
      WHERE id = ?
-  `).run(reason, rowId);
-  writeFeedback(reason, detail);
-  console.log(JSON.stringify({ ok: true, action, row_id: rowId, reason }));
-}
+	  `).run(reason, rowId);
+	  writeFeedback(reason, detail);
+	  appendManualReviewRow(reason, detail);
+	  console.log(JSON.stringify({ ok: true, action, row_id: rowId, reason }));
+	}
 
 if (outcome.outcome !== 'submitted') {
   if (outcome.outcome === 'essay_pending') {

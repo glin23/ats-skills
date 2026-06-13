@@ -46,7 +46,9 @@ const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(imp
 const PROFILE = JSON.parse(readFileSync(join(HOME, 'profile.json'), 'utf8'));
 const RESUME = PROFILE.resume_path || join(HOME, 'resume.pdf');
 const DEFAULT_COVER_LETTER = join(HOME, 'cover_letter.pdf');
-const COVER_LETTER = PROFILE.cover_letter_path || (existsSync(DEFAULT_COVER_LETTER) ? DEFAULT_COVER_LETTER : '');
+const STATIC_COVER_LETTER_ALLOWED = process.env.MRWEIRDO_DISABLE_STATIC_COVER_LETTER !== '1';
+const COVER_LETTER = process.env.MRWEIRDO_COVER_LETTER_PATH ||
+  (STATIC_COVER_LETTER_ALLOWED ? (PROFILE.cover_letter_path || (existsSync(DEFAULT_COVER_LETTER) ? DEFAULT_COVER_LETTER : '')) : '');
 const CDP = join(REPO, 'shared/cdp.mjs');
 const ANSWER_BANK_PATH = join(REPO, 'shared/answer_bank.json');
 const ESSAY_PENDING_LOG = join(HOME, 'essay_pending.jsonl');
@@ -68,6 +70,7 @@ function readJsonOptional(path, fallback = {}) {
 }
 const SEARCH_INTENT = readJsonOptional(SEARCH_INTENT_PATH, {});
 let companyFamiliarityAnswer = null;
+let coverLetterUploaded = false;
 const latestExperience = Array.isArray(PROFILE.experience_summary) ? PROFILE.experience_summary[0] : null;
 const profilePortfolio =
   PROFILE.personal?.portfolio ||
@@ -1432,7 +1435,13 @@ async function answerMissing(tab, labelText) {
       return { ok: false, note: 'supplemental_file_required', needs_user_answer: true };
     }
     if (isCoverLetter && (!COVER_LETTER || !existsSync(COVER_LETTER))) {
-      return { ok: false, note: 'cover_letter_file_required', needs_user_answer: true };
+      return {
+        ok: false,
+        note: 'cover_letter_required_not_generated',
+        manual_required: true,
+        needs_user_answer: true,
+        detail: process.env.MRWEIRDO_COVER_LETTER_GENERATION_REASON || 'no_d1_cover_letter_path',
+      };
     }
     const filePath = isCoverLetter ? COVER_LETTER : RESUME;
     const sel = /^[0-9]/.test(f.id) ? `[id="${f.id}"]` : '#' + f.id;
@@ -1447,6 +1456,7 @@ async function answerMissing(tab, labelText) {
         return { ok:true, files: input.files?.length || 0 };
       })()
     `);
+    if (isCoverLetter) coverLetterUploaded = true;
     return { ok: true, mode: isCoverLetter ? 'cover_letter_upload' : 'file_upload' };
   }
 
@@ -1755,7 +1765,7 @@ function classifyUnsubmitted(missing = [], blockers = []) {
   const labels = missing.map((m) => String(m || '').toLowerCase());
   const notes = blockers.map((b) => String(b?.note || '').toLowerCase());
 
-  if (notes.includes('cover_letter_file_required')) return 'cover_letter_file_required';
+	  if (notes.includes('cover_letter_required_not_generated') || notes.includes('cover_letter_file_required')) return 'cover_letter_required_not_generated';
   if (notes.includes('supplemental_file_required')) return 'supplemental_file_required';
   if (notes.includes('profile_full_address_required') || labels.some((l) => /address line|street address|postal code|zip code/.test(l))) {
     return 'profile_full_address_required';
@@ -1825,7 +1835,7 @@ async function main() {
     const res = await submitAndCheck(tab);
     if (res.success) {
       cdp('screenshot', tab, `/tmp/mrw_gh_post_${JOB_ID || 'job'}.png`);
-      console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url }));
+	      console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url, cover_letter_uploaded: coverLetterUploaded }));
       await closeTab(tab);
       return;
     }

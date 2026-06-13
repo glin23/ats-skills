@@ -62,9 +62,10 @@ function initSchema(d) {
       source TEXT,
       status TEXT NOT NULL DEFAULT '🤖 AI sourced',
 
-      fit_score INTEGER,
-      recommended INTEGER,
-      key_gaps TEXT,
+	      fit_score INTEGER,
+	      recommended INTEGER,
+	      key_alignment TEXT,
+	      key_gaps TEXT,
       role_type_match TEXT,
       skip_reason TEXT,
       user_note TEXT,
@@ -130,8 +131,9 @@ function initSchema(d) {
   const v2Columns = [
     "location TEXT",
     "source TEXT",
-    "recommended INTEGER",
-    "key_gaps TEXT",
+	    "recommended INTEGER",
+	    "key_alignment TEXT",
+	    "key_gaps TEXT",
     "role_type_match TEXT",
     "skip_reason TEXT",
     "user_note TEXT",
@@ -277,8 +279,8 @@ function _bindable(obj) {
 // ---------- upsert ----------
 
 const UPSERT_COLUMNS = [
-  'company', 'title', 'apply_url', 'location', 'source', 'status',
-  'fit_score', 'recommended', 'key_gaps', 'role_type_match', 'skip_reason', 'user_note',
+	  'company', 'title', 'apply_url', 'location', 'source', 'status',
+	  'fit_score', 'recommended', 'key_alignment', 'key_gaps', 'role_type_match', 'skip_reason', 'user_note',
   'dim_scores', 'legitimacy', 'legitimacy_signals',
   'salary_min', 'salary_max', 'salary_currency',
   'salary_interval', 'hourly_rate', 'ats_platform',

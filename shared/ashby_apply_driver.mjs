@@ -61,7 +61,12 @@ if (process.argv[2] === '--list-pending-essays') {
 // ============================================================
 const PROFILE = JSON.parse(readFileSync(join(HOME, 'profile.json'), 'utf8'));
 const RESUME = PROFILE.resume_path || join(HOME, 'resume.pdf');
+const DEFAULT_COVER_LETTER = join(HOME, 'cover_letter.pdf');
+const STATIC_COVER_LETTER_ALLOWED = process.env.MRWEIRDO_DISABLE_STATIC_COVER_LETTER !== '1';
+const COVER_LETTER = process.env.MRWEIRDO_COVER_LETTER_PATH ||
+  (STATIC_COVER_LETTER_ALLOWED ? (PROFILE.cover_letter_path || (existsSync(DEFAULT_COVER_LETTER) ? DEFAULT_COVER_LETTER : '')) : '');
 const SEARCH_INTENT = readJsonOptional(SEARCH_INTENT_PATH, {});
+let coverLetterUploaded = false;
 
 const APPLY_URL = process.argv[2];
 const JOB_ID = process.argv[3] || null;
@@ -334,6 +339,50 @@ async function uploadResume(tab) {
   return r;
 }
 
+async function uploadCoverLetter(tab, missingLabel = '') {
+  if (!COVER_LETTER || !existsSync(COVER_LETTER)) {
+    return {
+      ok: false,
+      note: 'cover_letter_required_not_generated',
+      manual_required: true,
+      question: missingLabel,
+      detail: process.env.MRWEIRDO_COVER_LETTER_GENERATION_REASON || 'no_d1_cover_letter_path',
+    };
+  }
+  const target = missingLabel.toLowerCase().slice(0, 60);
+  const found = await evalInTab(tab, `
+    (() => {
+      const norm = (s) => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const target = ${JSON.stringify(target)};
+      const inputs = [...document.querySelectorAll("input[type=file]")].filter(el => el.offsetParent !== null || el.type === 'file');
+      const selectorFor = (inp) => {
+        if (!inp.id) inp.id = 'mrw_cover_' + Math.random().toString(36).slice(2,8);
+        return /^[0-9]/.test(inp.id) ? '[id="' + inp.id + '"]' : '#' + inp.id;
+      };
+      for (const inp of inputs) {
+        const label = inp.id ? document.querySelector('label[for="' + CSS.escape(inp.id) + '"]') : null;
+        const wrap = inp.closest('fieldset, div, label');
+        const text = norm([
+          label?.innerText,
+          inp.name,
+          inp.id,
+          inp.getAttribute('aria-label'),
+          wrap?.innerText,
+        ].filter(Boolean).join(' '));
+        if (/cover.{0,20}letter|coverletter/.test(text) || (target && text.includes(target))) {
+          return { ok:true, sel: selectorFor(inp), text: text.slice(0, 120) };
+        }
+      }
+      return { ok:false, note:'cover_letter_input_not_found', input_count: inputs.length };
+    })()
+  `);
+  if (!found.ok) return { ok: false, note: 'cover_letter_input_not_found', manual_required: true, detail: found, question: missingLabel };
+  const upload = cdp('upload', tab, found.sel, COVER_LETTER);
+  if (!upload.stdout.includes('"ok":true')) return { ok: false, note: 'cover_letter_upload_failed', manual_required: true, detail: upload.stdout || upload.stderr, question: missingLabel };
+  coverLetterUploaded = true;
+  return { ok: true, mode: 'cover_letter_upload', selector: found.sel };
+}
+
 // ---------- step: fill standard fields ----------
 async function fillStandard(tab) {
   const name = `${PROFILE.personal.first_name} ${PROFILE.personal.last_name}`;
@@ -482,6 +531,10 @@ async function answerMissing(tab, missingLabel) {
 
   const compensationExpectation = BANK.fallback_text?.compensation_expectations
     || "Open to discussion based on the role, location, and the company's standard internship or entry-level range.";
+
+  if (/cover.{0,20}letter|coverletter/i.test(ml)) {
+    return await uploadCoverLetter(tab, missingLabel);
+  }
 
   if (/(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i.test(ml)) {
     const withoutSponsorshipAns = workAuthWithoutSponsorshipAnswer();
@@ -1012,7 +1065,7 @@ async function main() {
     const res = await submitAndCheck(tab);
     if (res.success) {
       cdp('screenshot', tab, `/tmp/mrw_post_${JOB_ID || 'job'}.png`);
-      console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url }));
+      console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url, cover_letter_uploaded: coverLetterUploaded }));
       await closeTab(tab);
       return;
     }
@@ -1047,6 +1100,11 @@ async function main() {
     lastMissing = res.missing;
     for (const m of res.missing) {
       const a = await answerMissing(tab, m);
+      if (a?.manual_required) {
+        console.log(JSON.stringify({ outcome: 'skip', reason: a.note || 'manual_required', detail: a, missing: res.missing, job_id: JOB_ID }));
+        await closeTab(tab);
+        return;
+      }
       if (a?.pending_for_main_claude) {
         // Try to locate the field to give main agent a CSS selector
         const sel = await evalInTab(tab, `

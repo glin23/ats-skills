@@ -43,11 +43,12 @@ const env = {
 };
 
 function runNode(args, opts = {}) {
+  const { env: extraEnv = {}, ...spawnOpts } = opts;
   const r = spawnSync(process.execPath, args, {
     cwd: repoRoot,
-    env,
+    env: { ...env, ...extraEnv },
     encoding: 'utf8',
-    ...opts,
+    ...spawnOpts,
   });
   return { code: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
@@ -92,10 +93,10 @@ function jitterMs() {
   return Math.floor(paceMinMs + Math.random() * (paceMaxMs - paceMinMs + 1));
 }
 
-function runTee(args, outPath) {
+function runTee(args, outPath, extraEnv = {}) {
   return new Promise((resolve) => {
     const out = createWriteStream(outPath, { flags: 'w' });
-    const child = spawn(process.execPath, args, { cwd: repoRoot, env });
+    const child = spawn(process.execPath, args, { cwd: repoRoot, env: { ...env, ...extraEnv } });
     child.stdout.on('data', (chunk) => {
       process.stdout.write(chunk);
       out.write(chunk);
@@ -109,6 +110,40 @@ function runTee(args, outPath) {
       resolve(code ?? 1);
     });
   });
+}
+
+function generateCoverLetter(row) {
+  const result = runNode(['shared/materialize_cover_letter.mjs', '--row-id', String(row.id), '--json']);
+  const parsed = parseLastJson(result.stdout) || {};
+  if (result.code !== 0 || !parsed.ok || !parsed.path) {
+    progress('apply', `cover letter generation unavailable for row ${row.id}; driver will manualize if the form requires it`);
+    return {
+      ok: false,
+      reason: parsed.reason || 'cover_letter_generation_failed',
+      detail: parsed,
+    };
+  }
+  progress('apply', `cover letter generated for row ${row.id}: ${parsed.path}`);
+  return parsed;
+}
+
+function markCoverLetterUsed(row, coverLetter, resultFile) {
+  if (!coverLetter?.path) return;
+  const result = runNode([
+    'shared/materialize_cover_letter.mjs',
+    '--mark-used',
+    '--row-id',
+    String(row.id),
+    '--path',
+    coverLetter.path,
+    '--result-file',
+    resultFile,
+    '--json',
+  ]);
+  if (result.code !== 0) {
+    progress('apply', `cover letter used audit failed for row ${row.id}; continuing`);
+    if (result.stderr) process.stderr.write(result.stderr);
+  }
 }
 
 function driverFor(row) {
@@ -291,7 +326,13 @@ for (let i = 0; i < rows.length; i += 1) {
   }
 
   const resultFile = join(tmpDir, `apply-result-${row.id}.jsonl`);
-  const code = await runTee([driverFor(row), row.apply_url, String(row.id)], resultFile);
+  const coverLetter = generateCoverLetter(row);
+  const driverEnv = {
+    MRWEIRDO_DISABLE_STATIC_COVER_LETTER: '1',
+    ...(coverLetter.ok && coverLetter.path ? { MRWEIRDO_COVER_LETTER_PATH: coverLetter.path } : {}),
+    ...(!coverLetter.ok ? { MRWEIRDO_COVER_LETTER_GENERATION_REASON: coverLetter.reason || 'cover_letter_generation_failed' } : {}),
+  };
+  const code = await runTee([driverFor(row), row.apply_url, String(row.id)], resultFile, driverEnv);
   if (code !== 0) {
     console.error(`[apply-batch] driver exited code=${code}; recorder will classify from captured output`);
   }
@@ -302,6 +343,10 @@ for (let i = 0; i < rows.length; i += 1) {
   if (record.code !== 0) fail(`record_apply_outcome row ${row.id}`, record);
 
   const recorded = parseLastJson(record.stdout) || { action: 'recorded_unknown' };
+  const driverOutcome = parseLastJson(readFileSync(resultFile, 'utf8')) || {};
+  if (recorded.action === 'submitted' && driverOutcome.cover_letter_uploaded === true) {
+    markCoverLetterUsed(row, coverLetter, resultFile);
+  }
   let jobReportPath = null;
   if (recorded.action === 'submitted') {
     const jobReport = runNode(['shared/job_report.mjs', '--row-id', String(row.id), '--append-submission']);

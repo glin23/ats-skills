@@ -178,8 +178,9 @@ export function parseMachineSummary(markdown) {
 function renderReport(row, { appendSubmission = false } = {}) {
   const dimScores = parseJson(row.dim_scores, {});
   const legitimacySignals = parseJson(row.legitimacy_signals, []);
-  const submission = appendSubmission ? summarizeSubmission(row.id) : { gap_fields: [] };
-  const keyGaps = splitGaps(row.key_gaps);
+	  const submission = appendSubmission ? summarizeSubmission(row.id) : { gap_fields: [] };
+	  const keyAlignment = splitGaps(row.key_alignment);
+	  const keyGaps = splitGaps(row.key_gaps);
   const gapFields = [...new Set([...keyGaps, ...(submission.gap_fields || [])])];
   const submittedAt = row.submitted_at || row.auto_submitted_at || '';
   const auditLines = [];
@@ -207,9 +208,10 @@ function renderReport(row, { appendSubmission = false } = {}) {
     '',
     '## Fit Summary',
     '',
-    `- Fit score: ${row.fit_score ?? ''}`,
-    `- Role type: ${row.role_type_match || ''}`,
-    '',
+	    `- Fit score: ${row.fit_score ?? ''}`,
+	    `- Role type: ${row.role_type_match || ''}`,
+	    `- Key alignment: ${keyAlignment.length ? keyAlignment.join(' / ') : 'none recorded'}`,
+	    '',
     renderDimTable(dimScores),
     '',
     '## Key Gaps',
@@ -237,7 +239,7 @@ function renderReport(row, { appendSubmission = false } = {}) {
 function selectByRowId(db, rowId) {
   return db.prepare(`
     SELECT id, company, title, apply_url, location, source, search_source,
-           ats_platform, fit_score, key_gaps, role_type_match, dim_scores,
+	           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
            legitimacy, legitimacy_signals, status, outcome_status,
            submitted_at, auto_submitted_at, report_path, discovery_run_id
       FROM jobs
@@ -249,7 +251,7 @@ function selectBatch(db, runId) {
   if (runId) {
     return db.prepare(`
       SELECT id, company, title, apply_url, location, source, search_source,
-             ats_platform, fit_score, key_gaps, role_type_match, dim_scores,
+	             ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
              legitimacy, legitimacy_signals, status, outcome_status,
              submitted_at, auto_submitted_at, report_path, discovery_run_id
         FROM jobs
@@ -260,7 +262,7 @@ function selectBatch(db, runId) {
   }
   return db.prepare(`
     SELECT id, company, title, apply_url, location, source, search_source,
-           ats_platform, fit_score, key_gaps, role_type_match, dim_scores,
+	           ats_platform, fit_score, key_alignment, key_gaps, role_type_match, dim_scores,
            legitimacy, legitimacy_signals, status, outcome_status,
            submitted_at, auto_submitted_at, report_path, discovery_run_id
       FROM jobs
