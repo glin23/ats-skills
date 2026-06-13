@@ -292,6 +292,36 @@ function exampleFor(item) {
   };
 }
 
+function isUserFillableCategory(category) {
+  return (category.startsWith('user_') || category === 'unknown_user_fact') &&
+    Array.isArray(QUESTION_TEMPLATES[category]?.profile_paths) &&
+    QUESTION_TEMPLATES[category].profile_paths.length > 0;
+}
+
+function buildMissingFieldRanking(entries) {
+  const rowsByCategory = new Map();
+  for (const entry of entries) {
+    if (!entry.row_id || !isUserFillableCategory(entry.category)) continue;
+    if (!rowsByCategory.has(entry.category)) rowsByCategory.set(entry.category, new Set());
+    rowsByCategory.get(entry.category).add(Number(entry.row_id));
+  }
+
+  return [...rowsByCategory.entries()]
+    .map(([category, rowIds]) => ({
+      category,
+      question: QUESTION_TEMPLATES[category].question,
+      profile_paths: QUESTION_TEMPLATES[category].profile_paths,
+      unblocks_n_jobs: rowIds.size,
+    }))
+    .sort((a, b) => {
+      if (b.unblocks_n_jobs !== a.unblocks_n_jobs) return b.unblocks_n_jobs - a.unblocks_n_jobs;
+      const aPriority = QUESTION_TEMPLATES[a.category]?.priority || 99;
+      const bPriority = QUESTION_TEMPLATES[b.category]?.priority || 99;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return a.category.localeCompare(b.category);
+    });
+}
+
 const explicitSummaryPath = argValue('--summary', null);
 const explicitResultDir = argValue('--result-dir', null);
 const summaryPath = explicitSummaryPath || (explicitResultDir ? null : newestSummary());
@@ -349,6 +379,8 @@ const user_questions = userQuestionCategories.map((category) => ({
   ...QUESTION_TEMPLATES[category],
   examples: grouped[category].slice(0, 5).map(exampleFor),
 }));
+
+const missing_field_ranking = buildMissingFieldRanking(entries);
 
 const agent_actions = Object.entries(grouped)
   .filter(([category]) => category === 'agent_open_text' || category === 'agent_attestation' || category === 'agent_profile_backed')
@@ -415,6 +447,7 @@ const report = {
   scanned_result_files: files.length,
   gap_count: entries.length,
   user_questions,
+  missing_field_ranking,
   agent_actions,
   system_blockers,
   onboarding_candidates,
@@ -445,6 +478,14 @@ const md = [
         mdList(q.examples),
       ].join('\n')).join('\n\n')
     : 'No user factual gaps detected.',
+  '',
+  '## Missing Field Ranking',
+  '',
+  missing_field_ranking.length
+    ? missing_field_ranking
+        .map((item) => `- ${item.category}: unlocks ${item.unblocks_n_jobs} distinct job(s); profile paths: ${item.profile_paths.join(', ')}`)
+        .join('\n')
+    : 'No ranked user-fillable missing fields detected.',
   '',
   '## Agent Should Handle',
   '',

@@ -294,17 +294,24 @@ After every real batch, inspect:
 /tmp/mrweirdo-onboard/apply-gap-report.md
 ```
 
-If `user_questions` is non-empty, ask at most four grouped questions in one
-AskUserQuestion call, choosing the most frequent blockers first. Leave the
-rest for a later batch. Ask only key facts that cannot be safely inferred, such
-as full address, earliest start date, high-school city/state, government
-relative/compliance facts, language or skill level, GPA, logistics, or location
-commitments.
+Before asking the user anything, handle open-text answers as agent work. Draft
+inline essays, cover-letter style prompts, and other `agent_open_text` fields
+from the resume, optional self-introduction, local profile,
+`essay_profile.json`, `answer_bank.json`, and
+`shared/references/truthfulness.md`. Do not invent facts. For
+`agent_attestation` and `agent_profile_backed`, fill only from the local profile
+or driver coverage.
 
-Open-text answers are agent work. Draft from the resume, optional
-self-introduction, `essay_profile.json`, `answer_bank.json`, and
-`shared/references/truthfulness.md`. For `agent_attestation` and
-`agent_profile_backed`, fill only from the local profile or driver coverage.
+If `missing_field_ranking` / `user_questions` is non-empty, condense the
+user-fillable categories into the smallest grouped question set available for
+this batch, then ask at most four grouped questions in one AskUserQuestion call.
+Present them by impact, using the report's distinct unlock counts, for example
+`补 <field> 可解锁 <N> 个岗位`. Ask only facts that cannot be safely inferred
+from the resume or existing profile, and do not use a fixed checklist.
+
+Never list each job's missing fields line by line for the user. The user should
+see the minimal cross-application question set, not a manual application audit.
+Leave lower-impact grouped questions for a later batch.
 
 After the user answers, update only that user's local profile/essay/answer
 templates as needed, validate, then requeue affected rows:

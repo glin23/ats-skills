@@ -171,3 +171,81 @@ test('apply_gap_report does not re-ask facts already stored in profile', () => {
   assert.ok(report.system_blockers.some((a) => a.category === 'system_profile_declined_location'));
   assert.ok(report.system_blockers.some((a) => a.category === 'system_external_form_auto_required'));
 });
+
+test('apply_gap_report ranks missing fields by distinct row ids', () => {
+  const root = mkdtempSync(join(tmpdir(), 'mrw-gap-ranking-'));
+  const home = join(root, 'home');
+  const resultDir = join(root, 'run');
+  const profilePath = join(home, 'profile.json');
+  const resultPathA = join(resultDir, 'apply-result-301.jsonl');
+  const resultPathB = join(resultDir, 'apply-result-302.jsonl');
+  const summaryPath = join(resultDir, 'summary.json');
+  const jsonPath = join(resultDir, 'gap.json');
+  const mdPath = join(resultDir, 'gap.md');
+
+  mkdirSync(home, { recursive: true });
+  mkdirSync(resultDir, { recursive: true });
+
+  writeFileSync(profilePath, JSON.stringify({}));
+  writeFileSync(resultPathA, `${JSON.stringify({
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 301,
+    company: 'Alpha Co',
+    remaining: [
+      { label: 'What is your earliest start date for this position?' },
+      { label: 'Earliest start date' },
+      { label: 'What is your GPA?' },
+      { label: 'I confirm the information provided in this application is true and correct.' },
+    ],
+  })}\n`);
+  writeFileSync(resultPathB, `${JSON.stringify({
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 302,
+    company: 'Beta Co',
+    remaining: [
+      { label: 'What is your earliest start date for this position?' },
+    ],
+  })}\n`);
+  writeFileSync(summaryPath, JSON.stringify({
+    rows: [
+      { row_id: 301, result_file: resultPathA },
+      { row_id: 302, result_file: resultPathB },
+    ],
+  }));
+
+  const run = spawnSync(process.execPath, [
+    'shared/apply_gap_report.mjs',
+    '--summary', summaryPath,
+    '--json-output', jsonPath,
+    '--md-output', mdPath,
+  ], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      MRWEIRDO_HOME: home,
+      MRWEIRDO_DB_PATH: join(home, 'jobs.db'),
+    },
+    encoding: 'utf8',
+  });
+
+  assert.equal(run.status, 0, run.stderr);
+  const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
+  assert.deepEqual(report.missing_field_ranking, [
+    {
+      category: 'user_earliest_start_date',
+      question: '你最早可以开始实习/part-time 的日期是什么？请给一个具体日期或月份，例如 2026-05-15 / May 2026。',
+      profile_paths: ['standard_qa.earliest_start_date'],
+      unblocks_n_jobs: 2,
+    },
+    {
+      category: 'user_gpa',
+      question: '你的本科 cumulative GPA 是多少？如果不想自动填写 GPA，也可以说“不填 GPA”。',
+      profile_paths: ['education.gpa'],
+      unblocks_n_jobs: 1,
+    },
+  ]);
+  assert.equal(report.grouped_counts.user_earliest_start_date, 3);
+  assert.ok(!report.missing_field_ranking.some((item) => item.category === 'agent_attestation'));
+});
