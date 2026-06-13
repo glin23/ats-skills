@@ -31,7 +31,7 @@
     "VERSION"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "test:smoke": "node scripts/role_guard_smoke.mjs",
     "demo:check": "node scripts/demo_check.mjs",
     "status": "node scripts/dashboard.mjs",
