@@ -306,7 +306,11 @@ for (let i = 0; i < rows.length; i += 1) {
     const record = runNode(['shared/record_apply_outcome.mjs', '--row-id', String(row.id), '--result-file', resultFile]);
     if (record.stdout) process.stdout.write(record.stdout);
     if (record.stderr) process.stderr.write(record.stderr);
-    if (record.code !== 0) fail(`record validation failure row ${row.id}`, record);
+    if (record.code !== 0) {
+      progress('apply', `record failed for row ${row.id}; skipping this row, continuing batch`);
+      summaries.push({ row_id: row.id, result_file: resultFile, action: 'record_failed', reason: 'record_apply_outcome_nonzero' });
+      continue;
+    }
     const recorded = parseLastJson(record.stdout) || { action: 'recorded_unknown' };
     summaries.push({ row_id: row.id, result_file: resultFile, ...recorded });
     continue;
@@ -341,7 +345,11 @@ for (let i = 0; i < rows.length; i += 1) {
   const record = runNode(['shared/record_apply_outcome.mjs', '--row-id', String(row.id), '--result-file', resultFile]);
   if (record.stdout) process.stdout.write(record.stdout);
   if (record.stderr) process.stderr.write(record.stderr);
-  if (record.code !== 0) fail(`record_apply_outcome row ${row.id}`, record);
+  if (record.code !== 0) {
+    progress('apply', `record failed for row ${row.id}; skipping this row, continuing batch`);
+    summaries.push({ row_id: row.id, company: row.company, title: row.title, result_file: resultFile, action: 'record_failed', reason: 'record_apply_outcome_nonzero' });
+    continue;
+  }
 
   const recorded = parseLastJson(record.stdout) || { action: 'recorded_unknown' };
   const driverOutcome = parseLastJson(readFileSync(resultFile, 'utf8')) || {};

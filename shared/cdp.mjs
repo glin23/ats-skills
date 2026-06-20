@@ -32,7 +32,8 @@ Commands:
   eval <tabId> <js>                      Runtime.evaluate, print result.value (or stack)
   upload <tabId> <selector> <file>       DOM.setFileInputFiles to <selector>
   screenshot <tabId> <out.png>           Page.captureScreenshot → write file
-  typetext <tabId> <selector> <text>     Focus selector + Input.insertText (isTrusted=true)
+  typetext <tabId> <selector> <text>     Focus + CLEAR (React-safe) + Input.insertText, read back value
+  key <tabId> <KeyName>                  Dispatch a trusted key press (Enter|Tab|ArrowDown|ArrowUp|Escape|Backspace)
   cdp <tabId> <Method> <params-json>     Raw CDP call, e.g. cdp X Page.reload '{}'
 
 Env:
@@ -195,15 +196,100 @@ async function cmdScreenshot(tabId, outPath) {
 
 async function cmdTypetext(tabId, selector, text) {
   await withSession(tabId, async s => {
-    const focus = await s.send('Runtime.evaluate', {
-      expression: `(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return 'NOTFOUND'; e.focus(); return document.activeElement === e ? 'OK' : 'NOFOCUS'; })()`,
+    // Focus + CLEAR before typing. A retry or a React-prefilled/formatted value
+    // must be wiped first, else Input.insertText appends to stale content and the
+    // form keeps flagging the field invalid (the classic stuck_on_same_missing).
+    // Clear via the native prototype value setter + a bubbling input event so
+    // React/controlled inputs register the emptied state; then insertText types
+    // the real value as trusted keystrokes that React picks up.
+    const prep = await s.send('Runtime.evaluate', {
+      expression: `(() => {
+        const e = document.querySelector(${JSON.stringify(selector)});
+        if (!e) return 'NOTFOUND';
+        e.focus();
+        if (document.activeElement !== e) return 'NOFOCUS';
+        try {
+          const proto = e.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+          const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+          if (desc && desc.set) desc.set.call(e, ''); else e.value = '';
+          if (e._valueTracker) e._valueTracker.setValue('x');
+          e.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (err) { /* non-input element; nothing to clear */ }
+        return 'OK';
+      })()`,
       returnByValue: true,
+      userGesture: true,
     });
-    const v = focus.result?.value;
+    const v = prep.result?.value;
     if (v === 'NOTFOUND') throw new Error(`Selector not found: ${selector}`);
     if (v !== 'OK') throw new Error(`Failed to focus selector: ${selector} (got ${v})`);
     await s.send('Input.insertText', { text });
-    process.stdout.write(JSON.stringify({ ok: true, len: text.length }) + '\n');
+    const norm = (x) => String(x == null ? '' : x).replace(/\s+/g, '').toLowerCase();
+    const readValue = async () => {
+      const r = await s.send('Runtime.evaluate', {
+        expression: `(() => { const e = document.querySelector(${JSON.stringify(selector)}); return e ? String(e.value == null ? '' : e.value) : null; })()`,
+        returnByValue: true,
+      });
+      return r.result?.value;
+    };
+    // Read back so we never trust a write without confirming it.
+    let got = await readValue();
+    let method = 'insertText';
+    let verified = typeof got === 'string' && norm(got) === norm(text);
+    if (!verified) {
+      // Self-heal: the trusted keystroke path did not take (React reverted it, or
+      // a masked/controlled input). Set via the native prototype value setter +
+      // tracker reset + bubbling input/change/blur so React and validation libs
+      // register it. This is the canonical React controlled-input fill.
+      await s.send('Runtime.evaluate', {
+        expression: `(() => {
+          const e = document.querySelector(${JSON.stringify(selector)});
+          if (!e) return false;
+          try {
+            const proto = e.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+            const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+            const prev = e.value;
+            if (desc && desc.set) desc.set.call(e, ${JSON.stringify(text)}); else e.value = ${JSON.stringify(text)};
+            if (e._valueTracker) e._valueTracker.setValue(prev);
+            const b = { bubbles: true };
+            e.dispatchEvent(new Event('input', b));
+            e.dispatchEvent(new Event('change', b));
+            e.dispatchEvent(new Event('blur', b));
+            return true;
+          } catch (err) { return false; }
+        })()`,
+        returnByValue: true,
+      });
+      got = await readValue();
+      method = 'nativeSetter';
+      verified = typeof got === 'string' && norm(got) === norm(text);
+    }
+    process.stdout.write(JSON.stringify({ ok: true, len: text.length, value: got, verified, method }) + '\n');
+  });
+}
+
+const KEY_CODES = {
+  Enter: { code: 'Enter', vk: 13, text: '\r' },
+  Tab: { code: 'Tab', vk: 9, text: '\t' },
+  ArrowDown: { code: 'ArrowDown', vk: 40 },
+  ArrowUp: { code: 'ArrowUp', vk: 38 },
+  Escape: { code: 'Escape', vk: 27 },
+  Backspace: { code: 'Backspace', vk: 8 },
+};
+
+async function cmdKey(tabId, keyName) {
+  const k = KEY_CODES[keyName];
+  if (!k) throw new Error(`Unsupported key: ${keyName} (supported: ${Object.keys(KEY_CODES).join(', ')})`);
+  await withSession(tabId, async s => {
+    // Full Puppeteer-style param set — the minimal {key,code,vk} form leaves
+    // e.key as "Unidentified" in Chrome; including text/location/isKeypad makes
+    // the synthesized event read as a real Enter (e.key=Enter, keyCode=13).
+    const base = { key: keyName, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, location: 0, isKeypad: false, autoRepeat: false };
+    const down = { type: 'keyDown', ...base };
+    if (k.text != null) { down.text = k.text; down.unmodifiedText = k.text; }
+    await s.send('Input.dispatchKeyEvent', down);
+    await s.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+    process.stdout.write(JSON.stringify({ ok: true, key: keyName }) + '\n');
   });
 }
 
@@ -265,6 +351,12 @@ async function main() {
         const text = rest.join(' ');
         if (!tabId || !selector || rest.length === 0) throw new Error('Usage: typetext <tabId> <selector> <text>');
         await cmdTypetext(tabId, selector, text);
+        break;
+      }
+      case 'key': {
+        const [, tabId, keyName] = argv;
+        if (!tabId || !keyName) throw new Error('Usage: key <tabId> <KeyName>');
+        await cmdKey(tabId, keyName);
         break;
       }
       case 'cdp': {

@@ -283,6 +283,22 @@ async function pickComboboxInQuestion(tab, questionText, value) {
       })()
     `);
     if (last.ok) return last;
+    // Fallback: no clickable [role=option] matched. Many comboboxes commit the
+    // typed value on Enter (trusted keypress). Press Enter, then verify the
+    // input now displays the selected value before trusting it.
+    cdp('key', tab, 'Enter');
+    await sleep(500);
+    const afterEnter = await evalInTab(tab, `
+      (() => {
+        const inp = document.querySelector(${JSON.stringify(found.sel)});
+        if (!inp) return { ok:false };
+        const wanted = ${JSON.stringify(term.toLowerCase())};
+        const val = (inp.value || '').trim().toLowerCase();
+        const committed = val.length > 0 && (val === wanted || (wanted.length >= 4 && val.includes(wanted)));
+        return committed ? { ok:true, picked: (inp.value || '').trim().slice(0,120), mode:'combobox_enter_commit', term: wanted } : { ok:false };
+      })()
+    `);
+    if (afterEnter && afterEnter.ok) return afterEnter;
   }
   return last;
 }
