@@ -1,18 +1,28 @@
-# Mr. Weirdo Jobs
+<p align="center">
+  <img src=".github/banner.png" alt="Mr. Weirdo Jobs" width="100%">
+</p>
 
-[![npm](https://img.shields.io/npm/v/mrweirdo-jobs.svg)](https://www.npmjs.com/package/mrweirdo-jobs)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://www.npmjs.com/package/mrweirdo-jobs"><img src="https://img.shields.io/npm/v/mrweirdo-jobs.svg?color=ff7a45&label=npm" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4caf50.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/platform-macOS-1f2a37.svg" alt="macOS">
+  <img src="https://img.shields.io/badge/node-24%2B-1f2a37.svg" alt="Node 24+">
+  <img src="https://img.shields.io/badge/runs%20on-Claude%20Code%20%C2%B7%20Codex-7c4dff.svg" alt="Claude Code / Codex">
+  <img src="https://img.shields.io/badge/status-public%20alpha-ffb020.svg" alt="public alpha">
+</p>
 
-Local-first Claude Code + Codex skills for resume-driven job discovery,
-fit scoring, and guarded ATS application submission.
+<p align="center">
+  <b>Résumé in &rarr; a ranked, honestly-scored job list and drafted applications out.</b><br>
+  A local-first job-search skill for Claude Code &amp; Codex — not a SaaS, it runs on your machine.
+</p>
 
 Mr. Weirdo Jobs reads a student's resume, builds a local job-search profile,
-discovers public roles, scores fit, fills supported ATS forms, and writes a
-local audit trail. It is a self-hosted developer tool, not a SaaS.
+discovers public roles, scores fit honestly, drafts application materials, and
+writes a local audit trail. Everything stays on your machine.
 
-> This tool can submit real job applications. Read [DISCLAIMER.md](DISCLAIMER.md)
-> before running it. Public alpha users should review the first few submissions
-> carefully and understand each ATS platform's Terms-of-Service risk.
+> ⚠️ This tool can submit real job applications. Read [DISCLAIMER.md](DISCLAIMER.md)
+> before running it. Public-alpha users should review the first few submissions
+> carefully and understand each platform's Terms-of-Service risk.
 
 ## Quick Start
 
