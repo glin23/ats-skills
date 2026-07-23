@@ -9,8 +9,9 @@
 //   Re-seen postings update last_seen_at + seen_count; stale / repeatedly failed
 //   rows can be pruned by shared/prune_discovered_jobs.mjs.
 //
-// API surface mirrors the v1.0 notion_sync.mjs so /mrweirdo-source, /mrweirdo-jobs,
-// /mrweirdo-confirm can swap import paths with minimal flow changes:
+// This module replaced the v1.0 Notion sync module, which has since been removed.
+// The API surface below was kept identical to it so /mrweirdo-source,
+// /mrweirdo-jobs and /mrweirdo-confirm could swap import paths unchanged:
 //
 //   upsertJob(job)            -> {ok, page_id, created|updated}
 //   batchUpsert(jobs)         -> [results]
