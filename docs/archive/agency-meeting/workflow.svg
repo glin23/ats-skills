@@ -1,0 +1,51 @@
+<svg viewBox="0 0 780 760" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+  <style>
+    .ai{fill:#eef2f6;stroke:#c3cedb;}
+    .human{fill:#e6f6f0;stroke:#15b894;}
+    .title{font-size:16px;font-weight:700;fill:#1f2a37;}
+    .titleH{font-size:16px;font-weight:700;fill:#0f6f59;}
+    .sub{font-size:12.5px;fill:#56657a;}
+    .subH{font-size:12.5px;fill:#1a8a72;}
+    .num{font-size:13px;font-weight:700;fill:#ffffff;}
+    .rail{font-size:11px;fill:#8593a6;font-weight:600;}
+    .h1{font-size:20px;font-weight:800;fill:#15233a;}
+    .leg{font-size:12px;fill:#56657a;}
+  </style>
+  <rect x="0" y="0" width="780" height="760" fill="#ffffff"/>
+  <text x="40" y="40" class="h1">Mr. Weirdo Jobs — 它是怎么跑的</text>
+  <text x="40" y="62" class="leg">学生只给「简历 + 几个选择」，AI 跑完全程，只在投递前停一次等人点头。</text>
+  <rect x="556" y="26" width="14" height="14" rx="3" class="ai"/><text x="576" y="38" class="leg">AI 自动做</text>
+  <rect x="652" y="26" width="14" height="14" rx="3" class="human"/><text x="672" y="38" class="leg">学生拍板</text>
+  <g stroke="#aab4c2" stroke-width="2" fill="none" marker-end="url(#ah)">
+    <line x1="300" y1="150" x2="300" y2="168"/><line x1="300" y1="234" x2="300" y2="252"/>
+    <line x1="300" y1="318" x2="300" y2="336"/><line x1="300" y1="402" x2="300" y2="420"/>
+    <line x1="300" y1="486" x2="300" y2="504"/><line x1="300" y1="570" x2="300" y2="588"/>
+  </g>
+  <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#aab4c2"/></marker></defs>
+  <rect x="90" y="86" width="420" height="62" rx="12" class="human"/>
+  <circle cx="118" cy="117" r="13" fill="#15b894"/><text x="118" y="122" text-anchor="middle" class="num">1</text>
+  <text x="142" y="112" class="titleH">学生给：简历 + 几个选择</text><text x="142" y="133" class="subH">工作授权 · 地点 · 目标方向</text>
+  <rect x="90" y="170" width="420" height="62" rx="12" class="ai"/>
+  <circle cx="118" cy="201" r="13" fill="#7d8aa0"/><text x="118" y="206" text-anchor="middle" class="num">2</text>
+  <text x="142" y="196" class="title">AI 建画像</text><text x="142" y="217" class="sub">提取背景，锁定目标职能</text>
+  <rect x="90" y="254" width="420" height="62" rx="12" class="ai"/>
+  <circle cx="118" cy="285" r="13" fill="#7d8aa0"/><text x="118" y="290" text-anchor="middle" class="num">3</text>
+  <text x="142" y="280" class="title">AI 扫描岗位市场</text><text x="142" y="301" class="sub">实时抓取在招职位</text>
+  <rect x="90" y="338" width="420" height="62" rx="12" class="ai"/>
+  <circle cx="118" cy="369" r="13" fill="#7d8aa0"/><text x="118" y="374" text-anchor="middle" class="num">4</text>
+  <text x="142" y="364" class="title">AI 匹配 + 打分</text><text x="142" y="385" class="sub">只留相关、够格的岗位</text>
+  <rect x="90" y="422" width="420" height="62" rx="12" class="ai"/>
+  <circle cx="118" cy="453" r="13" fill="#7d8aa0"/><text x="118" y="458" text-anchor="middle" class="num">5</text>
+  <text x="142" y="448" class="title">AI 补缺口 + 写材料</text><text x="142" y="469" class="sub">一次性补料，自动写 cover letter</text>
+  <rect x="90" y="506" width="420" height="62" rx="12" class="human"/>
+  <circle cx="118" cy="537" r="13" fill="#15b894"/><text x="118" y="542" text-anchor="middle" class="num">6</text>
+  <text x="142" y="532" class="titleH">学生确认（唯一的闸）</text><text x="142" y="553" class="subH">审队列与身份，回「开始」</text>
+  <rect x="90" y="590" width="420" height="62" rx="12" class="ai"/>
+  <circle cx="118" cy="621" r="13" fill="#7d8aa0"/><text x="118" y="626" text-anchor="middle" class="num">7</text>
+  <text x="142" y="616" class="title">AI 自动投递 + 跟踪</text><text x="142" y="637" class="sub">提交并记录 OA/面试/结果</text>
+  <line x1="556" y1="92" x2="556" y2="646" stroke="#dde3ea" stroke-width="2"/>
+  <text x="572" y="120" class="rail">个人数据（本地）</text><text x="572" y="288" class="rail">＋ 市场数据</text>
+  <text x="572" y="456" class="rail">＝ 匹配 + 材料</text><text x="572" y="624" class="rail">→ 提交 + 结果</text>
+  <text x="40" y="712" class="leg">信息流：资料只留本地 → 叠加实时岗位数据 → 算出该投哪些 + 自动备料 → 学生点头 → 投递并回收进展。</text>
+  <text x="40" y="734" class="leg">全程两处需要人：第 1 步给方向、第 6 步拍板投递。中间的脏活累活全是 AI。</text>
+</svg>
