@@ -44,7 +44,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve as pathResolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { atsHome } from './paths.mjs';
+import { atsHome } from '../../paths.mjs';
 
 // ---------- constants ----------
 
