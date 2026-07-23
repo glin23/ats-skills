@@ -1,0 +1,94 @@
+# =====================================================================
+# 文档格式规则本（phase_schemas.yaml）— Arnold 小队工作档案的格式标准
+# =====================================================================
+#
+# 这本文件是什么（人话版）：
+#   项目总监和各成员每干一段活，都会写"工作档案"（方案稿 / 设计稿 /
+#   施工记录 / 验收报告）。这本规则本规定了每类档案必须有哪几段内容、
+#   头部要带什么字段——就像公司规定报销单必须有日期、金额、经手人。
+#   装了它，档案格式跑偏（缺段 / 段空 / 没文件头）会被自动提醒补齐。
+#   改这本文件 = 改全项目的文档规矩，一般不用动；想给某类档案加减
+#   必含段时才来改（改完即时生效，无需重启）。
+#
+# 谁在读它：两个插件 hook（钩子，自动校验脚本）——
+#   ① inject_phase_schema.py：派活的瞬间自动把本表要求附进派工单，
+#      成员第一轮就照单写全（少走"写错→打回→重写"的浪费）；
+#   ② check_phase_schema.py：成员干完活后自动按本表核查其阶段产物。
+#   缺了本文件 = 两者都安静放行。
+#   只想关"派工注入"、保留事后核查？在本文件顶层加一行：
+#     dispatch_inject: off
+#
+# ---------------------------------------------------------------------
+# 【硬约定 1】工作档案的落位与命名（两线分离）
+#   - 过程线：阶段产物一律落 docs/active/，命名
+#     YYYY-MM-DD_<主题>_<阶段名>.md（如 2026-07-18_导出功能_PRODUCT_SPEC.md）
+#   - 定稿线：讨论定下来的最终结论，另行提炼成说明书收进定稿目录
+#     （登记表 PROJECT_CONTEXT.yaml 的 paths.living_doc_business 那格）；
+#     过程稿不冒充定稿、不直接落定稿目录。
+#
+# 【硬约定 2】TASK（任务对话索引档案）文件头 6 必填字段
+#   docs/active/<日期>_<主题>_TASK.md 的 YAML frontmatter（文件头元数据）
+#   必含：Topic / Created / Status / Owner / Updated / Type，
+#   其中 Status 四选一：in_progress / completed / stalled / abandoned。
+#   （此项由另一个 hook check_task_file_schema.py 硬性拦截，写在这里
+#   只为集中查阅——改那 6 个字段名要改 hook 代码，不是改本表。）
+#
+# 【硬约定 3】阶段产物（PHASE 文件）文件头基线字段
+#   下方各类档案头部 frontmatter 至少带：
+#   Status / Owner / Reads / Updated / Iterations / Type
+#   （Iterations 迭代轮数由 check_phase_schema.py 硬核查：>= 7 拦写、
+#   >= 5 警告；其余字段是基线约定，成员骨架里已写明照办。）
+#
+# 【写档案的段标题格式】必含段的标题要写成 `## 段名` 或 `## 1. 段名`
+#   （只认这两种；`## §1 段名` 这类花式前缀校验会认不出来）。
+#
+# 【怎么加角色 / 加检查】顶层键 = 成员名（subagent_type 子代理类型），
+#   每个成员三件套：
+#     phase_suffix       — 阶段名（拼进文件名的后缀）
+#     required_sections  — 必含段名列表（建议 ≤ 8 段，别膨胀）
+#     min_section_chars  — 每段正文最少字符数（防"装样子空段"）
+#   还支持 custom_checks 正则细查（进阶，一般用不上），示例：
+#     custom_checks:
+#       - regex_in_section: 交付自查清单
+#         pattern: "☐|\\[x\\]"
+#         message: "自查清单里连一个勾选框都没有"
+# ---------------------------------------------------------------------
+
+arnold-pm:
+  phase_suffix: PRODUCT_SPEC
+  required_sections:
+    - Executive Summary
+    - Problem Statement
+    - Solution
+    - Metrics
+    - User Stories
+    - Out of Scope
+  min_section_chars: 30
+
+arnold-architect:
+  phase_suffix: DESIGN
+  required_sections:
+    - Implementation Approach
+    - File List
+    - 数据结构与接口
+    - 调用流
+    - Anything UNCLEAR
+  min_section_chars: 30
+
+arnold-builder:
+  phase_suffix: BUILD_NOTES
+  required_sections:
+    - 实现摘要
+    - TDD 落地证据
+    - 遗留事项
+    - 交付自查清单
+  min_section_chars: 30
+
+arnold-verify:
+  phase_suffix: VERIFY_REPORT
+  required_sections:
+    - 验收范围
+    - 5 维高危区评估
+    - 7 类测试
+    - 覆盖度评估
+  min_section_chars: 30
