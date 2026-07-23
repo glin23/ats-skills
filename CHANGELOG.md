@@ -5,7 +5,7 @@
 > Everything below is on `main` but has not shipped as a numbered release:
 > `VERSION` and the npm package both still read `2.2.0`.
 
-### June 2026 backfill (38 commits, `cf626d0..d9a4369`)
+### June 2026 backfill (38 commits, `cf626d0^..d9a4369`)
 
 These landed between 2026-05-29 and 2026-06-20 and went unrecorded at the time.
 Folded by theme rather than commit-by-commit; key SHAs are given so the detail
