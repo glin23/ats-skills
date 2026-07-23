@@ -45,11 +45,20 @@ repo/.agents/skills/     -> generated Codex workspace-local links
 The main demo command is `/mrweirdo-jobskill`. It delegates to the same workflow
 as `/mrweirdo-onboard`, with friendlier product language.
 
-Auto-submit helpers are called by the onboard flow:
+Auto-submit helpers called by the onboard flow:
 
 - `mrweirdo-greenhouse-auto`
 - `mrweirdo-ashby-auto`
-- `mrweirdo-lever-auto`
+
+Greenhouse and Ashby are the only two platforms in the auto-apply queue.
+`SUPPORTED_AUTO_PLATFORMS` in `shared/sourcing/apply_url_classification.mjs` is
+the single source of truth for that, and it currently reads
+`new Set(['greenhouse', 'ashby'])`.
+
+- `mrweirdo-lever-auto` — the driver exists and works, but `lever` is listed in
+  `KNOWN_UNSUPPORTED_PLATFORMS`, so the onboard flow never dispatches to it.
+  Re-enabling it is tracked as the third priority in `docs/PRD-improvements.md`;
+  until that lands, treat Lever as manual-only.
 
 Manual single-URL helpers preserve a final Submit gate:
 
@@ -60,7 +69,23 @@ Manual single-URL helpers preserve a final Submit gate:
 - `mrweirdo-icims`
 - `mrweirdo-jobvite`
 - `mrweirdo-handshake`
-- `mrweirdo-workday`
+- `mrweirdo-workday` — v0.7 scaffolding only. Every file in
+  `shared/workday/companies/` is still `_template.json` or
+  `placeholder_company_1..5.json`; the flow has never been run against a real
+  Workday tenant.
+
+Supporting skills (not part of the apply path itself):
+
+- `mrweirdo-doctor` — install and readiness check before a real run.
+- `mrweirdo-cherry-pick` — opt-in flow for large-quota companies that batch
+  auto-apply deliberately skips, keeping the pre-submit review gate.
+- `mrweirdo-confirm` — reads Gmail confirmation threads and moves matching rows
+  from submitted to confirmed.
+- `mrweirdo-expand` — enriches writing memory from local documents.
+- `mrweirdo-materials` — drafts per-job cover letters and essay answers on
+  demand, kept separate from the cover-letter path the onboard flow controls.
+- `mrweirdo-tracker` — records post-application outcomes and funnel views.
+- `mrweirdo-upskill` — read-only skill-gap report built from scored rows.
 
 ## Driver Model
 
@@ -79,6 +104,27 @@ The v2 drivers are submit-error-driven:
 
 Essay and cover-letter questions are surfaced back to the main agent session.
 The agent drafts truthful answers from `essay_profile.json` plus job context.
+
+## Discovery Sources
+
+`shared/sourcing/dispatcher.mjs` owns an `ADAPTERS` registry, and `ALL_SOURCES`
+is derived from its keys. Six sources are wired in:
+
+`remoteok`, `greenhouse_bulk`, `ashby_bulk`, `lever_bulk`, `wellfound`, `yc_waas`
+
+The three bulk crawlers import the matching `*_board_api.mjs` and read a tenant
+list from `shared/sourcing/data/`. `icims_board_api.mjs` and
+`jobvite_board_api.mjs` sit flat in `shared/sourcing/` but are not dispatcher
+sources; the corresponding single-URL skills call them on demand.
+
+Anything under `shared/sourcing/_unwired/` is reachable from nothing at all —
+board scrapers for SmartRecruiters, Rippling, Personio, BambooHR and Recruitee,
+plus the vision fallback locator. They are kept as stock rather than deleted, and
+wiring one up is a product decision, not a cleanup step. See
+`shared/sourcing/_unwired/README.md`.
+
+The rule: flat in `shared/sourcing/` means the dispatcher can reach it,
+`_unwired/` means it cannot. Nothing should sit in between.
 
 ## AI Work
 
@@ -103,9 +149,12 @@ SQLite is the source of truth.
 Optional review surfaces:
 
 - Datasette: easiest local audit UI.
-- Notion: optional user-owned mirror, off by default.
 - Google Sheets/Airtable/custom UI: possible future mirrors, but should sync
   back to SQLite rather than replace it.
+
+Notion was a v1.0 review surface and is **gone**, not merely off by default.
+`shared/local_db.mjs` replaced the Notion sync module, which was removed once it
+had no callers left. There is no supported way to mirror to Notion today.
 
 Datasette example:
 

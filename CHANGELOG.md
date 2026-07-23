@@ -2,6 +2,63 @@
 
 ## [Unreleased]
 
+> Everything below is on `main` but has not shipped as a numbered release:
+> `VERSION` and the npm package both still read `2.2.0`.
+
+### June 2026 backfill (38 commits, `cf626d0..d9a4369`)
+
+These landed between 2026-05-29 and 2026-06-20 and went unrecorded at the time.
+Folded by theme rather than commit-by-commit; key SHAs are given so the detail
+stays diggable.
+
+**Onboarding rework** — reshaped the first run around one intake prompt, one
+hard-boundary question call and a single queue gate.
+
+- Streamlined the guarded first-run flow (`983da60`) and reworked terminal
+  presentation and progress cues (`2314478`).
+- Selection entry, resume-only intake and function-relevance gating (`c4ae787`),
+  with the `target_function_anchor` producer wired so long-tail functions get
+  deterministic gating (`d8eb424`).
+- Missing-info questions are now derived from the real applications and
+  condensed (`a29e6db`), then ranked by how many jobs each answer unlocks
+  (`bb31bf7`) — instead of asking a fixed list per application.
+- Grounded cover letters generated for auto-apply (`590c75a`).
+- New supporting skills: materials, expand, upskill (`9196a95`); liveness
+  reports and outcome analysis (`5acee6b`).
+
+**Apply-path fixes** — the bulk of the month, mostly Greenhouse and Ashby field
+coverage found by real submissions.
+
+- Unblocked storage plus Ashby phone/remote/city auto-answers (`555d797`);
+  open-ended residence, work-style, major, graduation and sponsorship phrasings
+  (`2b5f6ad`).
+- Greenhouse: profile-backed residence facts (`6436b26`), Faire profile-backed
+  fields (`89443d1`), work-environment preference (`1073dac`), templated text
+  fields (`b6c30f7`), profile-backed followup routing (`9cb2873`).
+- Ask-and-retry on missing-info gaps (`b434e8d`), reuse of already-answered
+  profile facts (`c5f2894`), common ATS blocker fields (`dd7a8e5`).
+- Bad queue rows filtered and availability inferred (`0d1dd8b`); complete scoring
+  enforced before store (`ef2f682`); default batch cap removed (`4dcf2e1`).
+- Tolerant radio-choice matching for relocation questions (`73e061f`).
+- Reliable React form-fill, combobox Enter handling and batch resilience
+  (`5f4d2ff`).
+- Lever added to the stable batch path (`1aaa94c`). Note that Lever is still
+  outside `SUPPORTED_AUTO_PLATFORMS`; see `docs/ARCHITECTURE.md`.
+
+**Packaging and public alpha** — public alpha release gate (`cf626d0`), repo
+prepared for demo release (`20ef503`), npx entrypoint (`a8404da`), one-line
+install surfaced in the README (`96da9a5`), landing page simplified (`89233c6`),
+jobskill live entrypoint (`dd468ba`), README banner and badges (`d9a4369`).
+
+**CI and tests** — the node test suite runs serially (`b581936`) after parallel
+runs proved flaky through shared temp artifacts; onboard temp artifacts isolated
+(`71a2ff9`); onboard skill kept under the alpha gate (`d328087`); local scratch
+dirs ignored (`618cb04`).
+
+**Docs** — v3 PRD and engineering backlog captured (`50bab4c`). That PRD has
+since shipped and now lives in `docs/archive/`; the current one is
+`docs/PRD-improvements.md`.
+
 ### Fixed
 - **Lever flow hardened for batch driving** (verified live 2026-05-28 by 5 real
   submitted Lever internships: everbridge, ekimetrics, endpointclinical,
