@@ -380,7 +380,7 @@ export function filterByRoleType(jobs, roleTypes = ['intern', 'new_grad_FT']) {
 }
 
 // ---------- CLI smoke test ----------
-// Usage: node shared/sourcing/smartrecruiters_board_api.mjs <slug>
+// Usage: node shared/sourcing/_unwired/smartrecruiters_board_api.mjs <slug>
 if (import.meta.url === `file://${process.argv[1]}`) {
   const slug = process.argv[2];
   if (!slug) {

@@ -290,7 +290,7 @@ export function filterByRoleType(jobs, roleTypes = ['intern', 'new_grad_FT']) {
 }
 
 // ---------- CLI smoke test ----------
-// Usage: node shared/sourcing/bamboohr_board_api.mjs <tenant>
+// Usage: node shared/sourcing/_unwired/bamboohr_board_api.mjs <tenant>
 if (import.meta.url === `file://${process.argv[1]}`) {
   const tenant = process.argv[2];
   if (!tenant) {

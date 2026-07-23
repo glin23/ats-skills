@@ -23,6 +23,8 @@ node shared/sourcing/_unwired/personio_board_api.mjs <tenant>
 
 ⚠️ 它们的注释头互相写着「Interface mirrors xxx_board_api.mjs」。**那只是注释，不是调用**——盘点时别把它当成"有人在用"（这里踩过坑）。
 
+⚠️ **`computer_use_locator.mjs` 有一个跨目录依赖**：它运行时会 spawn 上两层的 `../../cdp.mjs`（即 `shared/cdp.mjs`），且顶部 `import` 也依赖上两层的 `../../paths.mjs`。这两条相对路径是按本目录（`shared/sourcing/_unwired/`）算的——**将来再挪动这个文件，务必同步核对这两条路径**（曾发生过搬进本目录后 `cdp.mjs` 路径没跟着改、运行时找不到兄弟文件的坑）。
+
 ## 想把某个抓取模块接上线，改两处
 
 1. **`../dispatcher.mjs` 的 `ADAPTERS` 来源表**：照 `ashby_bulk` 那条的样子加一项，把该平台的 `fetchJobs` 包成统一的 `fetch({ keywords, limit, ... }) → jobs[]` 形状。`ALL_SOURCES` 是从 `ADAPTERS` 的键自动算出来的，不用手改。

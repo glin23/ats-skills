@@ -73,11 +73,12 @@ if (!existsSync(FRAME_DIR)) mkdirSync(FRAME_DIR, { recursive: true });
  *
  * @param {string} tabId - CDP tab id
  * @param {object} [opts]
- * @param {string} [opts.cdpPath] - path to cdp.mjs (default: sibling file)
+ * @param {string} [opts.cdpPath] - path to cdp.mjs (default: shared/cdp.mjs,
+ *   two levels up from this _unwired/ module)
  * @param {string} [opts.outPath] - where to write PNG (default: FRAME_PATH)
  */
 export function captureFrame(tabId, opts = {}) {
-  const cdpPath = opts.cdpPath || join(__dirname, 'cdp.mjs');
+  const cdpPath = opts.cdpPath || join(__dirname, '../../cdp.mjs');
   const outPath = pathResolve(opts.outPath || FRAME_PATH);
   if (!tabId) return { ok: false, error: 'tabId required' };
   try {
