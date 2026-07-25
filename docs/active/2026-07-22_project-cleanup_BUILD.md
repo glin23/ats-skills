@@ -1,10 +1,10 @@
 ---
 Status: done_pending_review
 Owner: arnold-builder
-Reads: docs/active/2026-07-22_project-cleanup_DESIGN.md, docs/active/2026-07-22_project-cleanup_TASK.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md
-Blocks: verify 验收 / ops 远端分支清理
-Updated: 2026-07-22
-Iterations: 1
+Reads: docs/active/2026-07-22_project-cleanup_DESIGN.md, docs/active/2026-07-22_project-cleanup_TASK.md, docs/active/2026-07-22_project-cleanup_VERIFY_REPORT.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md
+Blocks: ops 远端分支清理与 push
+Updated: 2026-07-23
+Iterations: 2
 Type: BUILD_NOTES
 ---
 
@@ -235,3 +235,57 @@ Iterations = 1，按规则不强制。但有两个念头动过又否掉，记下
 
 1. **「D-08 直接把门禁脚本里的路径改掉不就完了」**（否）——那是替拍板人做决定，而且设计明写 `scripts/` 不动。一行改动看着无害，但它动的是**对外发布门禁**，性质上属于越界，停下来问的成本远低于改错。
 2. **「`node --check` 全过了就等于模块没搬坏」**（否）——`--check` 只查语法。`computer_use_locator.mjs` 那句 `./paths.mjs` 搬完就是断的，语法却完全合法，CI 四步一步都抓不到。所以补了真实 `import()` 验证。这条值得写进项目方法论：**凡涉及移动 JS 模块，语法检查不等于可加载**。
+
+---
+
+## 12. 收尾 commit（Round 10：修 VERIFY_REPORT 抓到的 BUST-1 + N-1 + N-2）
+
+**commit `7a6efbc`**（`fix(unwired): repair computer_use_locator runtime cdp.mjs path + stale CLI comments`），7 个文件、+10/-7，全部落在 `shared/sourcing/_unwired/` 内，未触碰任何活代码。**无对外动作**：没 push、没碰远端。本地 main 现领先 origin/main 8 个 commit。
+
+### 12.1 收掉的三项
+
+报告 §5（逐条结论段：真 bug 与文档级不一致清单）是本轮三项的唯一来源依据。
+
+| 项 | 来源 | 改法 |
+|---|---|---|
+| **BUST-1**（Medium 真 bug） | 报告 §5 真 bug 条 | `computer_use_locator.mjs:80` 的 `join(__dirname, 'cdp.mjs')` → `join(__dirname, '../../cdp.mjs')`，指回真实的 `shared/cdp.mjs`；同步改第 76 行 `sibling file` 注释为「shared/cdp.mjs，本 _unwired/ 模块上两层」 |
+| **N-1**（5 处旧路径注释） | 报告 §5 文档不一致表 | 5 个抓取模块的 `// Usage:` 头注释补上 `_unwired/` 段（`node shared/sourcing/X.mjs` → `node shared/sourcing/_unwired/X.mjs`）。运行时的 `console.error('Usage: node X.mjs …')` 用的是裸文件名、不含目录、本就不失真，未动 |
+| **N-2**（README 缺依赖说明） | 报告 §5 文档不一致表 | `_unwired/README.md` 补一条 ⚠️ 说明：`computer_use_locator.mjs` 运行时依赖上两层 `../../cdp.mjs`、顶部 import 依赖 `../../paths.mjs`，将来再挪务必同步核对这两条路径 |
+
+### 12.2 BUST-1 的运行时验证怎么做的（不靠 `node --check`）
+
+报告特别点名：`node --check` 查不出运行时拼接路径，必须真调一次。我照真 bug 条给的复现命令跑了修复前后对照：
+
+- **修复前**（复现报告的 FAIL）：
+  ```
+  node -e 'import("./shared/sourcing/_unwired/computer_use_locator.mjs").then(m=>console.log(JSON.stringify(m.captureFrame("FAKE_TAB"))))'
+  → {"ok":false,"error":"...Cannot find module '/…/shared/sourcing/_unwired/cdp.mjs'..."}
+  ```
+- **路径解析核验**：`join(__dirname,'../../cdp.mjs')` 实算 = `/…/shared/cdp.mjs`，`existsSync` = **true**（对照 `ls shared/cdp.mjs` 存在 / `ls shared/sourcing/_unwired/cdp.mjs` 不存在）。
+- **修复后**（同一条复现命令）：
+  ```
+  → {"ok":false,"error":"fetch failed\n"}
+  ```
+  报错不再是 `Cannot find module`——`cdp.mjs` 已被找到并真正执行，只在 Chrome-CDP 网络层失败（FAKE_TAB 没有真浏览器连着），**这正是修好后的预期绿态**：模块解析已通，剩下的失败纯属"没开 Chrome"的环境因素，与本 bug 无关。
+
+### 12.3 本地 CI 四步真实输出（照 `.github/workflows/ci.yml` 串行跑，退出码逐个抓）
+
+| # | 步骤 | 命令 | 退出码 | 真实输出 |
+|---|---|---|---|---|
+| 1 | 单元测试 | `npm test` | **0** | `ℹ tests 128 / ℹ pass 128 / ℹ fail 0 / duration_ms 5134` |
+| 2 | 角色守卫冒烟 | `node scripts/role_guard_smoke.mjs` | **0** | `role guard smoke ok` |
+| 3 | 公开 alpha 门禁 | `node scripts/public_alpha_gate.mjs` | **0** | 末行 `public alpha gate ok`，全 `[PASS]`、0 条 `[FAIL]`（含 `examples/launch-posts.md` 的存在性与"无过时发布承诺"检查——D-08 未搬故不受影响） |
+| 4 | 全量语法检查 | `for f in $(find shared scripts -name '*.mjs'); do node --check "$f"; done`（`set -e`） | **0** | `checked=81 files, all passed` |
+
+四步退出码 **0 / 0 / 0 / 0**。测试仍是串行（`--test-concurrency=1`），符合岗位补充说明历史教训。
+
+### 12.4 范围守住 / 明确没碰的
+
+- 报告列的 3 项 ⚠️ 风险（零引用扫描盲区、`ATS_CDP_PORT` 遗留命名、`ats_overrides` 僵尸字段）**按派遣单不在本轮范围，未碰**。
+- **N-3（CHANGELOG `[Unreleased]` 段提交范围少个 `^`）未改** —— 派遣单第 2 项限定"以报告实际列出的 N-1/N-2 为准"、且"两处文档瑕疵""只修这三项别顺手改别的"。报告把 CHANGELOG 单列为 N-3（非 N-1/N-2），并自行建议"交由下一次动 CHANGELOG 时顺手带走"。故本轮不动，留给 lead 定夺是否单独收尾。此点已在交付时向上明示，非静默跳过。
+
+---
+
+## 13. 收尾 commit（Round 13：补 N-3 + 纳入定稿）
+
+**commit `178fded`**（`docs(cleanup): fix CHANGELOG backfill range off-by-one + land cleanup spec`，2 文件 +31/-1）。本轮按派遣单只做两件、未扩大范围：① 补 N-3——`CHANGELOG.md:8` 的提交范围 `cf626d0..d9a4369`（`A..B` 记法不含 A，实测 37 条）改为 `cf626d0^..d9a4369`（含 A，实测 38 条），与段标题写的「38 commits」对齐，只加一个 `^`；② 把 lead 已建好的定稿文件 `docs/specs/project-cleanup.md` 一并 `git add` 入本 commit（未改其内容）。同一 commit 收掉，无对外动作（未 push、未碰远端）。报告点名的 3 项风险与其余未点名项一律未碰。本地 CI 四步串行全绿，退出码 0/0/0/0（见交付回执）。

@@ -1,9 +1,9 @@
 ---
 Topic: project-cleanup
 Created: 2026-07-22
-Status: in_progress
+Status: completed
 Owner: arnold-lead
-Updated: 2026-07-22
+Updated: 2026-07-23
 Type: refactor
 Parent_task: none
 Depends_on: none
@@ -38,3 +38,31 @@ Spawned_subtasks: none
 - Round 9 待拍板项: D-08 二选一 / UNCLEAR-5 是否升版打 tag / UNCLEAR-4 Arnold 配置入库（已本地 commit 未 push，反悔成本极低）。
 - Round 9 待办交接: 远端 7 个已合并分支的删除 + push 交 ops（`readme-banner` 远端已不存在，实际 7 个不是 8 个）。
 - Round 9 纪律提醒: hook 报本 topic 的 living doc `docs/specs/project-cleanup.md` 未建 — 按纪律属 lead 职责，builder 未代建。
+- Round 9: arnold-builder 完成 6 步（7 个 commit: ffc0499 / 6ed5301 / f171fce / fb162cf / 31a6d0a / a4e78ed）。产出: docs/active/2026-07-22_project-cleanup_BUILD.md
+- Round 9 证据: npm test 128/128、role_guard_smoke ok、public_alpha_gate 105 PASS 0 FAIL、81 文件 node --check、demo:check exit 0（ready 18 / eligible 215）
+- Round 9 偏差: ① DESIGN D-08 判错——examples/launch-posts.md 被 scripts/public_alpha_gate.mjs 硬引用 2 处，未归档待定；② git reset --hard 被危险命令 hook 拦下，改用 --soft 达同一终态；③ CHANGELOG 记在 [Unreleased] 不新开 v2.3.0（VERSION 仍 2.2.0 无 tag）；④ ARCHITECTURE 补的是 7 个技能不是 4 个；⑤ computer_use_locator 的 import 路径修正（node --check 查不出 import 解析，已用真实 import() 验证）
+- Round 10: lead 派 arnold-verify 做终点验收；同时把 3 项待定（D-08 / 版本号 / Arnold 配置是否入公开库）端给拍板人
+
+**关卡 2 决策**：🩺 🔒 [用户] 拍板 — Arnold 配置入公开库（不介意公开协作流程）；版本号先不发保持现状（改动留在 [Unreleased]）。D-08 由 lead 按工程判断定为 B（原地保留，门禁哨兵非历史垃圾）
+- Round 11: arnold-verify 终点验收，质量分 4/5 放行。CI 四步独立复跑退出码 0/0/0/0、README 8 链接全存在、13 处 rename 全 R、无虚报。产出: docs/active/2026-07-22_project-cleanup_VERIFY_REPORT.md
+- Round 11 抓到真 bug（Medium）: _unwired/computer_use_locator.mjs:80 运行时拼 join(__dirname,'cdp.mjs') 搬家后指向不存在路径；四道关卡（node --check/静态解析/顶层 import()/128 测试）全漏，真调 captureFrame 才现形。同类漏网已排查无第二处
+- Round 12: lead 派 builder 修 BUST-1 一行 + 顺带 N-1/N-2 文档瑕疵，同一 commit 收；修完 push 前再确认
+- Round 13: arnold-builder 完成 BUST-1 修复 + N-1/N-2（commit 7a6efbc，运行时验证过：改前报找不到模块、改后报网络层失败=路径已找对），CI 四步 0/0/0/0
+- Round 14: lead 建定稿 docs/specs/project-cleanup.md；决定本轮一并收 N-3（一个字符），派 builder 补 N-3 + 提交定稿
+- Round 15: arnold-builder 补 N-3（CHANGELOG cf626d0..d9a4369 → cf626d0^..d9a4369，含 A 后为 38 与段标题对齐）+ 定稿入库，commit 178fded，CI 四步 0/0/0/0
+- Round 16: 规整完成，10 个 commit（ffc0499/6ed5301/f171fce/fb162cf/31a6d0a/a4e78ed/7a6efbc/178fded 等），本地全绿零对外动作。等用户拍板 push + 删远端分支
+
+## 复盘（Retrospective）— 2026-07-23
+### ✅ 做对了什么
+- architect 第 2 轮自我推翻第 1 轮「代码无错放」结论，拉全量引用图实测出 8 个零引用模块——避免了"只看目录边界"的漏判
+- verify 不信施工自述、真调一次抓到四道自动关卡全漏的运行时路径 bug（BUST-1）——独立验收的价值实证
+### ❌ 哪里卡住 / 失败
+- architect 首派因账号月度消费上限触顶失败（非流程问题，重派即成）
+- DESIGN D-08 判错 launch-posts.md「零引用」（实际被门禁硬引用 2 处）——设计阶段引用核查有盲区，靠 builder+verify 兜住
+### 🔄 流程要不要改？
+- 一次性偶发，不改流程。DESIGN 的引用核查已在 §6 写了方法论，只是 D-08 这条漏执行；下次 architect 做删除清单时对每条都跑一遍引用图即可（已在 verify 报告留痕）
+
+**关卡 3 决策**：🩺 🔒 [用户] 拍板 — 授权对外动作：push 本地 main 9 个 commit 到 origin/main（设跟踪上游）+ 删除 7 个已合并远端分支（chore/changelog-fold-v2.2.0 / codex/public-alpha-release-gate / fix/lever-upload / refactor/extract-answer-buckets / refactor/extract-pure-logic / release/v2.2.0 / test/regression-harness）；feat/funnel-report-card 保留不动
+- Round 17: lead 派 arnold-ops 执行 push + 删远端分支
+- Round 17 完成: ops push 成功（d9a4369..178fded，9 个 commit，fast-forward 无 force，已设跟踪上游）+ 删除 7 个已合并远端分支成功。lead 独立复核终态：origin/main..main=0 完全同步，远端仅剩 origin/main 与 origin/feat/funnel-report-card
+- Round 18: 任务收口。安全警告说明——子代理侧报"删远端分支无可见授权"属视角误报（子代理看不到聊天层），授权真实存在且已记入关卡 3 决策锚点（含 7 个分支名逐个列出）

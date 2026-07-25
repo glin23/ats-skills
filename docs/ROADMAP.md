@@ -5,7 +5,7 @@
 
 ## 进行中
 
-- **项目规整**（`docs/active/2026-07-22_project-cleanup_DESIGN.md`）：git 对齐 / 文档三线制 / 死代码隔离 / 文档补账 / 垃圾清理 / 治理补丁六步。
+- （空）
 
 ## 排队中
 
@@ -20,5 +20,6 @@
 
 ## 已完成
 
+- **项目规整**（2026-07-23 完成，定稿 `docs/specs/project-cleanup.md`）：git 对齐 / 文档三线制 / 死代码隔离 / 文档补账 / 垃圾清理 / 治理补丁六步，10 个 commit 已推送，远端已合并分支清理完毕。
 - **onboarding 改版**（2026-06-13 上线）：一次性 intake、缺信息归纳压缩、按解锁岗位数排序、求职信生成。原始 PRD 已归档到 `docs/archive/PRD-v3.md`、`docs/archive/PRD-onboarding-ux.md`。
 - **公开 alpha 发布准备**：npx 安装入口、发布门禁 `npm run release:alpha`、演示前 `npm run demo:check`。
