@@ -37,10 +37,11 @@
   },
 
   "work_authorization": {
-    "visa_status": "Your work authorization status",
-    "authorized_to_work_us": true,
-    "requires_sponsorship_now": false,
-    "requires_sponsorship_future": true,
+    "_notes": "Ships EMPTY on purpose, same as legal_attestations and demographics. A pre-filled `true` here is byte-for-byte identical to a real answer, so no code downstream could tell 'the user told us' from 'the factory guessed'. These are three-state: true / false / null meaning never asked. Onboarding question A0 fills them via shared/record_profile_answers.mjs; while authorized_to_work_us or requires_sponsorship_future is null, a real batch refuses to start and asks instead of guessing.",
+    "visa_status": "",
+    "authorized_to_work_us": null,
+    "requires_sponsorship_now": null,
+    "requires_sponsorship_future": null,
     "salary_expectation_usd": ""
   },
 
@@ -52,11 +53,12 @@
   },
 
   "demographics": {
-    "race": "Prefer not to say",
-    "hispanic_or_latino": "Prefer not to say",
-    "gender": "Prefer not to say",
-    "veteran_status": "I am not a protected veteran",
-    "disability_status": "I do not wish to answer"
+    "_notes": "Ships EMPTY on purpose. Voluntary EEO self-disclosure is the user's to answer; a pre-filled value is indistinguishable from a real answer in code. Leave null unless the user explicitly states it — the drivers decline to answer these questions by default.",
+    "race": null,
+    "hispanic_or_latino": null,
+    "gender": null,
+    "veteran_status": null,
+    "disability_status": null
   },
 
   "resume_path": "/absolute/path/to/your_resume.pdf",

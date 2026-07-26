@@ -31,7 +31,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { answerWritePaths } from './missing_field_questions.mjs';
-import { PROVENANCE_SOURCES, isProvenanceSource, recordEntries } from './answer_provenance.mjs';
+import { PROVENANCE_SOURCES, backfillLegacy, isProvenanceSource, recordEntries } from './answer_provenance.mjs';
 import { validateProfileBundle } from './validate_user_profile.mjs';
 
 const EXIT_OK = 0;
@@ -216,6 +216,18 @@ export function main(argv, deps = {}) {
     return EXIT_VALIDATION;
   }
 
+  // The backup exists only for the window between the write and the validator.
+  // Leaving it behind would mean an unmanaged extra copy of someone's personal
+  // data sitting in the state directory forever, which is the kind of thing this
+  // round is trying to remove, not add.
+  unlinkSync(backupPath);
+
+  // Values that were already on disk before any of this existed get labelled
+  // once, honestly, as `legacy_unverified` — we know they are there, not who
+  // supplied them. Idempotent, and per ADR-4 it changes nothing about how those
+  // values are used; it only stops the record from implying they were answered.
+  const backfilled = backfillLegacy(args.home, profile, [...writePaths.keys()].filter((p) => !answers[p]));
+
   const provenance = recordEntries(args.home, changed, {
     source: args.source,
     asked_by: args.askedBy,
@@ -229,6 +241,7 @@ export function main(argv, deps = {}) {
     changed,
     skipped,
     provenance_written: changed.length,
+    provenance_backfilled: backfilled,
     provenance_entries: Object.keys(provenance.entries).length,
     validation: { ok: afterValidation.ok, issues: afterValidation.issues, warnings: afterValidation.warnings },
   }, null, 2));

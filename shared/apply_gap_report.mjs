@@ -180,6 +180,26 @@ function classifyField(field, outcome = {}) {
     return keys.every((key) => demographics[key] != null && demographics[key] !== '');
   };
 
+  // "Does the profile already hold the answer this category asks for?" — one
+  // entry per category the note table can produce, each mirroring the label-path
+  // rule for the same fact. A category with no entry here is never treated as
+  // answered, i.e. we ask rather than assume.
+  const nonEmpty = (obj) => Object.keys(obj || {}).length > 0;
+  const CATEGORY_ANSWERED = {
+    user_work_authorization: () => workAuthKnown(),
+    user_demographics_eeo: () => eeoValueKnown(lower),
+    user_full_address: () => fullAddressKnown,
+    user_legal_attestation: () => typeof legal.no_prohibited_possessor_status === 'boolean',
+    user_government_relative_compliance: () => typeof legal.relatives_in_federal_government_or_contractors === 'boolean',
+    user_compliance_relationship_or_restriction: () => typeof legal.conflicting_obligations === 'boolean' || nonEmpty(relationships),
+    user_earliest_start_date: () => !!standard.earliest_start_date,
+    user_language_or_skill_level: () => nonEmpty(standard.language_proficiency),
+    user_logistics_fact: () => nonEmpty(standard.location_logistics),
+    user_external_form_completion: () => nonEmpty(externalForms),
+    user_work_location_commitment: () => nonEmpty(standard.work_location_commitments),
+  };
+  const categoryAnswered = (category) => Boolean(CATEGORY_ANSWERED[category]?.());
+
   if (/captcha/.test(note) || /captcha/.test(lower)) return 'manual_captcha';
 
   // The field's OWN note, with no `outcome.reason` fallback. Three row-level
@@ -188,7 +208,14 @@ function classifyField(field, outcome = {}) {
   // reusing the `note` variable above would stamp the row's reason onto every
   // unrelated field in that row — a report that looks right and asks nonsense.
   const ownNote = String(field.note || '').toLowerCase();
-  if (NOTE_CATEGORY[ownNote]) return NOTE_CATEGORY[ownNote];
+  const noteCategory = NOTE_CATEGORY[ownNote];
+  if (noteCategory) {
+    // A note only tells us why the driver stopped at the time it ran. Result
+    // files are re-read after the user answers, so the profile gets the final
+    // say — otherwise the report keeps asking a question that has been answered
+    // and the loop never closes. Mirrors the label-path rules further down.
+    return categoryAnswered(noteCategory) ? 'agent_profile_backed' : noteCategory;
+  }
 
   if (/record|interview.*record|privacy|consent|data|gdpr|arbitration|certification|true and complete/.test(lower)) return 'agent_attestation';
   if (/confirm.{0,80}(information|application|resume).{0,80}(true|correct|accurate)|false statements|material omissions|acknowledge.{0,80}(true|correct|accurate)/.test(lower)) return 'agent_attestation';

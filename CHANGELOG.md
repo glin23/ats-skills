@@ -111,6 +111,34 @@ since shipped and now lives in `docs/archive/`; the current one is
   lookup deliberately reads `field.note` and not the row-level `outcome.reason`:
   three row reasons share a spelling with field notes, and the fallback would
   have labelled a GPA question a legal attestation.
+- **Answers now reach the profile through a command, not an instruction**
+  (2026-07-25). `SKILL.md` said "after the user answers, update the local profile
+  as needed" — a request aimed at a language model. `shared/record_profile_answers.mjs`
+  replaces it: it can only write paths that some question declares (the whitelist
+  is derived from `QUESTION_TEMPLATES`, so what we ask and what we may write
+  cannot drift apart), it checks types instead of coercing them (`"true"` is not
+  `true` when the subject is someone's work authorization), and it either updates
+  the profile completely or leaves it byte-identical. A companion
+  `answer_provenance.json` (chmod 600, fingerprints only, never values) records
+  where each answer came from; per ADR-4 it never affects form filling.
+- **A batch refuses to start while work authorization is unanswered**
+  (2026-07-25). One gate, one fact, on a measured rule: a fact earns a pre-batch
+  gate when its absence blocks 80%+ of rows, and today only
+  `authorized_to_work_us` and `requires_sponsorship_future` qualify. Everything
+  else still waits for a real form to ask. It is a hard `supervisor_preflight`
+  check rather than a warning — this file already emits five kinds of warning
+  and an automated flow walks past all of them — and `--dry-run` surfaces the
+  same gap in `profile_gate` so the queue gate can raise it while the user is
+  still reading the queue.
+- **The profile template stops answering work-authorization questions on the
+  user's behalf** (2026-07-25). `authorized_to_work_us: true`,
+  `requires_sponsorship_now: false`, `requires_sponsorship_future: true` and a
+  placeholder `visa_status` shipped in every install. A pre-filled `true` is
+  byte-for-byte what a real answer looks like, so the three-state guards added
+  earlier this week could never fire for anyone who started from the template.
+  All four now ship empty, with a `_notes` line explaining why, matching
+  `legal_attestations` and `demographics`. `validate_user_profile.mjs` already
+  accepted null, so no validator change was needed.
 - **The work-auth guard no longer fires on "advisable"** (`shared/answer_routing.mjs`):
   the label pattern used a bare `visa`, which matches inside `ad-visa-ble`. It is
   now `\bvisas?\b`. (A company literally named "Visa" still matches — there

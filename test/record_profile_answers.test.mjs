@@ -15,8 +15,8 @@ import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { QUESTION_TEMPLATES, answerWritePaths } from '../shared/missing_field_questions.mjs';
-import { fingerprint, readProvenance, sourceFor } from '../shared/answer_provenance.mjs';
-import { main as recordMain } from '../shared/record_profile_answers.mjs';
+import { fingerprint, readProvenance, recordEntries, sourceFor } from '../shared/answer_provenance.mjs';
+import { main, main as recordMain } from '../shared/record_profile_answers.mjs';
 import { onboardTestEnv } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -172,12 +172,25 @@ test('record_profile_answers restores the profile byte-for-byte when validation 
   // The validator is an independent contract that can grow rules at any time,
   // so the rollback path is exercised through the injected seam rather than by
   // waiting for a rule that today's type check happens not to cover.
+  //
+  // The seam is called twice — once before the write and once after — and only
+  // the second call may fail here. A validator that fails both times would exit
+  // at the pre-check and this test would pass while proving nothing.
+  let calls = 0;
   const code = recordMain(
     ['--json', JSON.stringify({ 'education.gpa': '3.9' }), '--source', 'user_answer', '--home', home],
-    { validate: () => ({ ok: false, issues: [{ severity: 'error', file: join(home, 'profile.json'), path: 'education.gpa', message: 'synthetic failure' }], warnings: [] }) },
+    {
+      validate: () => {
+        calls += 1;
+        if (calls === 1) return { ok: true, issues: [], warnings: [] };
+        return { ok: false, issues: [{ severity: 'error', file: join(home, 'profile.json'), path: 'education.gpa', message: 'synthetic failure' }], warnings: [] };
+      },
+    },
   );
 
+  assert.equal(calls, 2, 'the write must have happened before validation rejected it');
   assert.equal(code, 4);
+  assert.equal(existsSync(join(home, 'profile.json.bak')), false, 'the rollback must not leave a backup behind');
   assert.equal(digest(profilePath), before, 'a failed validation must leave the profile exactly as it was');
   assert.equal(JSON.parse(readFileSync(profilePath, 'utf8')).education.gpa, '3.4');
 });
@@ -221,8 +234,12 @@ test('record_profile_answers is idempotent: the same answer twice writes one pro
   assert.equal(digest(profilePath), afterFirst, 'a no-op run must not rewrite the profile');
 
   const provenance = readProvenance(home);
-  assert.equal(Object.keys(provenance.entries).length, 1);
   assert.equal(provenance.entries['legal_attestations.no_prohibited_possessor_status'].recorded_at, firstRecordedAt);
+  assert.deepEqual(
+    Object.keys(provenance.entries).sort(),
+    // the recorded answer plus the values that were already on disk, labelled once
+    ['education.gpa', 'legal_attestations.no_prohibited_possessor_status', 'personal.address_city', 'personal.address_country', 'personal.address_state'],
+  );
 });
 
 test('record_profile_answers --dry-run reports the change without making it', () => {
@@ -290,4 +307,69 @@ test('record_profile_answers rejects an unknown provenance source rather than in
   ]);
   assert.equal(run.code, 2);
   assert.equal(digest(join(home, 'profile.json')), before);
+});
+
+// --- argument handling, exercised in-process so the branches are measured ---
+
+test('record_profile_answers rejects malformed invocations before touching anything', () => {
+  const home = makeHome('mrw-rec-args-');
+  const before = digest(join(home, 'profile.json'));
+  const cases = [
+    [[], 'no --json at all'],
+    [['--json', '{oops', '--source', 'user_answer', '--home', home], 'unparseable JSON'],
+    [['--json', '["education.gpa"]', '--source', 'user_answer', '--home', home], 'a JSON array'],
+    [['--json', '{}', '--source', 'user_answer', '--home', home], 'an empty object'],
+  ];
+  for (const [argv, why] of cases) {
+    assert.equal(main(argv), 2, `${why} should be an argument error`);
+  }
+  assert.equal(digest(join(home, 'profile.json')), before);
+
+  assert.equal(
+    main(['--json', '{"education.gpa":"3.9"}', '--source', 'user_answer', '--home', join(home, 'nope')]),
+    2,
+    'a missing profile.json is an argument error, not a crash',
+  );
+});
+
+test('record_profile_answers refuses to turn a scalar into an object on the way to a leaf', () => {
+  const home = makeHome('mrw-rec-scalar-', { ...VALID_PROFILE, education: 'B.S. Marketing' });
+  const before = digest(join(home, 'profile.json'));
+  assert.equal(main(['--json', '{"education.gpa":"3.9"}', '--source', 'user_answer', '--home', home]), 3);
+  assert.equal(digest(join(home, 'profile.json')), before);
+});
+
+test('provenance labels pre-existing values legacy_unverified instead of claiming they were answered', () => {
+  // The one real user's profile predates all of this. Its values keep working
+  // untouched (ADR-4); the record simply refuses to imply anybody supplied them.
+  const home = makeHome('mrw-rec-legacy-', {
+    ...VALID_PROFILE,
+    education: { gpa: '3.4' },
+    standard_qa: { earliest_start_date: '2026-06-01' },
+  });
+
+  assert.equal(main(['--json', '{"demographics.gender":"Prefer not to say"}', '--source', 'user_answer', '--home', home]), 0);
+
+  const entries = readProvenance(home).entries;
+  assert.equal(entries['demographics.gender'].source, 'user_answer');
+  assert.equal(entries['education.gpa'].source, 'legacy_unverified');
+  assert.equal(entries['standard_qa.earliest_start_date'].source, 'legacy_unverified');
+  // Paths with no value are not labelled: there is nothing to be unsure about.
+  assert.equal('legal_attestations.no_prohibited_possessor_status' in entries, false);
+  // Nor are empty containers — `{}` is a shape placeholder, not an answer.
+  assert.equal('standard_qa.language_proficiency' in entries, false);
+  assert.equal('standard_qa.custom_facts' in entries, false);
+
+  // Idempotent: a second run neither relabels nor duplicates.
+  const firstSeen = entries['education.gpa'].recorded_at;
+  assert.equal(main(['--json', '{"demographics.race":"Prefer not to say"}', '--source', 'user_answer', '--home', home]), 0);
+  assert.equal(readProvenance(home).entries['education.gpa'].recorded_at, firstSeen);
+});
+
+test('recordEntries refuses an invented provenance source', () => {
+  const home = makeHome('mrw-prov-source-');
+  assert.throws(
+    () => recordEntries(home, [{ path: 'education.gpa', to: '3.9' }], { source: 'vibes' }),
+    /unknown provenance source/,
+  );
 });

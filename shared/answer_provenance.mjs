@@ -103,6 +103,15 @@ function valueAtPath(profile, path) {
   return node;
 }
 
+// null, "" and {} all mean "nothing here". An empty container is a shape
+// placeholder, not something a person supplied, and labelling it would make the
+// record claim knowledge it does not have.
+function hasContent(value) {
+  if (value == null || value === '') return false;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
 /**
  * One-time labelling of values that were already on disk before this file
  * existed. They keep working exactly as before (ADR-4); they are simply marked
@@ -117,7 +126,7 @@ export function backfillLegacy(home, profile, paths) {
   for (const path of paths) {
     if (doc.entries[path]) continue;
     const value = valueAtPath(profile, path);
-    if (value == null || value === '') continue;
+    if (!hasContent(value)) continue;
     doc.entries[path] = {
       source: 'legacy_unverified',
       value_fingerprint: fingerprint(value),
