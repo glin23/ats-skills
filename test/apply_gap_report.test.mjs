@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -82,6 +82,49 @@ function sorted(values) {
   return [...values].sort((a, b) => a.localeCompare(b));
 }
 
+// Runs the real CLI against a throwaway home + result dir and returns the report.
+function runGapReport(prefix, profile, outcomes) {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  const home = join(root, 'home');
+  const resultDir = join(root, 'run');
+  mkdirSync(home, { recursive: true });
+  mkdirSync(resultDir, { recursive: true });
+  writeFileSync(join(home, 'profile.json'), JSON.stringify(profile));
+
+  const summaryRows = [];
+  for (const outcome of outcomes) {
+    const resultPath = join(resultDir, `apply-result-${outcome.job_id}.jsonl`);
+    writeFileSync(resultPath, `${JSON.stringify(outcome)}\n`);
+    summaryRows.push({ row_id: outcome.job_id, result_file: resultPath });
+  }
+  const summaryPath = join(resultDir, 'summary.json');
+  writeFileSync(summaryPath, JSON.stringify({ rows: summaryRows }));
+
+  const jsonPath = join(resultDir, 'gap.json');
+  const run = spawnSync(process.execPath, [
+    'shared/apply_gap_report.mjs',
+    '--summary', summaryPath,
+    '--json-output', jsonPath,
+    '--md-output', join(resultDir, 'gap.md'),
+  ], { cwd: ROOT, env: onboardTestEnv(home), encoding: 'utf8' });
+
+  assert.equal(run.status, 0, run.stderr);
+  return { report: JSON.parse(readFileSync(jsonPath, 'utf8')), home, resultDir, summaryPath, jsonPath };
+}
+
+function categoryOf(report, label) {
+  for (const question of report.user_questions) {
+    if (question.examples.some((e) => e.label === label)) return question.category;
+  }
+  for (const action of report.agent_actions) {
+    if (action.examples.some((e) => e.label === label)) return action.category;
+  }
+  for (const blocker of report.system_blockers) {
+    if (blocker.examples.some((e) => e.label === label)) return blocker.category;
+  }
+  return null;
+}
+
 test('apply_gap_report separates factual user gaps from agent-fillable fields', () => {
   const root = mkdtempSync(join(tmpdir(), 'mrw-gap-'));
   const home = join(root, 'home');
@@ -132,7 +175,14 @@ test('apply_gap_report separates factual user gaps from agent-fillable fields', 
 
   assert.equal(run.status, 0, run.stderr);
   const report = JSON.parse(readFileSync(jsonPath, 'utf8'));
-  assert.deepEqual(report.user_questions.map((q) => q.category), ['user_full_address']);
+  // ADR-6 (2026-07-25, lead-authorised): this fixture asks `Gender` and
+  // `Are you Hispanic/Latino?` while `demographics` is empty in the profile.
+  // The old expectation `['user_full_address']` locked in the defect RISK_REPORT
+  // found: those two rows were filed under "the agent fills them from the
+  // profile" while the profile holds nothing to fill them from — a silent loop.
+  // The same assertion is re-run below on the --result-dir path (same fixture,
+  // same file, second invocation), so both instances move together.
+  assert.deepEqual(report.user_questions.map((q) => q.category), ['user_full_address', 'user_demographics_eeo']);
   assert.ok(report.agent_actions.some((a) => a.category === 'agent_attestation'));
   assert.ok(report.agent_actions.some((a) => a.category === 'agent_profile_backed'));
   assert.equal(report.retry_candidates.length, 1);
@@ -151,7 +201,7 @@ test('apply_gap_report separates factual user gaps from agent-fillable fields', 
 
   assert.equal(runFromDir.status, 0, runFromDir.stderr);
   const reportFromDir = JSON.parse(readFileSync(jsonFromDirPath, 'utf8'));
-  assert.deepEqual(reportFromDir.user_questions.map((q) => q.category), ['user_full_address']);
+  assert.deepEqual(reportFromDir.user_questions.map((q) => q.category), ['user_full_address', 'user_demographics_eeo']);
 });
 
 test('apply_gap_report does not re-ask facts already stored in profile', () => {
@@ -424,4 +474,144 @@ test('apply_gap_report condenses ABCDEFG categories without hard-bundling availa
   assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_earliest_start_date').unblocks_n_jobs, 2);
   assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_gpa').unblocks_n_jobs, 2);
   assert.equal(report.condensed_missing_questions.find((item) => item.group_id === 'user_language_or_skill_level').unblocks_n_jobs, 2);
+});
+
+// ---------------------------------------------------------------------------
+// F5 signal path: driver blocker -> gap report -> a question the user can answer.
+// Before 2026-07-25 `collectFields` pushed `b.question || b`, i.e. a plain
+// string, so the driver's precise `note` was dropped on the floor and the
+// question fell through to the label regex, which filed work authorisation and
+// EEO under `agent_profile_backed` ("fill it from the profile") while the
+// profile held nothing. That is the silent retry loop this suite locks shut.
+// ---------------------------------------------------------------------------
+
+test('apply_gap_report keeps the blocker note and routes it to the exact user category', () => {
+  const { report } = runGapReport('mrw-gap-note-', {}, [{
+    outcome: 'skip',
+    reason: 'profile_specific_answer_required',
+    job_id: 501,
+    company: 'Note Co',
+    blockers: [
+      { question: 'Are you legally authorized to work in the United States?', note: 'work_authorization_required', detail: null },
+      { question: 'Will you now or in the future require sponsorship for employment visa status?', note: 'sponsorship_future_required', detail: null },
+      { question: 'Are you a fugitive from justice?', note: 'legal_attestation_required', detail: null },
+      { question: 'Have you completed the deemed export license review?', note: 'export_control_answer_required', detail: null },
+    ],
+    missing: [],
+  }]);
+
+  const categories = report.user_questions.map((q) => q.category);
+  assert.ok(categories.includes('user_work_authorization'), `work auth never became a question: ${categories.join(', ')}`);
+  assert.ok(categories.includes('user_legal_attestation'), `legal attestation never became a question: ${categories.join(', ')}`);
+  assert.equal(
+    categoryOf(report, 'Are you legally authorized to work in the United States?'),
+    'user_work_authorization',
+  );
+  assert.equal(
+    categoryOf(report, 'Will you now or in the future require sponsorship for employment visa status?'),
+    'user_work_authorization',
+  );
+  assert.equal(categoryOf(report, 'Are you a fugitive from justice?'), 'user_legal_attestation');
+  assert.equal(categoryOf(report, 'Have you completed the deemed export license review?'), 'user_legal_attestation');
+
+  // The whole point: the row must come back for a retry AND be flagged as
+  // needing a human answer, instead of being handed to the agent to "fill".
+  assert.equal(report.retry_candidates.length, 1);
+  assert.equal(report.retry_candidates[0].row_id, 501);
+  assert.equal(report.retry_candidates[0].requires_user_answer, true);
+  assert.equal(report.retry_candidates[0].agent_can_handle, false);
+  assert.ok(!report.agent_actions.some((a) => a.category === 'agent_profile_backed'));
+
+  // Work authorisation is the one fact that blocks nearly every row, so it has
+  // to reach the onboarding candidate list too.
+  assert.ok(report.onboarding_candidates.some((o) => o.category === 'user_work_authorization'));
+});
+
+test('apply_gap_report never lets a row-level reason leak into an unrelated field', () => {
+  // `classifyField`'s legacy `note` variable is `field.note || outcome.reason`,
+  // and three row-level reasons share a spelling with field-level notes. If the
+  // new note lookup read that variable, this GPA question would be labelled a
+  // legal attestation and the user would be asked something nonsensical.
+  const { report } = runGapReport('mrw-gap-reason-leak-', {}, [{
+    outcome: 'skip',
+    reason: 'legal_attestation_required',
+    job_id: 601,
+    company: 'Leak Co',
+    remaining: [
+      { label: 'What is your GPA?' },
+      { label: 'What is your earliest start date for this position?' },
+    ],
+  }]);
+
+  assert.equal(categoryOf(report, 'What is your GPA?'), 'user_gpa');
+  assert.equal(categoryOf(report, 'What is your earliest start date for this position?'), 'user_earliest_start_date');
+  assert.ok(!report.user_questions.some((q) => q.category === 'user_legal_attestation'));
+});
+
+test('apply_gap_report stops asking once work auth and EEO are actually in the profile', () => {
+  const { report } = runGapReport('mrw-gap-known-facts-', {
+    work_authorization: {
+      visa_status: 'F-1 OPT eligible',
+      authorized_to_work_us: true,
+      requires_sponsorship_now: false,
+      requires_sponsorship_future: true,
+    },
+    demographics: {
+      race: 'Prefer not to say',
+      hispanic_or_latino: 'Prefer not to say',
+      gender: 'Prefer not to say',
+      veteran_status: 'Prefer not to say',
+      disability_status: 'Prefer not to say',
+    },
+  }, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 701,
+    company: 'Known Co',
+    remaining: [
+      { label: 'Are you legally authorized to work in the United States?' },
+      { label: 'Gender' },
+      { label: 'Are you Hispanic/Latino?' },
+    ],
+  }]);
+
+  assert.deepEqual(report.user_questions, []);
+  assert.ok(report.agent_actions.some((a) => a.category === 'agent_profile_backed'));
+});
+
+test('apply_gap_report treats a three-state work-auth field as unanswered unless it is a real boolean', () => {
+  // `"true"` is what a stale hand-edited profile looks like. Coercing it would
+  // put a claim about immigration status on a real form, so it counts as unknown.
+  const { report } = runGapReport('mrw-gap-string-true-', {
+    work_authorization: { authorized_to_work_us: 'true', requires_sponsorship_future: null },
+  }, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 801,
+    company: 'Coerce Co',
+    remaining: [{ label: 'Are you legally authorized to work in the United States?' }],
+  }]);
+
+  assert.deepEqual(report.user_questions.map((q) => q.category), ['user_work_authorization']);
+});
+
+test('every NOTE_CATEGORY key is a note some driver actually emits', () => {
+  // The driver -> report contract is a bare string, so a rename in a driver would
+  // not raise a syntax error anywhere. This turns it into a red test instead.
+  const src = readFileSync(join(ROOT, 'shared/apply_gap_report.mjs'), 'utf8');
+  const block = src.match(/const NOTE_CATEGORY = \{([\s\S]*?)\n\};/);
+  assert.ok(block, 'NOTE_CATEGORY table not found in shared/apply_gap_report.mjs');
+  const notes = [...block[1].matchAll(/^\s{2}([a-z0-9_]+):/gm)].map((m) => m[1]);
+  assert.ok(notes.length >= 16, `expected the full note table, found ${notes.length}`);
+
+  const producers = readdirSync(join(ROOT, 'shared'))
+    .filter((name) => name.endsWith('.mjs') && name !== 'apply_gap_report.mjs')
+    .map((name) => readFileSync(join(ROOT, 'shared', name), 'utf8'))
+    .join('\n');
+  for (const note of notes) {
+    assert.ok(
+      producers.includes(note),
+      `NOTE_CATEGORY key "${note}" is not emitted by any shared module; the driver contract drifted`,
+    );
+  }
 });

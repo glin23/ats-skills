@@ -60,6 +60,82 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **Main entry no longer dies on its first command** (2026-07-25). All 9 bash
+  blocks in `.claude/skills/mrweirdo-onboard/SKILL.md` did `cd "$MRWEIRDO_REPO_ROOT"`
+  while nothing ever set that variable: `cd ""` returns 0 without changing
+  directory, so the first command "succeeded" silently and the next one died
+  with a bare `No such file or directory` (exit 127) for anyone who did not
+  happen to start in the repo directory. Each block now resolves
+  `MRWEIRDO_HOME`/`MRWEIRDO_REPO_ROOT` itself with the same `${VAR:-default}`
+  form the 8 single-URL skills already used. The same unguarded `cd` was also
+  fixed in `mrweirdo-ashby-auto`, `mrweirdo-greenhouse-auto`, `mrweirdo-tracker`,
+  `mrweirdo-expand` and `mrweirdo-upskill` (11 more blocks) — the auto engines
+  are dispatched during a real batch, so they were on the same main chain.
+- **The tool no longer answers factual questions about the user it was never
+  told the answer to** (2026-07-25). Work authorization and future sponsorship
+  are three-state facts (yes / no / never asked), but `deriveWorkAuthAnswers()`
+  read them with a truthy check, so "no" and "never asked" both fell through to
+  the answer-bank defaults — which shipped as `Yes` for both. A user who had
+  explicitly recorded "not authorized to work in the US" still got `Yes` typed
+  onto a live form, and a user needing no sponsorship was made to claim they
+  need it. Now: `true` → Yes, `false` → No, missing → the row blocks as a
+  user-answer gap (`work_authorization_required` / `sponsorship_future_required`)
+  and the answer bank is not consulted for these two personal facts at all.
+- **Greenhouse now obeys that same rule — the 88% of the queue that the first
+  pass missed** (2026-07-25). The first pass fixed the shared decision function
+  and wired it into the Ashby driver only; `shared/greenhouse_apply_driver.mjs`
+  kept answering "Are you legally authorized to work in the US?" from
+  `BANK.yes_no_defaults.work_authorization` (`Yes`) and the sponsorship question
+  from `BANK.yes_no_defaults.sponsorship_future` (`Yes`), reading neither from the
+  profile. Measured on the eligible-but-unapplied queue, 256 of 292 rows are
+  Greenhouse. `answerMissing()` now runs the same `workAuthGapFor()` guard before
+  it answers anything, both value branches read `deriveWorkAuthAnswers()`, and the
+  "will you require future immigration support" branch blocks instead of falling
+  back to the bank. Real-run check across 6 profile shapes: before the fix all 6
+  answered `Yes` to every work-auth question; after it, "not authorized" answers
+  `No`, a citizen answers "no sponsorship needed", and the three never-asked
+  shapes fill nothing and surface the row as a user-answer gap.
+- **A blocked row now turns into a question instead of a silent retry loop**
+  (2026-07-25). The drivers were stopping correctly, but nothing downstream
+  listened. `collectFields()` pushed `b.question` — a plain string — so the
+  driver's `note` was dropped, and the surviving label then hit a catch-all
+  regex that filed work authorization, sponsorship and every EEO question under
+  `agent_profile_backed`, whose instruction reads *"do not ask the user, fill
+  from the existing profile"*. The profile held nothing to fill from, so the row
+  was retried, blocked again, and re-filed — with the user only ever seeing
+  "skipped". Now the whole blocker object is carried, a 16-entry note→category
+  table (each note verified to be emitted only when the profile is empty) runs
+  before the label regex, work-auth and EEO are profile-backed only when the
+  profile really holds the value, and the three new `user_*` categories are in
+  `RETRYABLE_CATEGORIES` so answering actually re-queues the rows. The note
+  lookup deliberately reads `field.note` and not the row-level `outcome.reason`:
+  three row reasons share a spelling with field notes, and the fallback would
+  have labelled a GPA question a legal attestation.
+- **The work-auth guard no longer fires on "advisable"** (`shared/answer_routing.mjs`):
+  the label pattern used a bare `visa`, which matches inside `ad-visa-ble`. It is
+  now `\bvisas?\b`. (A company literally named "Visa" still matches — there
+  "visa" really is a word. Unchanged, and it only over-asks, never over-answers.)
+- **Master's-degree question reads the profile** (`shared/greenhouse_apply_driver.mjs`):
+  it was hard-coded to `No`. It now uses `isGraduateDegreeProfile()`, whose
+  matching moved to the unit-tested `isGraduateDegree()` in
+  `shared/greenhouse_value_rules.mjs` and is word-anchored — the old unanchored
+  pattern read "ms" out of "Information Systems" and "ma" out of "Marketing".
+- **Veteran status defaults to declining, like the other EEO questions**
+  (`answer_bank.json`, both drivers' fallback banks, Ashby + Lever): the default
+  was the factual claim "I am not a protected veteran" while gender, race,
+  orientation and disability all correctly declined. `shared/profile.template.json`
+  now ships `demographics` as nulls — pre-filled values were byte-identical to a
+  real user answer, so no code could tell "the user said this" from "the factory
+  set this".
+- **Regression guards for all of the above**: `test/answer_routing.test.mjs`
+  covers the false / missing branches (previously only `true` was covered, which
+  is why this shipped green), plus a constant-function assertion; new
+  `test/personal_facts_guard.test.mjs` locks the EEO refusal defaults, the empty
+  demographics template and the master's-degree source line. New
+  `test/greenhouse_work_auth_driver.test.mjs` runs the shipped Greenhouse driver
+  itself (only the six browser-boundary functions are stubbed) against six
+  profile shapes, so the fill/block outcome is asserted on real driver code, not
+  on a re-implementation of it.
 - **Lever flow hardened for batch driving** (verified live 2026-05-28 by 5 real
   submitted Lever internships: everbridge, ekimetrics, endpointclinical,
   voltus, get-vocal). In `shared/lever_helpers.js`: (1) `waitForResumeStorageId`

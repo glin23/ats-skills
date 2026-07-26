@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
-import { buildMissingFieldRanking, condenseMissingQuestions } from './missing_field_questions.mjs';
+import { QUESTION_TEMPLATES, buildMissingFieldRanking, condenseMissingQuestions } from './missing_field_questions.mjs';
 import { atsHome } from './paths.mjs';
 import { onboardTmpDir } from './onboard_tmp.mjs';
 
@@ -88,12 +88,17 @@ function collectFields(obj) {
     });
   };
 
-  for (const b of obj.blockers || []) push(b.question || b, 'blocker');
+  // Push the whole blocker object, not `b.question`. fieldLabel() already falls
+  // back to `.question` for the label, and passing the object is the only way
+  // `note` survives — that note is the driver's precise reason for stopping and
+  // it is what turns a blocked row into a question the user can actually answer.
+  // Plain strings still work, so old result files keep parsing.
+  for (const b of obj.blockers || []) push(b, 'blocker');
   for (const item of obj.remaining || []) push(item, 'remaining');
   for (const item of obj.missing || []) push(item, 'missing');
   for (const item of obj.last_missing || []) push(item, 'last_missing');
   for (const item of obj.still_missing || []) push(item, 'still_missing');
-  for (const item of obj.pending || []) push(item.question || item, 'agent_pending');
+  for (const item of obj.pending || []) push(item, 'agent_pending');
 
   for (const pass of [obj.answer_pass?.first_pass, obj.answer_pass?.second_pass, obj.answer_pass]) {
     if (!pass) continue;
@@ -103,6 +108,33 @@ function collectFields(obj) {
 
   return fields;
 }
+
+// Note -> category. The driver already knows exactly why it stopped; matching
+// that note beats re-deriving intent from a form label written by whoever built
+// that particular application form.
+//
+// Every key here is emitted by a driver ONLY when the profile has no value for
+// the fact (verified line by line in greenhouse_apply_driver.mjs / answer_routing.mjs
+// on 2026-07-25), so a note match always means "nobody ever told us this".
+// A renamed note is caught by the grep guard in test/apply_gap_report.test.mjs.
+const NOTE_CATEGORY = {
+  work_authorization_required: 'user_work_authorization',
+  sponsorship_future_required: 'user_work_authorization',
+  legal_attestation_required: 'user_legal_attestation',
+  export_control_answer_required: 'user_legal_attestation',
+  current_residence_required: 'user_full_address',
+  profile_full_address_required: 'user_full_address',
+  specific_city_fact_unconfirmed: 'user_logistics_fact',
+  external_form_completion_required: 'user_external_form_completion',
+  contractual_obligations_answer_required: 'user_compliance_relationship_or_restriction',
+  company_relationship_answer_required: 'user_compliance_relationship_or_restriction',
+  government_related_relative_answer_required: 'user_government_relative_compliance',
+  english_fluency_answer_required: 'user_language_or_skill_level',
+  language_proficiency_not_in_profile: 'user_language_or_skill_level',
+  availability_commitment_answer_required: 'user_earliest_start_date',
+  part_time_availability_answer_required: 'user_earliest_start_date',
+  location_not_in_profile_preferences: 'user_work_location_commitment',
+};
 
 function classifyField(field, outcome = {}) {
   const label = compact(field.label);
@@ -131,10 +163,46 @@ function classifyField(field, outcome = {}) {
     return null;
   })();
 
+  const demographics = PROFILE.demographics || {};
+  const auth = PROFILE.work_authorization || {};
+  // Three-state: only a real boolean counts as answered. A stale `"true"` string
+  // is treated as never-asked rather than coerced into a claim about visa status.
+  const workAuthKnown = () => typeof auth.authorized_to_work_us === 'boolean'
+    && typeof auth.requires_sponsorship_future === 'boolean';
+  const eeoValueKnown = (text) => {
+    const keys = [];
+    if (/hispanic|latino|ethnic/.test(text)) keys.push('hispanic_or_latino');
+    if (/race/.test(text)) keys.push('race');
+    if (/gender/.test(text)) keys.push('gender');
+    if (/veteran/.test(text)) keys.push('veteran_status');
+    if (/disability/.test(text)) keys.push('disability_status');
+    if (!keys.length) return false;
+    return keys.every((key) => demographics[key] != null && demographics[key] !== '');
+  };
+
   if (/captcha/.test(note) || /captcha/.test(lower)) return 'manual_captcha';
+
+  // The field's OWN note, with no `outcome.reason` fallback. Three row-level
+  // reasons (profile_full_address_required / company_relationship_answer_required
+  // / legal_attestation_required) are spelled exactly like field-level notes, so
+  // reusing the `note` variable above would stamp the row's reason onto every
+  // unrelated field in that row — a report that looks right and asks nonsense.
+  const ownNote = String(field.note || '').toLowerCase();
+  if (NOTE_CATEGORY[ownNote]) return NOTE_CATEGORY[ownNote];
+
   if (/record|interview.*record|privacy|consent|data|gdpr|arbitration|certification|true and complete/.test(lower)) return 'agent_attestation';
   if (/confirm.{0,80}(information|application|resume).{0,80}(true|correct|accurate)|false statements|material omissions|acknowledge.{0,80}(true|correct|accurate)/.test(lower)) return 'agent_attestation';
-  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|do you live in|do you reside in|currently live|currently reside|current location|where are you located|where.*located|where.*based|unlimited and unrestricted authorization|legally authorized|authorized to work|require.{0,40}sponsor|sponsor.{0,40}immigration|maintain that authorization|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|gender|race|ethnic|hispanic|latino|veteran|disability|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
+  // Work authorisation and EEO used to sit inside the catch-all regex below and
+  // were therefore always "the agent fills this from the profile" — even for a
+  // profile that had never been told. Same shape as the GPA and language rules
+  // further down: profile-backed only when the profile actually holds the value.
+  if (/unlimited and unrestricted authorization|legally authorized|authorized to work|require.{0,40}sponsor|sponsor.{0,40}immigration|maintain that authorization/.test(lower)) {
+    return workAuthKnown() ? 'agent_profile_backed' : 'user_work_authorization';
+  }
+  if (/gender|race|ethnic|hispanic|latino|veteran|disability/.test(lower)) {
+    return eeoValueKnown(lower) ? 'agent_profile_backed' : 'user_demographics_eeo';
+  }
+  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|do you live in|do you reside in|currently live|currently reside|current location|where are you located|where.*located|where.*based|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
   if (/did you .*complete.*form|successfully complete.*form|complete the form below/.test(lower)) {
     if (externalForms.manual_external_forms === false || externalForms.auto_only === true) return 'system_external_form_auto_required';
     return 'user_external_form_completion';
@@ -177,75 +245,6 @@ function classifyField(field, outcome = {}) {
   return 'unknown_user_fact';
 }
 
-const QUESTION_TEMPLATES = {
-  user_full_address: {
-    priority: 1,
-    profile_paths: ['personal.address_street', 'personal.address_city', 'personal.address_state', 'personal.address_zip', 'personal.address_country'],
-    question: '请提供你的完整永久/邮寄地址：街道、城市、州、ZIP、国家。这个只保存在本地 profile，用来填写 ATS 地址题。',
-    answer_type: 'short_text',
-  },
-  user_earliest_start_date: {
-    priority: 2,
-    profile_paths: ['standard_qa.earliest_start_date'],
-    question: '你最早可以开始实习/part-time 的日期是什么？请给一个具体日期或月份，例如 2026-05-15 / May 2026。',
-    answer_type: 'short_text',
-  },
-  user_high_school_location: {
-    priority: 3,
-    profile_paths: ['standard_qa.high_school_location'],
-    question: '你的高中所在城市和州/国家是什么？例如 Beijing, China 或 Seattle, WA。',
-    answer_type: 'short_text',
-  },
-  user_government_relative_compliance: {
-    priority: 4,
-    profile_paths: ['legal_attestations.relatives_in_federal_government_or_contractors'],
-    question: '你是否有亲属目前在美国联邦政府、HHS/CDC、DoD/军方、相关政府 contractor，或政治任命岗位工作？请回答 Yes/No；如果 Yes，请简短说明。',
-    answer_type: 'yes_no_plus_detail',
-  },
-  user_language_or_skill_level: {
-    priority: 5,
-    profile_paths: ['standard_qa.language_proficiency'],
-    question: '表单问到了语言或技能水平。请列出你的真实水平，例如 Spanish: none/beginner/intermediate/fluent；或按题目说明回答。',
-    answer_type: 'short_text',
-  },
-  user_compliance_relationship_or_restriction: {
-    priority: 6,
-    profile_paths: ['legal_attestations.conflicting_obligations', 'standard_qa.company_relationships'],
-    question: '表单问到了 non-compete、供应商/合作伙伴/经销商关系或其他可能限制工作的合规事实。请按真实情况回答 Yes/No；如果 Yes，请简短说明。',
-    answer_type: 'yes_no_plus_detail',
-  },
-  user_gpa: {
-    priority: 7,
-    profile_paths: ['education.gpa'],
-    question: '你的本科 cumulative GPA 是多少？如果不想自动填写 GPA，也可以说“不填 GPA”。',
-    answer_type: 'short_text',
-  },
-  user_logistics_fact: {
-    priority: 8,
-    profile_paths: ['standard_qa.location_logistics'],
-    question: '表单问到了具体通勤/驾照/交通事实。请按真实情况回答该题；这类事实不能由系统猜。',
-    answer_type: 'short_text',
-  },
-  user_work_location_commitment: {
-    priority: 9,
-    profile_paths: ['standard_qa.work_location_commitments'],
-    question: '你是否愿意/能够按岗位要求到指定城市 onsite/hybrid 工作？请按城市回答 Yes/No，例如 Bay Area: Yes。',
-    answer_type: 'short_text',
-  },
-  user_external_form_completion: {
-    priority: 10,
-    profile_paths: ['standard_qa.external_form_confirmations'],
-    question: '有些岗位要求先完成一个外部表单，然后在 ATS 里确认。请打开对应岗位页面完成外部表单后告诉我 Yes；如果你不想做这个额外表单，我会跳过该岗位。',
-    answer_type: 'yes_no',
-  },
-  unknown_user_fact: {
-    priority: 20,
-    profile_paths: ['standard_qa.custom_facts'],
-    question: '有表单问到了系统无法安全推断的事实。请看下面原题，逐题给真实答案。',
-    answer_type: 'short_text',
-  },
-};
-
 function uniqBy(arr, keyFn) {
   const seen = new Set();
   const out = [];
@@ -267,19 +266,24 @@ function maybeJob(rowId, db) {
   }
 }
 
+// Missing from this set means the row is never re-queued, so a user who answers
+// the question sees nothing change. Any new user_* category must be listed here.
 const RETRYABLE_CATEGORIES = new Set([
   'agent_attestation',
   'agent_open_text',
   'agent_profile_backed',
   'user_compliance_relationship_or_restriction',
+  'user_demographics_eeo',
   'user_external_form_completion',
   'user_full_address',
   'user_government_relative_compliance',
   'user_gpa',
   'user_high_school_location',
   'user_language_or_skill_level',
+  'user_legal_attestation',
   'user_logistics_fact',
   'user_earliest_start_date',
+  'user_work_authorization',
   'user_work_location_commitment',
   'unknown_user_fact',
 ]);
@@ -406,7 +410,7 @@ const retry_candidates = [...retryMap.values()]
 
 const onboarding_candidates = user_questions
   .filter((q) => q.category !== 'unknown_user_fact')
-  .filter((q) => q.count >= 2 || ['user_full_address', 'user_earliest_start_date', 'user_government_relative_compliance'].includes(q.category))
+  .filter((q) => q.count >= 2 || ['user_full_address', 'user_earliest_start_date', 'user_government_relative_compliance', 'user_work_authorization'].includes(q.category))
   .map((q) => ({
     category: q.category,
     count: q.count,
