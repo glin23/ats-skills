@@ -1037,8 +1037,8 @@ function logEssayPending(rec) {
 }
 
 function addPendingQuestion(pending, item) {
-  if (!item?.question || !item?.selector) return;
-  if (pending.some((p) => p.question === item.question && p.selector === item.selector)) return;
+  if (!item?.question) return; // a selector is for typing the answer back, not what makes it a question
+  if (pending.some((p) => p.question === item.question)) return; // Ashby re-ids the field each attempt
   pending.push(item);
 }
 
@@ -1139,7 +1139,7 @@ async function main() {
             return null;
           })()
         `);
-        if (sel) addPendingQuestion(pendingForMainClaude, { question: m, selector: sel.sel, tag: sel.tag, note: a.note || null }); // note = why we stopped; the report routes on it
+        addPendingQuestion(pendingForMainClaude, { question: m, selector: sel?.sel || null, tag: sel?.tag || null, note: a.note || null }); // no text box (dropdown/radio) still gets asked
       }
       log('  answer', m.slice(0, 50), '→', JSON.stringify(a).slice(0, 100));
     }

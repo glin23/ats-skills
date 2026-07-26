@@ -20,7 +20,7 @@
 // it too. Residence, transport and legal facts have no such safety net.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { askAndQueue, BASE } from './ashby_driver_harness.mjs';
+import { askAndQueue, BASE, loadDriver } from './ashby_driver_harness.mjs';
 import { categoryOf, runGapReport } from './helpers.mjs';
 
 const RESIDENCE_LABEL = 'Do you currently live in the San Francisco Bay Area?';
@@ -79,6 +79,65 @@ test('gap report: an Ashby-blocked residence question becomes a user question, n
     report.retry_candidates.some((row) => row.row_id === 901 && row.requires_user_answer === true),
     `the row must be queued for a retry once answered: ${JSON.stringify(report.retry_candidates)}`,
   );
+});
+
+// Hole 2 (设计稿 §13.5): a blocked question only survived when the driver could
+// point at a TEXT BOX. `if (sel)` in main() plus `!item.selector -> return` in
+// addPendingQuestion meant a dropdown- or radio-shaped blocked question — which
+// is what work authorization, sponsorship and residence actually look like on a
+// real Ashby form — vanished question, note and all, leaving one bare label in
+// `missing`. A selector is a convenience for typing the answer back in; it is
+// not what decides whether the user gets asked.
+test('ashby driver: a dropdown-shaped blocked question reaches the pending list without a selector', async () => {
+  for (const [label, expected] of [
+    [AUTH_LABEL, 'work_authorization_required'],
+    [RESIDENCE_LABEL, 'specific_city_fact_unconfirmed'],
+  ]) {
+    const { res, pending } = await askAndQueue(BASE, label, null);
+    assert.equal(res.ok, false, `${label} must block: ${JSON.stringify(res)}`);
+    assert.equal(
+      pending.length,
+      1,
+      `a question with no text box still has to be asked: ${JSON.stringify(pending)}`,
+    );
+    assert.equal(pending[0].question, label);
+    assert.equal(pending[0].selector, null, 'no text box means selector null, not a dropped question');
+    assert.equal(pending[0].note, expected, 'the driver\'s reason must survive the missing selector');
+  }
+});
+
+test('ashby driver: the pending list dedupes on the question, not on the selector', async () => {
+  // Ashby re-renders the same question with a fresh generated id on every submit
+  // attempt, so a (question, selector) key let the same question in five times —
+  // and after the fix a selector-less copy would be a sixth.
+  const { addPendingQuestion } = await loadDriver(BASE);
+  const pending = [];
+  addPendingQuestion(pending, { question: AUTH_LABEL, selector: '#mrw_pending_a1b2c3', tag: 'input', note: 'work_authorization_required' });
+  addPendingQuestion(pending, { question: AUTH_LABEL, selector: '#mrw_pending_z9y8x7', tag: 'input', note: 'work_authorization_required' });
+  addPendingQuestion(pending, { question: AUTH_LABEL, selector: null, tag: null, note: 'work_authorization_required' });
+  assert.equal(pending.length, 1, `the same question must appear once: ${JSON.stringify(pending)}`);
+  assert.equal(pending[0].selector, '#mrw_pending_a1b2c3', 'the first entry wins, so a usable selector is not lost');
+
+  // The one thing that is still not a question: an entry with no question text.
+  addPendingQuestion(pending, { selector: '#q_2', tag: 'input', note: 'work_authorization_required' });
+  assert.equal(pending.length, 1, 'an entry with no question text is not a question');
+});
+
+// End to end for hole 2: the selector-less pending entry must survive the trip
+// to the gap report and become a question, not disappear.
+test('gap report: a dropdown-shaped Ashby blocker still becomes a user question', async () => {
+  const pending = [];
+  for (const label of [AUTH_LABEL, RESIDENCE_LABEL]) {
+    pending.push(...(await askAndQueue(BASE, label, null)).pending);
+  }
+  const { report } = runGapReport('mrw-ashby-nosel-', BASE, [{
+    outcome: 'essay_pending',
+    job_id: 903,
+    pending,
+    still_missing: pending.map((p) => p.question),
+  }]);
+  assert.equal(categoryOf(report, AUTH_LABEL), 'user_work_authorization');
+  assert.equal(categoryOf(report, RESIDENCE_LABEL), 'user_logistics_fact');
 });
 
 // The reverse guard: carrying the note must not re-route questions that were

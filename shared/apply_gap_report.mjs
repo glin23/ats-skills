@@ -134,7 +134,23 @@ const NOTE_CATEGORY = {
   availability_commitment_answer_required: 'user_earliest_start_date',
   part_time_availability_answer_required: 'user_earliest_start_date',
   location_not_in_profile_preferences: 'user_work_location_commitment',
+  relocation_commitment_policy_unset: 'user_work_location_commitment',
 };
+
+// Dynamic notes. When a driver stops on one specific field it appends that
+// form's own label to the note (`value_empty_for:what is your gpa?`,
+// `no_bucket_for:preferred name`), so an exact-match table can never hold them:
+// the suffix is unbounded. Every one of them therefore fell through to the
+// label rules below — the same guessing that filed a blocked residence question
+// under "the agent fills this from the profile" while the profile held nothing.
+//
+// The prefix carries one fact, and only one: at the moment the driver ran, it
+// had nothing to type here. That is not enough to name the fact (the label
+// rules still pick the bucket, so a GPA stays user_gpa with its own question and
+// its own write path), but it is exactly enough to rule out the one verdict the
+// driver's own state contradicts — `agent_profile_backed`, which is the only
+// label rule that never looks at the profile before claiming it holds the value.
+const EMPTY_VALUE_NOTE_PREFIXES = ['value_empty_for:', 'no_bucket_for:'];
 
 function classifyField(field, outcome = {}) {
   const label = compact(field.label);
@@ -196,7 +212,12 @@ function classifyField(field, outcome = {}) {
     user_language_or_skill_level: () => nonEmpty(standard.language_proficiency),
     user_logistics_fact: () => nonEmpty(standard.location_logistics),
     user_external_form_completion: () => nonEmpty(externalForms),
-    user_work_location_commitment: () => nonEmpty(standard.work_location_commitments),
+    // Not `nonEmpty(commitments)`: "he agreed to the Bay Area" says nothing
+    // about Denver, and treating it as an answer is how a question about a city
+    // he never named turns into "fill it from the profile" — asked of nobody,
+    // answered by nobody, row stuck. Mirrors the label rule for the same fact.
+    user_work_location_commitment: () => locationCommitment !== null,
+    unknown_user_fact: () => nonEmpty(standard.custom_facts),
   };
   const categoryAnswered = (category) => Boolean(CATEGORY_ANSWERED[category]?.());
 
@@ -208,6 +229,14 @@ function classifyField(field, outcome = {}) {
   // reusing the `note` variable above would stamp the row's reason onto every
   // unrelated field in that row — a report that looks right and asks nonsense.
   const ownNote = String(field.note || '').toLowerCase();
+  // Same source of truth, same trap: read the field's OWN note only. A row-level
+  // reason is spelled the same way (`outcome.reason` is `value_empty_for:...`
+  // whenever one field ran dry), so reading the fallback variable would mark
+  // every other field in that row as never-answered.
+  const driverFoundNoValue = EMPTY_VALUE_NOTE_PREFIXES.some((prefix) => ownNote.startsWith(prefix));
+  // Whatever the driver saw, the profile has the final say — otherwise a result
+  // file re-read after the user answers keeps asking the same question forever.
+  const noValueCategory = () => (categoryAnswered('unknown_user_fact') ? 'agent_profile_backed' : 'unknown_user_fact');
   const noteCategory = NOTE_CATEGORY[ownNote];
   if (noteCategory) {
     // A note only tells us why the driver stopped at the time it ran. Result
@@ -229,7 +258,7 @@ function classifyField(field, outcome = {}) {
   if (/gender|race|ethnic|hispanic|latino|veteran|disability/.test(lower)) {
     return eeoValueKnown(lower) ? 'agent_profile_backed' : 'user_demographics_eeo';
   }
-  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|do you live in|do you reside in|currently live|currently reside|current location|where are you located|where.*located|where.*based|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return 'agent_profile_backed';
+  if (/preferred name|primary phone|phone number|\bphone\b|^location$|where do you reside|where do you currently live|do you live in|do you reside in|currently live|currently reside|current location|where are you located|where.*located|where.*based|previously applied|previously interviewed|applied or interviewed|interviewed with|compensation|salary|pay|paid|expected.*paid|expect.*pay|background check|bachelor|attach|upload|resume|cv|cover letter file|expected graduation|graduation month|graduation year|what is your major|major \(and minor|which work style|work style\(s\)|notice period|if .*employee.*selected|provide the employee name|^company name$|^company$|^title$|^job title$|^(start|end) date (month|year)$|^end date year$/.test(lower)) return driverFoundNoValue ? noValueCategory() : 'agent_profile_backed';
   if (/did you .*complete.*form|successfully complete.*form|complete the form below/.test(lower)) {
     if (externalForms.manual_external_forms === false || externalForms.auto_only === true) return 'system_external_form_auto_required';
     return 'user_external_form_completion';

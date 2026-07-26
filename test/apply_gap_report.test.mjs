@@ -555,6 +555,162 @@ test('apply_gap_report treats a three-state work-auth field as unanswered unless
   assert.deepEqual(report.user_questions.map((q) => q.category), ['user_work_authorization']);
 });
 
+// ---------------------------------------------------------------------------
+// Dynamic notes. A driver that stops on a specific field appends the form's own
+// label to the note (`value_empty_for:what is your gpa?`,
+// `no_bucket_for:preferred name`), so the exact-match table above can never
+// hold them — every such note fell through to the label rules, the same guess
+// that filed a blocked residence question as "the agent fills this from the
+// profile". Round 28 measured this on GPA: it lands in the right bucket today
+// only because the report happens to have a `/gpa/` label rule.
+// ---------------------------------------------------------------------------
+
+test('apply_gap_report: "the profile was empty" outranks a label rule that says "fill it from the profile"', () => {
+  const { report } = runGapReport('mrw-gap-empty-prefix-', {}, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1001,
+    company: 'Prefix Co',
+    remaining: [
+      // Both labels match the catch-all `agent_profile_backed` rule, which is
+      // unconditional — it never looks at the profile. The driver already did.
+      { label: 'Preferred name', note: 'value_empty_for:preferred name' },
+      { label: 'What is your primary phone number?', note: 'no_bucket_for:what is your primary phone number?' },
+    ],
+  }]);
+
+  assert.equal(
+    categoryOf(report, 'Preferred name'),
+    'unknown_user_fact',
+    'the driver said it had nothing to type; the report may not answer "fill it from the profile"',
+  );
+  assert.equal(categoryOf(report, 'What is your primary phone number?'), 'unknown_user_fact');
+  assert.ok(!report.agent_actions.some((a) => a.category === 'agent_profile_backed'));
+});
+
+test('apply_gap_report: an empty-value note still loses to the profile once the user answers', () => {
+  // The closing half of the loop. Result files are re-read after the user
+  // answers, so a note that describes a past run must not keep asking forever —
+  // the same predicate the exact-match note table goes through.
+  const { report } = runGapReport('mrw-gap-empty-answered-', {
+    standard_qa: { custom_facts: { preferred_name: 'Al' } },
+  }, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1002,
+    company: 'Answered Co',
+    remaining: [{ label: 'Preferred name', note: 'value_empty_for:preferred name' }],
+  }]);
+
+  assert.deepEqual(report.user_questions, [], 'an answered fact must stop being asked');
+  assert.equal(categoryOf(report, 'Preferred name'), 'agent_profile_backed');
+});
+
+test('apply_gap_report: an empty-value note keeps the specific category when one exists', () => {
+  // The prefix says "nothing to type", not "we have no idea what this is". GPA
+  // has its own question and its own write path; downgrading it to the generic
+  // bucket would lose both.
+  const { report } = runGapReport('mrw-gap-empty-gpa-', {}, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1003,
+    company: 'GPA Co',
+    remaining: [
+      { label: 'What is your GPA?', note: 'value_empty_for:what is your gpa?' },
+      { label: 'What is your earliest start date?', note: 'value_empty_for:what is your earliest start' },
+    ],
+  }]);
+
+  assert.equal(categoryOf(report, 'What is your GPA?'), 'user_gpa');
+  assert.equal(categoryOf(report, 'What is your earliest start date?'), 'user_earliest_start_date');
+});
+
+test('apply_gap_report: a dynamic note on the ROW never leaks onto an unrelated field', () => {
+  // The trap 设计稿 §13.1 names by hand: `classifyField`'s legacy `note` variable
+  // is `field.note || outcome.reason`. If the prefix lookup read that variable,
+  // one blocked GPA field would drag every other field in the same row into
+  // "the user was never asked", including ones the profile can genuinely fill.
+  const { report } = runGapReport('mrw-gap-prefix-leak-', {
+    personal: { preferred_name: 'Al', first_name: 'Al', last_name: 'Doe' },
+  }, [{
+    outcome: 'skip',
+    reason: 'value_empty_for:what is your gpa?',
+    job_id: 1004,
+    company: 'Leak Co',
+    remaining: [{ label: 'Preferred name' }],
+  }]);
+
+  assert.equal(
+    categoryOf(report, 'Preferred name'),
+    'agent_profile_backed',
+    'a field with no note of its own must not inherit the row-level reason',
+  );
+});
+
+test('apply_gap_report: Ashby\'s relocation-policy blocker becomes the location question', () => {
+  const unset = runGapReport('mrw-gap-reloc-unset-', {}, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1005,
+    company: 'Reloc Co',
+    remaining: [{ label: 'Are you able to work from our Denver office?', note: 'relocation_commitment_policy_unset' }],
+  }]).report;
+  assert.equal(categoryOf(unset, 'Are you able to work from our Denver office?'), 'user_work_location_commitment');
+
+  const answered = runGapReport('mrw-gap-reloc-set-', {
+    standard_qa: { work_location_commitments: { Denver: true } },
+  }, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1006,
+    company: 'Reloc Co',
+    remaining: [{ label: 'Are you able to work from our Denver office?', note: 'relocation_commitment_policy_unset' }],
+  }]).report;
+  assert.equal(
+    categoryOf(answered, 'Are you able to work from our Denver office?'),
+    'agent_profile_backed',
+    'a commitment the user did state must stop being asked',
+  );
+});
+
+test('apply_gap_report: agreeing to one city is not an answer about a different city', () => {
+  // Found by running the real user's profile through both trees: the
+  // "has the profile answered this category" predicate for location was
+  // `commitments is not empty`, so a question about Denver counted as answered
+  // because he had once said yes to the Bay Area. The report then told the agent
+  // to fill it from the profile, the driver had nothing to fill it with, and the
+  // row sat blocked without anyone being asked. Location is per city, so the
+  // predicate has to be per city too.
+  const profile = { standard_qa: { work_location_commitments: { 'Bay Area': true, Singapore: false } } };
+  const report = runGapReport('mrw-gap-city-', profile, [{
+    outcome: 'skip',
+    reason: 'incomplete_form',
+    job_id: 1101,
+    company: 'City Co',
+    remaining: [
+      { label: 'Are you able to work from our Denver office?', note: 'location_not_in_profile_preferences' },
+      { label: 'This role is hybrid based in the Bay Area. Can you work from that office?', note: 'location_not_in_profile_preferences' },
+      { label: 'This role is onsite in Singapore. Can you work from that office?', note: 'location_not_in_profile_preferences' },
+    ],
+  }]).report;
+
+  assert.equal(categoryOf(report, 'Are you able to work from our Denver office?'), 'user_work_location_commitment');
+  assert.equal(
+    categoryOf(report, 'This role is hybrid based in the Bay Area. Can you work from that office?'),
+    'agent_profile_backed',
+    'a city he did commit to must not be asked again',
+  );
+  // Known and unchanged since batch A: the note path only knows "answered /
+  // not answered", so a city he DECLINED lands in agent_profile_backed rather
+  // than the sharper system_profile_declined_location the label rule produces.
+  // Not a regression and not this round's job (it needs categoryAnswered to
+  // return a verdict instead of a boolean) — locked here so it stays visible.
+  assert.equal(
+    categoryOf(report, 'This role is onsite in Singapore. Can you work from that office?'),
+    'agent_profile_backed',
+  );
+});
+
 test('every NOTE_CATEGORY key is a note some driver actually emits', () => {
   // The driver -> report contract is a bare string, so a rename in a driver would
   // not raise a syntax error anywhere. This turns it into a red test instead.
@@ -572,6 +728,19 @@ test('every NOTE_CATEGORY key is a note some driver actually emits', () => {
     assert.ok(
       producers.includes(note),
       `NOTE_CATEGORY key "${note}" is not emitted by any shared module; the driver contract drifted`,
+    );
+  }
+
+  // Same contract, same silence, for the dynamic notes: a driver that renames
+  // `value_empty_for:` would quietly go back to being classified by guesswork.
+  const prefixBlock = src.match(/const EMPTY_VALUE_NOTE_PREFIXES = \[([\s\S]*?)\];/);
+  assert.ok(prefixBlock, 'EMPTY_VALUE_NOTE_PREFIXES table not found in shared/apply_gap_report.mjs');
+  const prefixes = [...prefixBlock[1].matchAll(/'([a-z0-9_]+:)'/g)].map((m) => m[1]);
+  assert.ok(prefixes.length >= 2, `expected the prefix table, found ${prefixes.length}`);
+  for (const prefix of prefixes) {
+    assert.ok(
+      producers.includes(`'${prefix}'`),
+      `EMPTY_VALUE_NOTE_PREFIXES entry "${prefix}" is not emitted by any shared module; the driver contract drifted`,
     );
   }
 });
