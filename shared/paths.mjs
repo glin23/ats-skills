@@ -41,20 +41,97 @@ export const repoRoot = () => process.env.MRWEIRDO_REPO_ROOT || resolve(__dirnam
 // same file for the entry points that never reach Node.
 export const CONCIERGE_LOCK_FILE = '.concierge_run_active';
 
+// The other half of the pair, dropped INSIDE the sandbox and holding the path of
+// the home the note was left in. The note alone is a one-way check: it only
+// speaks when it is there, so forgetting to leave it — or deleting it halfway
+// through — turns the whole protection off without a word, which is the one
+// failure a silent guard cannot report. With both halves, a run that says "I am
+// a concierge sandbox" can insist that the note it depends on is still in place.
+export const CONCIERGE_SANDBOX_FILE = '.concierge_sandbox';
+
+const firstLine = (file) => readFileSync(file, 'utf8').trim().split('\n')[0].trim();
+
+// The person reading this is the machine's owner and does not program: the line
+// he needs is the FIRST line, in his own language, ready to copy. It used to
+// lead with "re-run with both switches", which points at the sandbox — and by
+// the time this message is most likely to appear (the note outlived the run) the
+// runbook has already deleted that sandbox. The action that fixes his machine is
+// deleting the note, so that goes first and the concierge case goes second.
+const refusalMessage = (lines) => `[mrweirdo] ${lines.join('\n')}`;
+
+const refuse = (message) => {
+  // Not `throw`: an uncaught throw prints `paths.mjs:51 / throw new Error( / ^`
+  // and a stack above the sentence that matters, which reads as "the program
+  // crashed" to the one person this message is written for. Nothing here is
+  // recoverable — every caller resolves the home once at import — so the honest
+  // shape is to say it plainly and stop. Exit 3 is the same code
+  // scripts/concierge_guard.sh uses, so both entrances behave alike.
+  console.error(message);
+  process.exit(3);
+};
+
 // Note this refuses the RESOLVED home, not "the variable was missing": the
 // `${VAR:-default}` idiom above sets the variable to the owner's own home, so a
 // missing-variable check would sail straight past the case that actually happens.
 const refuseIfLockedForConciergeRun = (home) => {
   const lock = join(home, CONCIERGE_LOCK_FILE);
   if (!existsSync(lock)) return;
-  const sandbox = readFileSync(lock, 'utf8').trim().split('\n')[0] || '<see the file>';
-  throw new Error(
-    `refusing to use ${home}: a concierge run is in progress, so this home is off limits.\n` +
-    `This run belongs in: ${sandbox}\n` +
-    'Re-run the command with both switches in front of it, e.g.\n' +
-    `  MRWEIRDO_HOME=${sandbox} MRWEIRDO_ONBOARD_TMP_DIR=${sandbox}/run-tmp node <script>\n` +
-    `When the concierge run is finished, delete ${lock}.`
-  );
+  const sandbox = firstLine(lock) || '（纸条里没写，打开这个文件看一眼）';
+  refuse(refusalMessage([
+    `这台电脑正在「帮别人跑」，所以你自己的家暂时上锁了：${home}`,
+    '',
+    '▶ 想跑你自己的求职？撕掉那张纸条就全部恢复正常。整行复制：',
+    `    rm ${lock}`,
+    '',
+    '▶ 还在帮别人跑？那是刚才那条命令漏了开关。这次代跑的家是：',
+    `    ${sandbox}`,
+    '  把命令改成下面这样重跑（前面两个开关一个都不能少）：',
+    `    MRWEIRDO_HOME=${sandbox} MRWEIRDO_ONBOARD_TMP_DIR=${sandbox}/run-tmp <刚才那条命令>`,
+    '',
+    '（什么都没写坏：它是拒绝干活，不是出错。）',
+  ]));
+};
+
+// The positive half: a home that declares itself a concierge sandbox may only be
+// used while the note it relies on is actually sitting in the owner's home,
+// pointing back here. Without this, "forgot to leave the note" and "deleted the
+// note early" leave every entry point quiet and unguarded — the guard would only
+// ever speak when it was already working.
+const refuseIfSandboxIsUnprotected = (home) => {
+  const marker = join(home, CONCIERGE_SANDBOX_FILE);
+  if (!existsSync(marker)) return;
+  const owner = firstLine(marker);
+  const trouble = (what, fix) => refuse(refusalMessage([
+    `这里是一次「帮别人跑」的沙箱：${home}`,
+    what,
+    '',
+    ...fix,
+    '',
+    '（在纸条贴回去之前，你自己的家是敞开的：任何一段漏了开关的命令都会悄悄写进去。）',
+  ]));
+  if (!owner) {
+    trouble(`但沙箱标记 ${marker} 里没写你自己的家在哪，没法确认纸条贴没贴。`, [
+      '▶ 回操作卡第 1 步，把那一段重新整段复制一次。',
+    ]);
+    return;
+  }
+  const lock = join(owner, CONCIERGE_LOCK_FILE);
+  if (!existsSync(lock)) {
+    trouble(`但你自己家里那张「勿入」纸条不见了：${lock}`, [
+      '▶ 整行复制，把纸条贴回去：',
+      `    echo "${home}" > ${lock}`,
+      '▶ 如果这次代跑已经结束，把沙箱删掉就行：',
+      `    rm -rf ${home}`,
+    ]);
+    return;
+  }
+  const pointsAt = firstLine(lock);
+  if (pointsAt !== home) {
+    trouble(`但你自己家里那张纸条指的是另一个地方：${pointsAt || '（空的）'}`, [
+      '▶ 两边对不上，说明有两次代跑串了。整行复制，让纸条指回这一次：',
+      `    echo "${home}" > ${lock}`,
+    ]);
+  }
 };
 
 // user state dir
@@ -64,6 +141,7 @@ const refuseIfLockedForConciergeRun = (home) => {
 export const atsHome = () => {
   const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
   refuseIfLockedForConciergeRun(home);
+  refuseIfSandboxIsUnprotected(home);
   return home;
 };
 

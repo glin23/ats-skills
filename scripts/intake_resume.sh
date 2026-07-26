@@ -14,7 +14,10 @@ esac
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 # Before the copy, not after: a resume is the one file that must never land in
 # somebody else's home, and the line above happily falls back to this machine's
-# owner when nothing was inherited.
+# owner when nothing was inherited. The guard reads both ways — it refuses the
+# owner's home while a concierge run holds it, and it refuses a concierge
+# sandbox whose note has gone missing from that home, which is the case nothing
+# used to notice.
 bash "$(dirname "${BASH_SOURCE[0]}")/concierge_guard.sh" "$MRWEIRDO_HOME"
 mkdir -p "$MRWEIRDO_HOME"
 
