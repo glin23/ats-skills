@@ -105,6 +105,67 @@ test('gap report: the fact he really answered stays answered, the others get ask
   assert.equal(categoryOf(report, 'Expected graduation month'), 'unknown_user_fact');
 });
 
+// ---------------------------------------------------------------------------
+// The catch-all `return` at the end of classifyField is this bucket's MAIN
+// entrance, not its edge case: the bucket is defined as "facts with no bucket
+// of their own", so every label that no named rule claims arrives here. The
+// finer "has THIS fact been answered" rule was first wired only into the two
+// paths that name a bucket up front (the note table and the label whitelist),
+// which left the main entrance still answering "never asked" for facts already
+// sitting in the profile — eight of the ten probes against the real profile's
+// eleven answered facts came back asked, including `us_citizen`, which he had
+// answered `false`. Three of them were also handed a key of their own
+// (`rate_your_excel_proficiency` next to the existing `excel_proficiency`), so
+// answering as instructed would have written a duplicate and asked again.
+// ---------------------------------------------------------------------------
+const CATCH_ALL_LABELS = [
+  ['Are you a US citizen?', 'value_empty_for:are you a us citizen?'],
+  ['What is your current city?', 'value_empty_for:what is your current city?'],
+  ['What is your permanent residence state?', 'no_bucket_for:permanent residence state'],
+  ['Rate your Excel proficiency', 'value_empty_for:rate your excel proficiency'],
+];
+
+test('gap report: the catch-all path stops asking a fact the bucket already holds', () => {
+  const { report } = runGapReport('mrw-gap-catchall-', {
+    standard_qa: { custom_facts: REAL_SHAPED_FACTS },
+  }, [blockedRow(2004, 'Catch-all Co', CATCH_ALL_LABELS)]);
+
+  for (const [label] of CATCH_ALL_LABELS) {
+    assert.equal(
+      categoryOf(report, label),
+      'agent_profile_backed',
+      `${label}: the answer is already in custom_facts, so the report may not ask for it again`,
+    );
+  }
+  assert.deepEqual(
+    report.user_questions.map((q) => q.category),
+    [],
+    'nothing here is still an open question',
+  );
+});
+
+test('gap report: the catch-all still asks for a fact nobody has answered', () => {
+  // The other half of the same rule. Making the catch-all consult the profile
+  // must not turn into "assume the profile holds it" — that is the exact bug
+  // the finer rule was introduced to kill, one level down.
+  const unanswered = [
+    ['Do you own a car?', 'value_empty_for:do you own a car?'],
+    ['Which shift do you prefer?', 'no_bucket_for:which shift do you prefer?'],
+  ];
+  const { report } = runGapReport('mrw-gap-catchall-open-', {
+    standard_qa: { custom_facts: REAL_SHAPED_FACTS },
+  }, [blockedRow(2005, 'Open Co', unanswered)]);
+
+  for (const [label] of unanswered) {
+    assert.equal(categoryOf(report, label), 'unknown_user_fact', `${label}: never answered, must still be asked`);
+  }
+  // And an empty value is still not an answer, at the catch-all entrance too.
+  const emptied = runGapReport('mrw-gap-catchall-empty-', {
+    standard_qa: { custom_facts: { ...REAL_SHAPED_FACTS, us_citizen: '' } },
+  }, [blockedRow(2006, 'Empty Co', [CATCH_ALL_LABELS[0]])]);
+  assert.equal(categoryOf(emptied.report, 'Are you a US citizen?'), 'unknown_user_fact');
+});
+
 test('gap report: answering under the key the report itself hands out ends the question', () => {
   // The closing half of the loop, and the reason the report publishes a key at
   // all: if the key were left to whoever writes the answer, the next run would

@@ -309,7 +309,14 @@ function classifyField(field, outcome = {}) {
   if (source === 'agent_pending'
       || /essay_answer_required/.test(note)
       || /why|explain|describe|tell us|share|interested|experience|gap|cover letter|writing sample/.test(lower)) return 'agent_open_text';
-  return 'unknown_user_fact';
+  // The bucket's main entrance, not its edge case: it holds the facts with no
+  // bucket of their own, which is exactly what reaches this line. Returning the
+  // bucket flat used to ask every such fact again on every run no matter what
+  // the user had already written — eight of ten probes against the real
+  // profile's answered facts, `us_citizen` among them, which he answered
+  // `false`. Same predicate as the two paths above, so all three entrances
+  // agree on what "he already told us" means.
+  return noValueCategory();
 }
 
 function uniqBy(arr, keyFn) {
