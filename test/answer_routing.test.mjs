@@ -3,6 +3,9 @@
 // forms so a regression would fail here.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import {
   isSpecificCityLogisticsFact,
   isOpenEndedResidenceQuestion,
@@ -10,8 +13,14 @@ import {
   confirmedCitiesFrom,
   mentionsConfirmedCity,
   deriveWorkAuthAnswers,
+  workAuthGapFor,
   currentResidenceYesNoAnswer,
 } from '../shared/answer_routing.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// The REAL shipped answer bank — the 2026-07-23 defect was only reachable with
+// it, because its yes_no_defaults turned every non-true profile into "Yes".
+const SHIPPED_BANK = JSON.parse(readFileSync(join(ROOT, 'shared/answer_bank.json'), 'utf8'));
 
 test('isOpenEndedResidenceQuestion: answerable-from-profile prompts vs guarded named-city', () => {
   // Open-ended "state your residence" prompts — answerable from the profile city.
@@ -72,20 +81,121 @@ test('confirmedCities includes true work-location commitments, not declined plac
   assert.equal(mentionsConfirmedCity('Do you have confirmed plans to be in Singapore?', cc), false);
 });
 
-test('deriveWorkAuthAnswers: F-1 OPT answers Yes/Yes (never a false no-sponsorship)', () => {
+// --- Three-state work-authorization facts (yes / no / never asked) -----------
+// These are FACTS ABOUT THE USER'S PERSON. A missing profile value means "we
+// never asked", NOT "no" and NOT "yes" — it must block the row instead of
+// putting an invented statement on a real application form.
+
+test('deriveWorkAuthAnswers: explicit true -> Yes/Yes (F-1 OPT honesty preserved)', () => {
   const f1 = deriveWorkAuthAnswers(
     { work_authorization: { visa_status: 'F-1 OPT eligible', authorized_to_work_us: true, requires_sponsorship_future: true } },
-    {},
   );
   assert.equal(f1.sponsorAns, 'Yes');
   assert.equal(f1.authorizedAns, 'Yes');
-  // a user who needs no future sponsorship falls back to the bank default
-  const noSpon = deriveWorkAuthAnswers(
+  assert.equal(f1.sponsorNeedsUser, false);
+  assert.equal(f1.authorizedNeedsUser, false);
+});
+
+test('deriveWorkAuthAnswers: explicit false -> No, even under the SHIPPED answer bank', () => {
+  // A US citizen / green-card holder: needs no sponsorship. The old code sent
+  // "Yes, I need sponsorship" here, which gets a real user screened out.
+  const citizen = deriveWorkAuthAnswers(
     { work_authorization: { authorized_to_work_us: true, requires_sponsorship_future: false } },
-    { yes_no_defaults: { sponsorship_future: 'No' } },
+    SHIPPED_BANK,
   );
-  assert.equal(noSpon.sponsorAns, 'No');
-  assert.equal(noSpon.authorizedAns, 'Yes');
+  assert.equal(citizen.sponsorAns, 'No');
+  assert.equal(citizen.authorizedAns, 'Yes');
+
+  // An F-1 student without CPT/OPT yet: NOT authorized today. The old code
+  // said "Yes, I am authorized" — a false statement about the user.
+  const notAuthorized = deriveWorkAuthAnswers(
+    { work_authorization: { visa_status: 'F-1 (no CPT/OPT yet)', authorized_to_work_us: false, requires_sponsorship_future: true } },
+    SHIPPED_BANK,
+  );
+  assert.equal(notAuthorized.authorizedAns, 'No');
+  assert.equal(notAuthorized.sponsorAns, 'Yes');
+  assert.equal(notAuthorized.authorizedNeedsUser, false);
+});
+
+test('deriveWorkAuthAnswers: never asked -> blocks, never invents an answer', () => {
+  for (const profile of [{}, { work_authorization: {} }, { work_authorization: { authorized_to_work_us: null, requires_sponsorship_future: null } }]) {
+    const out = deriveWorkAuthAnswers(profile, SHIPPED_BANK);
+    assert.equal(out.authorizedAns, null, 'unknown authorization must not resolve to a value');
+    assert.equal(out.sponsorAns, null, 'unknown sponsorship need must not resolve to a value');
+    assert.equal(out.authorizedNeedsUser, true);
+    assert.equal(out.sponsorNeedsUser, true);
+    assert.equal(out.authorizedNote, 'work_authorization_required');
+    assert.equal(out.sponsorNote, 'sponsorship_future_required');
+  }
+});
+
+test('deriveWorkAuthAnswers is not a constant function (3 profiles -> 3 outcomes)', () => {
+  const shapes = [
+    { work_authorization: { authorized_to_work_us: true, requires_sponsorship_future: true } },
+    { work_authorization: { authorized_to_work_us: true, requires_sponsorship_future: false } },
+    {},
+  ].map((p) => JSON.stringify(deriveWorkAuthAnswers(p, SHIPPED_BANK)));
+  assert.equal(new Set(shapes).size, 3, `work-auth answers collapsed to a constant: ${shapes.join(' | ')}`);
+});
+
+test('workAuthGapFor: unknown personal facts block the matching form question', () => {
+  const unknown = {};
+  const authLabels = [
+    'Are you legally authorized to work in the United States?',
+    'Are you authorized to work in the US?',
+    'Do you have the right to work in the country of employment?',
+  ];
+  for (const label of authLabels) {
+    assert.deepEqual(
+      workAuthGapFor(label, unknown),
+      { needs_user_answer: true, note: 'work_authorization_required' },
+      `should block: ${label}`,
+    );
+  }
+  const sponsorLabels = [
+    'Will you now or in the future require sponsorship for employment visa status?',
+    'Do you need us to sponsor your work authorization?',
+    'What is your current visa status?',
+  ];
+  for (const label of sponsorLabels) {
+    assert.deepEqual(
+      workAuthGapFor(label, unknown),
+      { needs_user_answer: true, note: 'sponsorship_future_required' },
+      `should block: ${label}`,
+    );
+  }
+});
+
+test('workAuthGapFor: an answered profile never blocks; unrelated labels never block', () => {
+  const answered = { work_authorization: { authorized_to_work_us: false, requires_sponsorship_future: true } };
+  assert.equal(workAuthGapFor('Are you legally authorized to work in the United States?', answered), null);
+  assert.equal(workAuthGapFor('Will you require visa sponsorship in the future?', answered), null);
+  // Unrelated questions are untouched by this guard.
+  assert.equal(workAuthGapFor('What is your expected graduation date?', {}), null);
+  assert.equal(workAuthGapFor('How did you hear about this job?', {}), null);
+});
+
+test('workAuthGapFor: "visa" is matched as a WORD, not as a substring of another word', () => {
+  const unknown = {};
+  // Real work-auth phrasings must still block.
+  for (const label of [
+    'What is your current visa status?',
+    'Will you require visa sponsorship now or in the future?',
+    'Do you hold an H-1B visa?',
+    'Do any of your visas restrict your employment?',
+  ]) {
+    assert.ok(workAuthGapFor(label, unknown), `should still block: ${label}`);
+  }
+  // …but an unrelated question that merely CONTAINS the letters v-i-s-a must not
+  // be dragged into the work-authorization guard. Measured 2026-07-25: the bare
+  // `visa` token matched "ad-VISA-ble".
+  assert.equal(
+    workAuthGapFor('Would it be advisable to contact your current employer?', unknown),
+    null,
+    '"advisable" is not a work-authorization question',
+  );
+  // Known remaining limitation (unchanged, reported not fixed): a company
+  // literally named "Visa" still matches, because there "visa" IS a word.
 });
 
 test('currentResidenceYesNoAnswer uses profile address for named residence facts', () => {

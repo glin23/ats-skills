@@ -31,12 +31,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
-import { currentResidenceYesNoAnswer } from './answer_routing.mjs';
+import { currentResidenceYesNoAnswer, deriveWorkAuthAnswers, workAuthGapFor } from './answer_routing.mjs';
 import {
   availabilityCommitmentAnswer,
   bachelorProgressCandidates,
   gpaValue,
   graduationSelectValues as graduationSelectValueCandidates,
+  isGraduateDegree,
   hoursPerWeekAnswer as resolveHoursPerWeekAnswer,
   monthYear,
 } from './greenhouse_value_rules.mjs';
@@ -122,7 +123,7 @@ const FALLBACK_BANK = {
   yes_no_defaults: {
     work_authorization: 'Yes', sponsorship_future: 'Yes', willing_to_relocate: 'Yes',
     enrolled_in_university: 'Yes', rto_office_in_person: 'Yes',
-    veteran: 'I am not a protected veteran', disability: 'I do not want to answer',
+    veteran: "I don't wish to answer", disability: 'I do not want to answer',
     gender: 'I prefer not to answer', race: 'I prefer not to answer',
   },
   multichoice_preferences: {
@@ -164,8 +165,7 @@ function degreeSelectValue() {
 }
 
 function isGraduateDegreeProfile() {
-  const d = String(profileDegree || '').toLowerCase();
-  return /master|mba|m\.?s\.?|m\.?a\.?|doctor|ph\.?d/.test(d);
+  return isGraduateDegree(profileDegree);
 }
 
 function graduationSelectValues() {
@@ -709,8 +709,8 @@ function standardYesNoAnswerForLabel(labelText) {
       || /future.{0,80}(?:sponsor|immigration|employment authorization|government application|approval|renewal)/.test(lt)) {
     const requiresFuture = needsFutureSponsorship();
     const visa = String(PROFILE.work_authorization?.visa_status || '').toLowerCase();
-    const value = requiresFuture === false ? 'No' : (/f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visa) ? 'Yes' : (BANK.yes_no_defaults?.sponsorship_future || 'Yes'));
-    return { value, note: 'future_immigration_support' };
+    const value = requiresFuture === false ? 'No' : (requiresFuture === true || /f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visa) ? 'Yes' : null);
+    return value ? { value, note: 'future_immigration_support' } : { needs_user_answer: true, note: 'sponsorship_future_required' };
   }
   if (/verification of both.*identity.*authorization to work|provide verification.*authorization to work|i-?9/.test(lt)) {
     return { value: 'Yes', note: 'i9_verification' };
@@ -1508,10 +1508,10 @@ async function answerMissing(tab, labelText) {
     return { ok: false, note: 'current_location_fact_unhandled_field', detail: { ...currentLocationFact, field: f } };
   }
 
+  const workAuthGap = workAuthGapFor(labelText, PROFILE); // 3-state personal fact: never asked -> ask, never invent
+  if (workAuthGap) return { ok: false, note: workAuthGap.note, needs_user_answer: true, question: labelText };
   const standardYesNo = standardYesNoAnswerForLabel(labelText);
-  if (standardYesNo?.needs_user_answer) {
-    return { ok: false, note: standardYesNo.note, needs_user_answer: true };
-  }
+  if (standardYesNo?.needs_user_answer) return { ok: false, note: standardYesNo.note, needs_user_answer: true };
   if (standardYesNo?.value) {
     const standardCandidates = standardYesNo.candidates || [standardYesNo.value];
     if (f.is_react_select) {
@@ -1548,11 +1548,8 @@ async function answerMissing(tab, labelText) {
     return { ok: true, mode: 'essay_template_direct_field_fill', answer_len: templatedAnswer.length };
   }
 
-  // Bank defaults
-  const needsFutureSponsorship =
-    PROFILE.work_authorization?.requires_sponsorship_future ??
-    PROFILE.work_authorization?.needs_sponsor;
-  const sponsorVal = needsFutureSponsorship === false ? 'No' : (BANK.yes_no_defaults?.sponsorship_future || 'Yes');
+  // Work-auth facts: profile only, three-state. null = never asked (blocked at the top of answerMissing).
+  const { sponsorAns, authorizedAns } = deriveWorkAuthAnswers(PROFILE);
 
   // City / Location / Country
   if (/\b(?:location|city|country|state|province)\b/i.test(lt) || f.is_react_select) {
@@ -1566,8 +1563,8 @@ async function answerMissing(tab, labelText) {
       value = profileAddress.value;
       mode = 'async';
     }
-    else if (/master'?s|masters|graduate degree/i.test(lt)) { value = 'No'; mode = 'sync'; }
-    else if (/legally authorized|authorized to work|work authorization|work authorised/i.test(lt)) { value = BANK.yes_no_defaults?.work_authorization || 'Yes'; mode = 'sync'; }
+    else if (/master'?s|masters|graduate degree/i.test(lt)) { value = isGraduateDegreeProfile() ? 'Yes' : 'No'; mode = 'sync'; }
+    else if (/legally authorized|authorized to work|work authorization|work authorised/i.test(lt)) { if (!authorizedAns) return { ok: false, note: 'work_authorization_required', needs_user_answer: true }; value = authorizedAns; mode = 'sync'; }
     else if (/school|college|university/i.test(lt) && !/confirm|enrolled/i.test(lt)) { value = profileSchool; mode = 'async'; }
     else if (/completed.*bachelor|bachelor.*(?:completed|progress|working towards)|currently working towards.*bachelor/i.test(lt)) {
       return await reactSelectOneOf(tab, f.id, bachelorProgressCandidates(PROFILE), { mode: 'sync' });
@@ -1627,7 +1624,7 @@ async function answerMissing(tab, labelText) {
       return await reactSelectOneOf(tab, f.id, graduationSelectValues(), { mode: 'sync' });
     }
     else if (/\b(?:location|city)\b/i.test(lt)) value = preferredCandidateCity();
-    else if (/sponsor|work auth|visa/i.test(lt)) value = sponsorVal;
+    else if (/sponsor|work auth|visa/i.test(lt)) { if (!sponsorAns) return { ok: false, note: 'sponsorship_future_required', needs_user_answer: true }; value = sponsorAns; }
     else if (/enrolled.*university|currently enrolled/i.test(lt)) {
       value = educationEnrollmentAnswerForLabel(labelText).value;
       mode = 'sync';

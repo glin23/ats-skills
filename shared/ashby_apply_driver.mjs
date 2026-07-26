@@ -37,7 +37,7 @@ import {
   relocationPolicyOpen as routingRelocationPolicyOpen,
   confirmedCitiesFrom as routingConfirmedCities,
   mentionsConfirmedCity as routingMentionsConfirmedCity,
-  deriveWorkAuthAnswers,
+  deriveWorkAuthAnswers, workAuthGapFor,
 } from './answer_routing.mjs';
 import { matchAnswerBucket } from './answer_buckets.mjs';
 
@@ -147,7 +147,7 @@ const FALLBACK_BANK = {
     willing_to_relocate: 'Yes',
     enrolled_in_university: 'Yes',
     rto_office_in_person: 'Yes',
-    veteran: 'I am not a protected veteran',
+    veteran: "I don't wish to answer",
     disability: 'I do not want to answer',
     gender: 'I prefer not to answer',
     race: 'I prefer not to answer',
@@ -497,8 +497,8 @@ async function answerMissing(tab, missingLabel) {
   const ml = missingLabel.toLowerCase();
   const PNA = 'I prefer not to answer';
 
-  // Profile-derived defaults (profile overrides bank where present)
-  const { sponsorAns, authorizedAns } = deriveWorkAuthAnswers(PROFILE, BANK);
+  // Work-auth facts come from the profile ONLY (never BANK defaults); unanswered ones block below.
+  const { sponsorAns, authorizedAns } = deriveWorkAuthAnswers(PROFILE);
   const atsLocation = PROFILE.standard_qa?.current_location_for_ats || PROFILE.target_filters?.current_location_for_ats || '';
   const locationCity = BANK.location_preferences?.city || PROFILE.personal.address_city || PROFILE.personal.city || SEARCH_INTENT.user_summary?.school_location?.city || '';
   const locationState = PROFILE.personal.address_state || SEARCH_INTENT.user_summary?.school_location?.state || '';
@@ -509,7 +509,7 @@ async function answerMissing(tab, missingLabel) {
   const linkedin = PROFILE.personal.linkedin || BANK.fallback_text?.linkedin || '';
   const genderAns = BANK.yes_no_defaults?.gender || PNA;
   const raceAns = BANK.yes_no_defaults?.race || PNA;
-  const veteranAns = BANK.yes_no_defaults?.veteran || 'I am not a protected veteran';
+  const veteranAns = BANK.yes_no_defaults?.veteran || PNA; // EEO: decline, never assert a status
   const disabilityAns = BANK.yes_no_defaults?.disability || 'I do not want to answer';
   const rtoAns = BANK.yes_no_defaults?.rto_office_in_person || 'Yes';
 
@@ -537,13 +537,13 @@ async function answerMissing(tab, missingLabel) {
   // named/yes-no specific-city or transport fact stays guarded.
   const isOpenEndedResidence = routingIsOpenEndedResidence(ml);
   if (isSpecificCityLogisticsFact && !mentionsConfirmedCity && !isOpenEndedResidence) {
-    return {
-      ok: false,
-      note: 'specific_city_fact_unconfirmed',
-      pending_for_main_claude: true,
-      question: missingLabel
-    };
+    return { ok: false, note: 'specific_city_fact_unconfirmed', pending_for_main_claude: true, question: missingLabel };
   }
+
+  // Same rule for work authorization / sponsorship: three-state facts about the
+  // user. Never told = ask (pending), never an invented answer on a real form.
+  const workAuthGap = workAuthGapFor(missingLabel, PROFILE);
+  if (workAuthGap) return { ok: false, note: workAuthGap.note, pending_for_main_claude: true, question: missingLabel };
 
   const compensationExpectation = BANK.fallback_text?.compensation_expectations
     || "Open to discussion based on the role, location, and the company's standard internship or entry-level range.";

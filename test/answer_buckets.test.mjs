@@ -25,7 +25,7 @@ const CTX = {
   rtoAns: 'Yes',
   genderAns: PNA,
   raceAns: PNA,
-  veteranAns: 'I am not a protected veteran',
+  veteranAns: "I don't wish to answer",
   disabilityAns: 'I do not want to answer',
   cityFull: 'Boston, Massachusetts, United States',
   compensationExpectation: 'Open to discussion based on the role.',
@@ -85,7 +85,7 @@ test('compensation routes to a text fill with the comp expectation', () => {
 test('EEO gender/race/veteran/disability prefer-not-to-answer', () => {
   assert.equal(matchAnswerBucket('Gender', CTX).choice, PNA);
   assert.equal(matchAnswerBucket('Race/Ethnicity', CTX).choice, PNA);
-  assert.equal(matchAnswerBucket('Veteran status', CTX).choice, 'I am not a protected veteran');
+  assert.equal(matchAnswerBucket('Veteran status', CTX).choice, "I don't wish to answer");
   assert.equal(matchAnswerBucket('Disability status', CTX).choice, 'I do not want to answer');
 });
 

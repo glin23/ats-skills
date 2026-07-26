@@ -272,7 +272,7 @@ function answerForField(field = {}) {
   if (/gender/i.test(label)) return chooseOption(field, [demographics.gender, 'Prefer not', 'Decline']);
   if (/hispanic|latino/i.test(label)) return chooseOption(field, [demographics.hispanic_or_latino, 'Prefer not', 'Decline']);
   if (/race|ethnicity/i.test(label)) return chooseOption(field, [demographics.race, 'Prefer not', 'Decline']);
-  if (/veteran/i.test(label)) return chooseOption(field, [demographics.veteran_status, 'I am not a protected veteran', 'No']);
+  if (/veteran/i.test(label)) return chooseOption(field, [demographics.veteran_status, "I don't wish to answer", 'I prefer not to answer', 'Decline to self-identify']);
   if (/disability/i.test(label)) return chooseOption(field, [demographics.disability_status, 'I do not wish to answer', 'Prefer not']);
 
   return null;

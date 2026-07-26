@@ -175,6 +175,15 @@ export function gpaRangeCandidates(profile = {}) {
   return ['Below 3.0', '< 3.0'];
 }
 
+// Does the profile's degree string describe a GRADUATE degree (master's /
+// MBA / doctorate)? Word-anchored on purpose: an unanchored match would read
+// "ms" out of "Information Systems" and "ma" out of "Marketing", making an
+// undergraduate claim a master's degree on a real application form.
+export function isGraduateDegree(degree = '') {
+  const d = String(degree || '').toLowerCase();
+  return /\bmaster'?s?\b|\bmba\b|\bm\.?\s?s\.?\b|\bm\.?\s?a\.?\b|\bm\.?eng\b|\bph\.?\s?d\b|\bdoctora(?:l|te)\b/.test(d);
+}
+
 export function bachelorProgressCandidates(profile = {}) {
   const education = profile.education || {};
   const degree = String(education.degree || '').toLowerCase();

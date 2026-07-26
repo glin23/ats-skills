@@ -27,7 +27,7 @@ const CTX = {
   rtoAns: 'Yes',
   genderAns: PNA,
   raceAns: PNA,
-  veteranAns: 'I am not a protected veteran',
+  veteranAns: "I don't wish to answer",
   disabilityAns: 'I do not want to answer',
   cityFull: 'Boston, Massachusetts, United States',
   compensationExpectation: 'Open to discussion based on the role.',

@@ -167,16 +167,75 @@ export function currentResidenceYesNoAnswer(label = '', profile = {}) {
 }
 
 // --- Work authorization answers ---------------------------------------------
-// F-1 honesty: an OPT user is authorized NOW (Yes) and "Yes" to future
-// sponsorship — never the false "I will not require sponsorship". Profile
-// overrides the answer-bank defaults where present.
-export function deriveWorkAuthAnswers(profile = {}, bank = {}) {
+// These two profile fields are FACTS ABOUT THE USER'S PERSON and are THREE-STATE:
+//   true      -> the user told us yes
+//   false     -> the user told us no
+//   null/undef-> we never asked
+// Reading them with a truthy check collapses "no" and "never asked" into the
+// same branch. Before 2026-07-23 that branch fell back to the answer bank's
+// yes_no_defaults, which shipped "Yes" for both — so a user who had explicitly
+// said "I am NOT authorized to work in the US" still had "Yes" typed onto a
+// real application form, and a US citizen was told to claim they need visa
+// sponsorship. The bank is deliberately NOT consulted here any more: a shared
+// default cannot know a personal fact. "Never asked" returns null and the
+// caller must surface the row as a gap (see workAuthGapFor).
+// F-1 honesty is unchanged: an OPT user is authorized NOW (Yes) and answers Yes
+// to future sponsorship — never the false "I will not require sponsorship".
+function threeStateYesNo(value, requiredNote, fromProfileNote) {
+  if (value === true) return { value: 'Yes', needsUser: false, note: fromProfileNote };
+  if (value === false) return { value: 'No', needsUser: false, note: fromProfileNote };
+  return { value: null, needsUser: true, note: requiredNote };
+}
+
+export function deriveWorkAuthAnswers(profile = {}) {
   const auth = profile.work_authorization || {};
-  const sponsorAns = auth.requires_sponsorship_future
-    ? 'Yes'
-    : (bank.yes_no_defaults?.sponsorship_future || 'Yes');
-  const authorizedAns = auth.authorized_to_work_us
-    ? 'Yes'
-    : (bank.yes_no_defaults?.work_authorization || 'Yes');
-  return { sponsorAns, authorizedAns };
+  const sponsor = threeStateYesNo(
+    auth.requires_sponsorship_future,
+    'sponsorship_future_required',
+    'sponsorship_future_from_profile',
+  );
+  const authorized = threeStateYesNo(
+    auth.authorized_to_work_us,
+    'work_authorization_required',
+    'work_authorization_from_profile',
+  );
+  return {
+    sponsorAns: sponsor.value,
+    authorizedAns: authorized.value,
+    sponsorNeedsUser: sponsor.needsUser,
+    authorizedNeedsUser: authorized.needsUser,
+    sponsorNote: sponsor.note,
+    authorizedNote: authorized.note,
+  };
+}
+
+// Which form questions are answered FROM those two fields. Kept in sync with the
+// consuming buckets in answer_buckets.mjs (`authorized to work` / sponsorship /
+// `work auth|visa` / "maintain that authorization") and with the driver's own
+// combobox branches, so no question that would be filled from a work-auth fact
+// can slip past this guard.
+const WORK_AUTH_LABEL_RE = /authorized to work|legally.{0,5}work|eligible to work|right to work|authorized.{0,40}work.{0,20}u\.?s|legally authorized.{0,40}u\.?s/i;
+// `\bvisas?\b` and not a bare `visa`: measured 2026-07-25, the unbounded token
+// also fired on "ad-VISA-ble", pulling unrelated questions into this guard.
+const SPONSORSHIP_LABEL_RE = /sponsor|sponsorship|work auth|\bvisas?\b|(?:maintain|commence|continue|begin|support).{0,40}(?:authorization|immigration)|authorization.{0,15}to (?:work|employ|remain)|immigration case/i;
+// "…authorized to work WITHOUT sponsorship" has its own explicit-false-only
+// derivation in the drivers (authorizedWithoutSponsorship), so it is not routed
+// through the two fields above and is left to that path.
+const WITHOUT_SPONSORSHIP_LABEL_RE = /(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i;
+
+// Pure gap check: returns a blocking descriptor when the form asks about a
+// work-authorization fact we were never told, else null. Mirrors the shape used
+// by currentResidenceYesNoAnswer's blocking branch.
+export function workAuthGapFor(label = '', profile = {}) {
+  const text = String(label || '');
+  if (!text) return null;
+  if (WITHOUT_SPONSORSHIP_LABEL_RE.test(text)) return null;
+  const { authorizedNeedsUser, sponsorNeedsUser } = deriveWorkAuthAnswers(profile);
+  if (authorizedNeedsUser && WORK_AUTH_LABEL_RE.test(text)) {
+    return { needs_user_answer: true, note: 'work_authorization_required' };
+  }
+  if (sponsorNeedsUser && SPONSORSHIP_LABEL_RE.test(text)) {
+    return { needs_user_answer: true, note: 'sponsorship_future_required' };
+  }
+  return null;
 }

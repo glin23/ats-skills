@@ -7,8 +7,21 @@ import {
   gpaValue,
   graduationSelectValues,
   hoursPerWeekAnswer,
+  isGraduateDegree,
   monthYear,
 } from '../shared/greenhouse_value_rules.mjs';
+
+// "Do you hold a master's degree?" is a FACT about the user. Answering it from
+// a substring match ("...Marketing" contains "ma") would claim a degree the
+// user never earned, so the match must be word-anchored.
+test('isGraduateDegree: only real graduate degrees, no substring false positives', () => {
+  for (const yes of ["Master of Science", "Master's", 'Masters', 'MBA', 'M.S. Computer Science', 'MS', 'M.A.', 'PhD', 'Ph.D.', 'Doctorate', 'Doctoral program']) {
+    assert.equal(isGraduateDegree(yes), true, `should count as graduate: ${yes}`);
+  }
+  for (const no of ['Bachelor of Science', 'Bachelors', "Bachelor's Degree", 'B.S. Computer Science', 'BS in Marketing', 'Bachelor of Arts in Mathematics', 'Bachelor of Science in Information Systems', 'Associate of Arts', '', null, undefined]) {
+    assert.equal(isGraduateDegree(no), false, `must NOT count as graduate: ${no}`);
+  }
+});
 
 test('monthYear parses MM/YYYY and YYYY-MM, falls back on junk', () => {
   assert.equal(monthYear('05/2027'), 'May 2027');
