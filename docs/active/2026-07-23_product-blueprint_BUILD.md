@@ -2516,7 +2516,8 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
 - ☑ **UI**：本轮无界面改动；操作卡是给人读的文档，按验收点名的三处失效点改
 - ☑ **没顺手改无关老 bug**（§75 只报告不动手）
 - ☑ **变更日志已记**（登记表 `paths.changelog` 填了 → `CHANGELOG.md` 顶部 Fixed 段两条）
-- ☑ **边界**：未 push（`origin/main` 仍 `8f9e546`，本地 ahead **12** = 上两轮 8 + 本轮 4）；
+- ☑ **边界**：未 push（`origin/main` 仍 `8f9e546`，`git log origin/main..HEAD` 实数 **14** = 上两轮 8 + 本轮 6，
+  本轮 6 = 4 个改动提交 + 2 个本记录提交）；
   `batchA-backup` 未碰；无 force / rebase；未真投递 / 未开浏览器 / 未发邮件；未改 TASK 档案；未改 `.claude/settings.json`；
   `/tmp/mrweirdo-onboard` 一个文件没删（169 → 169）；创始人家目录 7205 条目零差异
 
