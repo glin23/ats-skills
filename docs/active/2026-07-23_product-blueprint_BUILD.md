@@ -4,7 +4,7 @@ Owner: arnold-builder
 Type: BUILD_NOTES
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 4
+Iterations: 5
 Updated: 2026-07-26
 ---
 
@@ -1102,3 +1102,300 @@ P1 的处置方式（出厂置空 + 缺值转问用户）与 DESIGN §10-I 对�
 | 10 | 变更日志（登记表 `paths.changelog`） | ✅ `CHANGELOG.md [Unreleased] → Fixed` 顶部加 2 条 |
 | 11 | 边界 | ✅ 未 push、未动远端、未真跑投递、未提交表单；`~/.mrweirdo-jobs/` 前后 mtime 快照 `diff` 逐行一致 = 零写入 |
 | 12 | 覆盖率 | 本轮改动都在**已有测试覆盖的文件**上，新增 6 条断言全部端到端驱动出货代码；三个新模块的 100% 行覆盖由 verify 独立复测过，本轮未动这三个文件 |
+
+---
+
+# 第 5 轮 — 排队中的两件小修（GPA 出厂预填 / Ashby 丢 note）
+
+> 边界遵守声明：**没有 push、没有动远端**（`origin/main` 仍是 `6e31883`，本轮 3 个提交全在本地）、
+> **没有真跑投递、没有提交任何表单、没有碰投递截图**。本地分支 `batchA-backup` 一行未动。
+> `~/.mrweirdo-jobs/` **零写入**：跑前跑后各取一次全目录 `stat` 快照，`diff` 逐行一致（下面第 41 节贴了）；
+> 唯一的只读访问是主流程冒烟 `npm run demo:check` 和一次「当前用户档案里有没有填过 GPA」的布尔判断。
+> **提交只 `git add` 了自己改的 8 个文件**，另一位成员正在改的 `..._DESIGN.md` 全程未 stage、未碰
+> （收尾时它仍留在工作区里未提交，见第 41 节的 `git status`）。
+> **第三件（投递截图文件名把失败标成成功）一行没碰**。
+
+## 36. 实现摘要
+
+3 个提交，改 6 个已跟踪文件 + 新增 2 个测试文件，净增 306 行 / 删 32 行。
+
+| 提交 | SHA | 内容 |
+|---|---|---|
+| 一 | `8e5a30b` | 出厂模板不再替用户报一个 3.9 的 GPA（含守卫 4 条 + 测试基建归位） |
+| 二 | `360ff2f` | Ashby 驱动把「为什么停下」的 note 带上待问清单（含 Ashby 驱动的第一个测试替身） |
+| 三 | `03cc729` | 变更日志两条 |
+
+| 文件 | 改了什么 | 行数变化 |
+|---|---|---|
+| `shared/profile.template.json` | `education.gpa: "3.9"` → `""`，并加 `_gpa_notes` 说明为什么必须空（与相邻 `work_authorization._notes` / `standard_qa._relocation_notes` 同体例） | 39 → 40 |
+| `shared/ashby_apply_driver.mjs` | `:1142` 的待问条目补 `note: a.note \|\| null`（同一行内） | **1170 → 1170（净增 0）** |
+| `test/personal_facts_guard.test.mjs` | GPA 守卫 4 条 | 230 → 297 |
+| `test/greenhouse_driver_harness.mjs` | `ask()` 增加第三个参数：题目渲染成什么控件（默认不变，仍是下拉框） | 106 → 116 |
+| `test/helpers.mjs` | `runGapReport()` / `categoryOf()` 从 `apply_gap_report.test.mjs` 搬来 | 24 → 80 |
+| `test/apply_gap_report.test.mjs` | 删掉搬走的两个函数，改 import | 566 → 534 |
+| `test/ashby_driver_harness.mjs`（新） | Ashby 驱动的测试替身，与 Greenhouse 那份同规矩 | +100 |
+| `test/ashby_pending_note.test.mjs`（新） | 3 条断言（含 1 条反向守卫） | +93 |
+
+### 件一 · 出厂模板预填 GPA 3.9
+
+处置**与已修的工作授权 / 学位 / 退伍军人 / EEO / 搬迁意愿逐字同款**：出厂置空，缺值时转为向用户提问。
+差别在派遣单点出的那一处——它不是三态布尔而是一个数值，所以"清空之后下游怎么办"必须实跑确认。
+**实跑结论（改后，全部真跑出货代码，见第 38 节）**：
+
+| 下游 | 没有 GPA 时的行为 |
+|---|---|
+| Greenhouse 驱动（文本框，真实表单的常见形态） | **阻塞**，note `value_empty_for:...`，**一个字都不填**（不是 `0`、不是 `""`） |
+| Greenhouse 驱动（下拉框） | 本来就没有 GPA 规则，改前改后都不作答（`no_value_rule_for_label`） |
+| Lever 驱动（文本框 / 下拉框） | 答案为空 → 进 `unresolved`，**什么都不输入** |
+| `greenhouse_helpers.js:372` | `addText()` 自带空值过滤（`String(val).trim() !== ''`），空值不进填表字典 |
+| 缺口报告 | 归 `user_gpa` → 进「该问用户」清单 + 精简问句，**不再是 `agent_profile_backed`** |
+| 答完之后 | 用现成的写回命令写进档案 → 同一份结果文件重跑，该题落回 `agent_profile_backed`、问句消失（闭环，第 38.3 节） |
+| 留痕 | 空值不再被 `answer_provenance` 标成 `legacy_unverified`（`hasContent()` 对 `""` 返回 false）——上一轮那条"自己把洞照出来"的记录随之消失 |
+
+**顺带实测的一条**：`gpaValue()` 是 `String(raw || '').trim()`，所以**连档案里真写着数字 0 都会被判空并阻塞**
+——"填 0"这个失败形态在这条路上不可能发生。代价见第 40 节遗留第 3 条。
+
+**对当前唯一真实用户零影响**：他自己的 `profile.json` 里 `education.gpa` 有值（只读核对过，未打印内容），
+出厂模板只在全新安装时被复制，不碰任何已有档案。
+
+### 件二 · Ashby `:1142` 构建待问清单时丢掉 `a.note`
+
+**修之前先实测，判断成立**（派遣单要求，第 37.1 节贴了原始输出）：驱动对 3 个真实题面分别返回
+`specific_city_fact_unconfirmed` / `work_authorization_required`，而出货那行造出来的待问条目是
+`{"question":…,"selector":"#q_1","tag":"input"}` —— **note 确实一个字都没带出来**。
+
+**后果也实测了，比自报的更具体**：把「今天的待问清单」和「带 note 的待问清单」分别喂给真的缺口报告命令：
+
+```
+题面                                                    改前              改后
+Do you currently live in the San Francisco Bay Area?   agent_profile_backed  ->  user_logistics_fact
+Do you have reliable transportation to our Austin …?   user_work_location_commitment -> user_logistics_fact
+Are you legally authorized to work in the United …?    user_work_authorization  ->  user_work_authorization（不变）
+```
+
+第一行是要害：`agent_profile_backed` 那一档的动作文案是「**不要问用户，从现有档案里填**」，
+而驱动恰恰是因为**档案里没有这个事实**才停下的。于是这一行的结局是「被拦下 + 永远不会被问 + 报告里看不出为什么」。
+工作授权那一行印证了自报的另一半：报告侧有它的题面兜底规则，所以**只有它**不受影响；
+居住地 / 通勤 / 法律声明没有这层网。
+
+**"同行修复、净增 0"这个判断也成立**：`ashby_apply_driver.mjs` 改前改后都是 **1170 行**
+（该文件早已超 800 行上限，按项目铁律只准变短不准变长）。
+
+## 37. TDD 落地证据（两件都先写守卫、先看它红）
+
+### 37.1 先实测确认缺陷存在（动手改之前）
+
+```
+shipped pending line: "        if (sel) addPendingQuestion(pendingForMainClaude, { question: m, selector: sel.sel, tag: sel.tag });"
+Do you currently live in the San Francisco Bay Area?   -> note=specific_city_fact_unconfirmed pending=true
+   | pendingItem={"question":"Do you currently live in the San Francisco Bay Area?","selector":"#q1","tag":"input"}   ← note 没了
+```
+
+```
+text  template(3.9)  What is your GPA?  -> ok=true mode=text_fill value="3.9" | fills: cdp:typetext="3.9"   ← 真会打到表单上
+```
+
+### 37.2 守卫先红（原始报错，未改一字）
+
+```
+✖ profile.template.json: GPA ships EMPTY, no number is invented for the user
+  AssertionError: education.gpa ships as "3.9"; that is a claim about the user's grades nobody made
+  '3.9' !== ''
+✖ greenhouse driver: a fresh install types no GPA onto the form
+  AssertionError: the factory template answered a GPA question it was never asked:
+  {"ok":true,"mode":"text_fill","value":"3.9"} [{"via":"cdp","args":["typetext","tab-1","#question_1","3.9"],"value":"3.9"}]
+✖ gap report: a fresh install is ASKED for a GPA instead of being answered from the template
+  AssertionError: a GPA nobody stated must become a question: []
+  + 'agent_profile_backed'  - 'user_gpa'
+✖ ashby driver: a blocked question keeps the driver's own reason on the pending list
+  AssertionError: the driver's reason was dropped on the way to the pending list:
+  {"question":"Do you currently live in the San Francisco Bay Area?","selector":"#q_1","tag":"input"}
+  + undefined  - 'specific_city_fact_unconfirmed'
+✖ gap report: an Ashby-blocked residence question becomes a user question, not "fill from profile"
+  AssertionError: a residence fact the driver refused to invent must be asked, not filed as "fill it from the profile"
+  + 'agent_profile_backed'  - 'user_logistics_fact'
+```
+
+5 条红。**另外 2 条新断言一开始就是绿的，我保留它们当反向守卫**（改完不许矫枉过正）：
+「用户自己报过 3.2 仍然照填 3.2 / 空值必须阻塞而不是填 `""` 或 `0`」、
+「Ashby 的作文待问题目仍归 `agent_open_text`，不许因为带上 note 就被改判」。
+
+### 37.3 改完全绿
+
+新增 7 条用例，全量 **183 → 190 条，pass 190 / fail 0**。
+
+**新测试怎么做到"跑真代码"**：`test/ashby_driver_harness.mjs` 与第 13 节那套 Greenhouse 替身同规矩
+——取出货源码、只把碰浏览器的两个函数（`cdp` / `evalInTab`）换成替身。**关键的一点**：
+被测的那行 `addPendingQuestion(...)` 长在 `main()` 肚子里，没法 import；替身**在加载时按字符串
+从出货源码里原样取出这一行**再包成函数，绝不在测试里重打一遍。取不到就直接报 `harness stale`。
+这样断言的是真产品那一行，不是我对它的复述。
+
+### 37.4 覆盖率（`node --test --experimental-test-coverage`，干净检出实测）
+
+| 模块 | 行覆盖 | 未覆盖行 |
+|---|---:|---|
+| `shared/apply_gap_report.mjs`（本轮两件的下游判定都在这） | **96.99%** | 23-24 / 38-39 / 44-51 / 107 / 272 / 289 / 292-293（既有 IO 与 CLI 兜底分支） |
+| `shared/answer_routing.mjs` | 89.63% | 均为本轮未动的住址 / 担保分支 |
+| `shared/profile.template.json` | 数据文件，无行覆盖概念 | 4 条守卫全部直接读出货文件 |
+| `shared/ashby_apply_driver.mjs` | CLI 入口，整体行覆盖不适用（不能被 import） | **本轮改的那一行由新测试逐字驱动**，见 37.3 |
+
+> 交付门槛那条「覆盖率 ≥80%」按本轮**实际改动面**报：改的是一个 JSON 数据值和一行驱动代码，
+> 两者都由端到端断言直接盯住；能算行覆盖的下游模块是 96.99%。不拿全仓库的 27% 平均数充数，也不谎报。
+
+## 38. 实跑验证（都在临时沙箱假家目录里，零浏览器、零投递）
+
+### 38.1 GPA：改后 4 种档案 × 2 种控件
+
+```
+控件       档案            题面                  结果
+文本框     ""（出厂）      What is your GPA?     BLOCK value_empty_for:…   typed=[]
+文本框     null            What is your GPA?     BLOCK value_empty_for:…   typed=[]
+文本框     0（数字）       What is your GPA?     BLOCK value_empty_for:…   typed=[]
+文本框     "3.2"（用户报过）What is your GPA?     FILL "3.2"                ← 没有矫枉过正
+下拉框     全部 4 种                             不作答（改前改后一致，本来就没有规则）
+```
+
+Lever 驱动同题（出货源码 + 同样的替身做法）：`""` → 答案为空 → `unresolved`，什么都不输入；
+`"3.2"` → 文本框填 `3.2`、下拉框选 `3.0 - 3.2`。
+
+### 38.2 Ashby note：见第 36 节那张改前 / 改后对照表（真跑缺口报告命令，不是推演）
+
+### 38.3 GPA 闭环（阻塞 → 提问 → 写回 → 不再问）
+
+用**出货的写回命令**在沙箱假家目录里跑完整条：
+
+```
+1) 出厂模板 → 缺口报告：user_questions = ['user_gpa']，精简问句里也有 user_gpa
+2) node shared/record_profile_answers.mjs --json '{"education.gpa":"3.4"}' --source user_answer   exit=0
+   落盘复核：education.gpa = "3.4"
+3) 同一份结果文件重跑报告：该题归 agent_profile_backed，user_questions = []，问句消失
+```
+
+**这条闭环回答了派遣单最关心的那句**：清空之后不是「卡住且没人问」，而是「卡住 → 问 → 答 → 通」。
+
+## 39. 自审记录（自述 → 自查 → 过关）
+
+**自述**：件一改的是一个出厂数据值，契约是「空 = 没人说过」；件二改的是一次对象构造，
+契约是「驱动停下的原因必须跟着问题一起交出去」。两件都不新增分支、不新增状态。
+
+**自查逐条**：
+- 有没有 `try/except` 压异常？→ 本轮**零新增 try/catch**（`grep` 核过）。
+- 有没有 mock 假数据兜底混进生产代码？→ 没有。两个替身都在 `test/` 下，且文件名不匹配 `*.test.mjs`、不会被当测试跑。
+- 空 / null / 超长 / 竞态？→ GPA 的 `""` / `null` / `0` / 正常值四种全实跑（38.1）；
+  `a.note` 为 undefined 时写入 `null`（不是 `undefined`，免得 JSON 序列化时整个键消失、下游又变成"没有 note"）。
+- 能否更简洁？→ 件二最短就是同一行加一个键；件一最短就是改一个值。都没有多写一行逻辑。
+- 每行都是需求要的吗？→ 是。唯一"额外"的是 `_gpa_notes`：与相邻两个块的 `_notes` 同体例，
+  防止下一个人看到空字符串以为是漏填又给它补个数字回去。
+
+**改完当用户用一次**：38.1 / 38.2 / 38.3 三段都是自己当用户跑的，不是"理论上应该可以"。
+
+## 40. 试过的错误方向（Iterations=5）
+
+**❌ 方向 1：把 Ashby 的待问条目构造抽成一个小函数（`pendingItemFor()`）再测它。**
+这是最"干净"的可测写法，我先按这个思路想的。**否决理由**：`ashby_apply_driver.mjs` 1170 行、
+早已超 800 行上限，按项目铁律**净增必须 = 0**，抽函数一定长。逼出的正确做法是第 37.3 节那个
+「从出货源码里原样取出那一行再包成函数」的替身——既没动产品文件的行数，测的又是真那一行。
+**这个约束反而让测试更硬**：抽函数只能证明抽出来的函数对，取原句能证明 `main()` 里那句对。
+
+**❌ 方向 2：Ashby 的测试直接照着源码把 `{ question, selector, tag, note }` 在测试里重打一遍再断言。**
+写起来最快，测试也会绿。**否决理由**：那样断言的是我抄的那份对象，产品那行改回去测试照绿——
+一条名字正确、断言正确、却什么都不证明的测试（第 21 节方向 5 踩过同款坑，这次提前认出来了）。
+
+**❌ 方向 3：GPA 清成 `null` 而不是 `""`。**
+直觉上「没答过」用 `null` 更贴近工作授权那几项的三态语义。**实算之后放弃**：
+① 报告侧两者行为完全一样（38.1 与闭环探针都跑了 `null`，同样归 `user_gpa`），所以不是对错问题；
+② 但写回命令给 `education.gpa` 声明的类型是 **string**，模板里同类"占位空值"的字符串字段
+（`visa_status` / `willing_to_relocate_scope` / `relocation_policy`）**清一色用 `""`**。
+挑 `null` 等于在同一份文件里给同一种状态发明第二种写法。**按既有约定走，不发明新写法。**
+
+**❌ 方向 4：只改模板、不管下游，认为"和前几项一样"。**
+派遣单专门提醒过这一条，我照做了实跑，抓到两处**与前几项确实不同**的地方：
+① GPA 的阻塞 note 是 `value_empty_for:<题面>`，它**不在** `NOTE_CATEGORY` 那张表里——
+这一题能被正确归类**全靠报告侧的题面规则** `/gpa/`，不是靠 note 通路（这也正是件二在别的题面上出事的同一个机制）；
+② 下拉框形态的 GPA 题**本来就没有任何规则**，改前改后都不作答。
+两条都不影响本轮结论，但如果不实跑，我会以为"和前几项完全同款"，第 40 节遗留第 1 条也就不会被发现。
+
+## 41. 交付自查清单（第 5 轮）
+
+**CI 四步全部跑在干净检出上**（`git worktree add --detach`，`git status` 0 个脏文件），
+不是我的工作副本 —— 上一轮就是栽在这里：
+
+| # | CI 步骤 | 命令 | 结果 | 退出码 |
+|---:|---|---|---|---:|
+| 1 | Unit tests | `npm test` | tests 190 / pass 190 / **fail 0** | **0** |
+| 2 | Role-guard smoke test | `node scripts/role_guard_smoke.mjs` | `role guard smoke ok` | **0** |
+| 3 | Public alpha release gate | `node scripts/public_alpha_gate.mjs` | `public alpha gate ok` | **0** |
+| 4 | Syntax-check all shared modules | `for f in $(find shared scripts -name '*.mjs'); do node --check "$f"; done` | 84 个文件全过 | **0** |
+
+**链上每个提交单独检出都绿**（同样是 `git worktree add --detach`，每棵树 `git status` 均 0 脏文件）：
+
+| 提交 | tests / pass / fail | exit |
+|---|---|---:|
+| `3164ba1`（本轮之前的基线） | 183 / 183 / 0 | 0 |
+| `8e5a30b` 件一 GPA | 187 / 187 / 0 | 0 |
+| `360ff2f` 件二 Ashby note | 190 / 190 / 0 | 0 |
+| `03cc729` 变更日志 | 190 / 190 / 0 | 0 |
+
+主流程冒烟（登记表 `ci_smoke.main_chain`）：在**干净检出**里跑 `npm run demo:check` → **exit 0**。
+两条 WARN 与前几轮同源、与本轮无关：`chrome_cdp_not_running`（我故意不开浏览器）、
+`supervisor_preflight_not_clean`（12 项检查里唯一 FAIL 就是 `cdp: fetch failed`，
+`work_authorization_answered` 仍是 OK，看板读数 `ready rows: 18 / eligible 215` 与前几轮一致）。
+
+逐条勾：
+
+- ☑ TDD：5 条守卫**先写、先看红**（原始报错见 37.2），改完全绿；自审循环跑了（第 39 节）
+- ☑ 测试全绿：190/190，干净检出上复核；覆盖率按实际改动面报（37.4），未拿平均数充数
+- ☑ 无端点 —— 本轮零接口 / 零路由 / 零出入参改动，API 8 项契约不适用（逐项确认：无 REST 路径、
+  无状态码、无出入参、无版本前缀、无限流、无跨域、无分页、无错误响应结构）
+- ☑ ◇ 主流程冒烟（登记表填了 `ci_smoke.main_chain`）：`demo:check` exit 0，证据在上
+- ☐ ◇ 结构升级双路 / ◇ 数据隔离字段 —— 登记表两格仍为空 → 跳过；且本轮无数据表结构变更
+- ☑ 无 `try/except` 压异常（本轮零新增 try/catch）；无 mock 假数据兜底进生产代码
+- ☑ 没顺手改无关老 bug：扫到的都写进第 42 节只报告未改；**第三件（截图）一行未碰**
+- ☑ 不涉及 UI 演示稿（本项目无 UI）
+- ☑ Iterations=5，第 40 节含 4 个被否决方向
+- ☑ 没用 fallback（兜底降级）/ workaround（绕行补丁）遮盖：缺 GPA 一律阻塞，不填 `0`、不填 `""`
+- ☑ 文件膨胀铁律：`ashby_apply_driver.mjs` **1170 → 1170（净增 0）**；其余文件均远低于 800 行
+- ☑ 变更日志（登记表 `paths.changelog`）：`CHANGELOG.md` `[Unreleased] → Fixed` 顶部加 2 条
+- ☑ 边界：未 push、未动远端（`origin/main` 仍 `6e31883`，本地 ahead 4）、未动 `batchA-backup`
+  （仍指 `71c3bef`）、未真跑投递、未提交表单、**未碰投递截图**
+- ☑ `~/.mrweirdo-jobs/` 零写入：跑前跑后 `stat` 全目录快照 `diff` 逐行一致（198 个条目，0 处差异）
+- ☑ 提交只 stage 自己的 8 个文件；收尾 `git status` 唯一脏文件是另一位成员的
+  `docs/active/2026-07-23_product-blueprint_DESIGN.md`（**我没 stage、没编辑、没读改**）
+- ☑ 用词：全文用「用户 / 投递 / 岗位」
+
+## 42. 发现的旧 bug 与遗留事项（**一行未改，只报告**）
+
+1. **`value_empty_for:<题面>` 这类 note 不在 `NOTE_CATEGORY` 表里**（第 40 节方向 4 实测发现）。
+   GPA 题今天能被正确归类，靠的是报告侧的题面规则 `/gpa/`，不是 note 通路。
+   也就是说：**驱动因为"档案里没这个值"而阻塞的所有文本字段，走的都是题面猜测这条路**。
+   件二证明了题面猜测会把「居住地」猜成 `agent_profile_backed`。**建议**：把
+   `value_empty_for:` 做成一个前缀匹配规则（"驱动说值是空的" → 按字段归到对应的 `user_*` 类目），
+   属于批次 B 的信号通路范畴，不该由我在本轮顺手加。
+2. **Ashby 的 `relocation_commitment_policy_unset`（`:644`）与 `no_bucket_for:<题面>`（`:633`）
+   两个 note 现在能到报告侧了，但表里没有它们**。本轮实测确认它们**不会变差**
+   （落回题面规则，与改前一致），但既然通路通了，把这两条补进 `NOTE_CATEGORY` 会让归类更准。
+   同样属批次 B。
+3. **真值为 0.0 的 GPA 会被判成"没填"**：`gpaValue()` 是 `String(raw || '').trim()`，
+   `0` 与 `"0"`（以及 `"0.0"` 之外的裸 0）会落进空值分支 → 阻塞而不是填 0。
+   方向安全（问用户而不是编造），但严格说是把"用户真的答了 0"误判成"没答"。**未改**：
+   改它要动 `gpaValue()` 的取值语义，超出派遣单两件事的范围。
+4. **`standard_qa.earliest_start_date: "MM/DD/YYYY"`**（BUILD 第 26 节第 2 条自报过的另一半）
+   **本轮未动**——派遣单只点了 GPA。它是占位符字符串而不是一个假事实，危害低于 GPA
+   （`"MM/DD/YYYY"` 是 truthy，同样会让报告认为"档案里有最早到岗日"）。建议与批次 C 的模板清理一起做。
+5. **第 16 节 A-K 那 11 处、第 27 节的 F5 / F6** 状态不变，本轮一行未碰。
+6. **第三件（投递截图文件名把失败标成成功）**：按派遣单**完全未碰**，等 architect 的整页截图设计。
+
+## 43. 偏离设计稿
+
+**零偏离**。本轮两件都来自我自己在 BUILD 第 26 节的自报清单 + 拍板人「一二三都做」的批复，
+不在设计稿的施工单范围内。件一的处置方式（出厂置空 + 缺值转问用户）与设计稿 §10-I（工作授权那节）
+**逐字同款**；件二填的是设计稿 §1.1（缺口报告信号通路那节）里「驱动侧已接线」这句话对 Ashby 不成立的那个洞
+——**建议 architect 在改设计稿时把这句话按平台分开写**（Greenhouse 成立、Ashby 到 2026-07-26 才成立）。
+
+## 44. 本项目铁律对照（`.claude/arnold/roles/builder.md`）
+
+| 铁律 | 遵守情况 |
+|---|---|
+| 测试必须**串行**跑 | ✅ 全程 `npm test`（脚本自带 `--test-concurrency=1`），未手工并行 |
+| 交活前把 CI **每一步**在本地跑一遍全绿，不能只跑 `npm test` | ✅ 四步全跑**且跑在干净检出上**，退出码见第 41 节 |
+| 主流程冒烟优先保证不断 | ✅ 干净检出里 `npm run demo:check` exit 0 |
