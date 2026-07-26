@@ -2,9 +2,9 @@
 Status: done_pending_review
 Owner: arnold-builder
 Type: BUILD_NOTES
-Reads: docs/active/2026-07-23_product-blueprint_TASK.md, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
+Reads: docs/active/2026-07-23_product-blueprint_TASK.md, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, test/ashby_driver_harness.mjs, test/helpers.mjs, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 5
+Iterations: 6
 Updated: 2026-07-26
 ---
 
@@ -1399,3 +1399,410 @@ Lever 驱动同题（出货源码 + 同样的替身做法）：`""` → 答案�
 | 测试必须**串行**跑 | ✅ 全程 `npm test`（脚本自带 `--test-concurrency=1`），未手工并行 |
 | 交活前把 CI **每一步**在本地跑一遍全绿，不能只跑 `npm test` | ✅ 四步全跑**且跑在干净检出上**，退出码见第 41 节 |
 | 主流程冒烟优先保证不断 | ✅ 干净检出里 `npm run demo:check` exit 0 |
+
+---
+
+# 第 6 轮（2026-07-26）：批次 B0 + B1
+
+> 边界遵守声明：**没有 push、没有动远端**（`origin/main` 仍 `8f9e546`，本地 ahead 3）、
+> **没有碰 `batchA-backup`**、没有 force / rebase / 改历史、**没有真跑投递 / 没提交任何表单 /
+> 没开浏览器碰真实网站 / 没发邮件**。`~/.mrweirdo-jobs/` **只读**（下面 51.4 有跑前跑后 stat 快照
+> 逐行一致的零写入证据）：只读它两次——① `npm run demo:check`（冒烟脚本自己读真实家目录）；
+> ② 第 49 节的「现有真实用户逐格零变化」对照（把真实 `profile.json` 读出来复制进临时沙箱家目录跑）。
+> 主入口 `mrweirdo-onboard/SKILL.md` **一行未碰**（496/500，改的是它引用的 references 文件）。
+
+## 45. 实现摘要
+
+3 个提交，13 个文件，**+997 / −28**（`git diff --numstat 8f9e546..HEAD`）。
+
+| 提交 | 内容 | 文件 |
+|---|---|---|
+| `8eb581c` | **B0**：Ashby 洞 2 + 缺口报告动态 note 前缀规则 | `ashby_apply_driver.mjs` `apply_gap_report.mjs` + 2 个测试 |
+| `66882ab` | **B1**：对号入座问法 + 身份映射 + 门给出口 + 引导说明书 | 新建 `work_auth_identity.mjs`、`personal_fact_gate.mjs` `missing_field_questions.mjs` `apply_batch.mjs` `supervisor_preflight.mjs` `intake-and-profile.md` + 2 个测试 |
+| `5e4f76a` | 变更日志 | `CHANGELOG.md` |
+
+**DESIGN 子任务进度**：§13.5（B0）✅ 全做完；§13.3（B1）✅ 全做完（第 1-5 项逐条对照见 47.5）；
+§13.4 / §13.6 / §13.7（B3-a / Lever / B3-b）**一行未碰**，按派遣单不在本轮。
+
+### 45.1 B0 洞 2：净增 0 的三处同行替换
+
+`shared/ashby_apply_driver.mjs` **1170 → 1170 行**（`wc -l` 实测，文件超 800 上限，净增必须 = 0）：
+
+| 位置 | 改前 | 改后 |
+|---|---|---|
+| `:1040` 守卫 | `if (!item?.question \|\| !item?.selector) return;` | `if (!item?.question) return;` |
+| `:1041` 去重键 | `p.question === … && p.selector === …` | `p.question === item.question` |
+| `:1142` 建条目 | `if (sel) addPendingQuestion(…, {…, selector: sel.sel, tag: sel.tag, …})` | `addPendingQuestion(…, {…, selector: sel?.sel \|\| null, tag: sel?.tag \|\| null, …})` |
+
+去重键为什么必须一起改：Ashby 每次提交重试都会给同一个字段生成新的 `mrw_pending_xxxxxx` id，
+旧的 `(题面, 选择器)` 键**本来就挡不住重复**（5 次 attempt = 同一道题进 5 次）；
+放宽守卫之后又会多一条 `selector: null` 的副本。改成只认题面，两个问题一起消失。
+
+### 45.2 B0 附加：动态 note 的前缀规则（`apply_gap_report.mjs` 564 → 589 行）
+
+`value_empty_for:<题面>` / `no_bucket_for:<题面>` 的后缀是**无界的**，精确匹配表永远装不下它们，
+所以它们**全部**落进「按题面猜」那条路——正是件二证明会把「居住地」猜成 `agent_profile_backed` 的那条路。
+
+**我按设计稿 §13.5 / 派遣单做的是前缀规则，但没有把它写成「前缀 → 类目」的查表**，理由见第 52 节偏离 1：
+前缀能说明的只有一件事——**驱动跑的那一刻档案里没值**。它**不足以说明是哪个事实**（后缀就是题面本身，
+按后缀分类等于绕一圈回到题面猜测），但**足以否掉唯一那个与驱动状态直接矛盾的结论**：
+`agent_profile_backed`（"档案里有，别问用户"）——它是全表**唯一一条不看档案就下结论**的规则（`:232` 那条大兜底）。
+所以具体归到哪个 `user_*` 仍由题面规则决定（GPA 照样是 `user_gpa`，保住它自己的问句与写回路径），
+前缀只负责把那一个错误结论挡掉。
+
+三个新增/改动：
+
+1. `EMPTY_VALUE_NOTE_PREFIXES = ['value_empty_for:', 'no_bucket_for:']`，只读 `field.note`（陷阱见 47.3）。
+2. `relocation_commitment_policy_unset` 进精确表 → `user_work_location_commitment`。
+3. **`CATEGORY_ANSWERED` 新增 `unknown_user_fact`**（`nonEmpty(standard_qa.custom_facts)`）——
+   前缀规则的降级结论也必须过「档案有最终发言权」这一关，否则用户答完之后同一题会被永远问下去
+   （DESIGN §13.1 第 1 行点名的那个闭环缺陷）。
+
+## 46. TDD 落地证据（先红后绿，原始报错原文）
+
+> 三批改动各自「先写测试、先看它红」，报错原文如下（不是事后补写）。
+
+### 46.1 B0 洞 2（`test/ashby_pending_note.test.mjs` 新增 3 条）
+
+```
+✖ ashby driver: a dropdown-shaped blocked question reaches the pending list without a selector
+  AssertionError: a question with no text box still has to be asked: []
+  0 !== 1
+
+✖ ashby driver: the pending list dedupes on the question, not on the selector
+  AssertionError: the same question must appear once: [{"question":"Are you legally authorized…","selector":"#mrw_pending_a1b2c3",…},
+                                                       {"question":"Are you legally authorized…","selector":"#mrw_pending_z9y8x7",…}]
+  2 !== 1
+
+✖ gap report: a dropdown-shaped Ashby blocker still becomes a user question
+  AssertionError: Expected values to be strictly equal:
+  + actual - expected
+  + null
+  - 'user_work_authorization'
+```
+
+改完：6/6 绿。**测的是出货那一行本身**——替身 `test/ashby_driver_harness.mjs` 在加载时
+从出货源码里 `find` 出 `addPendingQuestion(pendingForMainClaude, …)` 那一句原样执行（批次 A 建好的做法），
+所以我改回去测试一定红。
+
+### 46.2 B0 附加（`test/apply_gap_report.test.mjs` 新增 6 条）
+
+```
+✖ apply_gap_report: "the profile was empty" outranks a label rule that says "fill it from the profile"
+  AssertionError: the driver said it had nothing to type; the report may not answer "fill it from the profile"
+  + actual - expected
+  + 'agent_profile_backed'
+  - 'unknown_user_fact'
+
+✖ apply_gap_report: Ashby's relocation-policy blocker becomes the location question
+  AssertionError: Expected values to be strictly equal:
+  + actual - expected
+  + 'unknown_user_fact'
+  - 'user_work_location_commitment'
+```
+
+### 46.3 B1（`test/work_auth_identity.test.mjs` 新建 9 条 + `test/personal_fact_gate.test.mjs` 新增 4 条）
+
+第一次跑（模块还不存在）：
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/Users/lee/Projects/mrweirdo-jobs/shared/work_auth_identity.mjs'
+  imported from /Users/lee/Projects/mrweirdo-jobs/test/work_auth_identity.test.mjs
+```
+
+门那侧（模块已建、门未改）：
+
+```
+✖ the gate asks which kind of person he is, and hands back a runnable fix
+  AssertionError: The input was expected to not match /你有没有工作授权|你在美国的工作授权属于哪一种/. Input:
+  actual: '你在美国的工作授权属于哪一种？（A）美国公民或绿卡持有者；（B）F-1 学生签证，已经有 CPT/OPT…'
+
+✖ the gate does not ask twice in one batch once the user has said he cannot tell
+  AssertionError: nothing on record means nobody asked yet
+  actual: undefined, expected: false
+
+✖ an answered gate never reports itself as already asked
+  actual: undefined, expected: false
+```
+
+引导说明书守卫（说明书还没改）：
+
+```
+✖ the onboarding guide asks the same three questions, and no longer writes the deadlock down as normal
+  AssertionError: Q3 is not the question the guide tells the model to ask
+```
+
+### 46.4 测试数与覆盖率（真实数字，不拿平均数充数）
+
+`npm test`：**190（本轮之前）→ 212**，新增 **22 条**，全绿。
+
+| 模块 | line | branch | function |
+|---|---:|---:|---:|
+| `shared/work_auth_identity.mjs`（新建） | **100.00** | **100.00** | **100.00** |
+| `shared/personal_fact_gate.mjs` | **100.00** | **100.00** | **100.00** |
+| `shared/missing_field_questions.mjs` | 94.71 | 80.00 | 100.00 |
+| `shared/record_profile_answers.mjs`（本轮只读复用） | 100.00 | 85.19 | 100.00 |
+| `shared/answer_provenance.mjs`（本轮只读复用） | 100.00 | 90.00 | 100.00 |
+
+（`node --test --experimental-test-coverage test/*.test.mjs`）
+
+**诚实说明**：另外两个改动文件 `apply_gap_report.mjs`（CLI，被 `spawnSync` 真跑）与
+`ashby_apply_driver.mjs`（替身加载）**不进进程内覆盖率统计**，所以上表没有它们的行覆盖数字。
+它们的覆盖是**行为覆盖**：前者由 6 条新测试 + 第 49 节的 60 格对照矩阵真跑，后者由 3 条新测试
+执行出货源码里那一行。**我不把它们算进上面的百分比，也不用总覆盖率冒充它们。**
+
+## 47. 自审记录（MetaGPT 自述 + 自查，逐段过）
+
+### 47.1 `work_auth_identity.mjs`（新建 182 行，纯函数无 IO 无 import）
+
+**它做什么**：三个是非题的答案 → 四个档案字段。输入 `{citizenOrGreenCard, f1Student, workPermissionGranted, userWords}`，
+输出 `{situation, answers, unwritten_paths, needs_lookup}`；`answers` 可以原样喂给 `record_profile_answers.mjs`。
+
+**自查**：① 无 try/catch，非法输入一律 throw（漏斗没答完 / 答了不该答的题都是调用方的 bug，不兜底）；
+② 没有 mock 假数据；③ 字段名与 DESIGN §13.3 那张表逐格核过；④ 边界：`null` / `undefined` 都算「没问过」，
+`'unclear'` 是 Q3 的第三个合法值而不是 `null`——**「说不清楚」是一个答案，不是缺答**；
+⑤ 「说不清楚」且用户没留原话 → `answers` 是空对象（宁可 `visa_status` 空着，也不替他造一个"未知"标签）。
+
+### 47.2 `personal_fact_gate.mjs`（+50 行）
+
+**它做什么**：档案 → 「这批能不能开工」。改动是**返回值多了四个字段**（`asked_in_this_batch` /
+`blocked_because` / `where_to_check` / `what_happens_next`），判据本身（两个布尔是不是真布尔）**一行未动**。
+
+**自查**：① 仍然是纯函数（provenance 由调用方读了当参数传进来，模块本身不碰文件系统）；
+② `ok: true` 分支也补齐了同样的键，调用方不需要判断字段在不在（缺字段 = 隐式契约 = 下一个 bug）；
+③ `where_to_check` 返回 `[...WHERE_TO_CHECK]` 的拷贝，调用方改不坏共享常量。
+
+### 47.3 `apply_gap_report.mjs`（+33 −8）
+
+**陷阱复核（设计稿点名的那个）**：新增的 `driverFoundNoValue` **只读 `ownNote`**（= `field.note`），
+**没有** `outcome.reason` 兜底。这不是理论上的小心——行级 reason 与字段级 note 同名的情况本轮就有：
+`outcome.reason = 'value_empty_for:what is your gpa?'` 是真实存在的（一行里某个字段跑空，整行的 reason 就是它）。
+如果读了那个兜底变量，**同一行里所有别的字段都会被打上「没人答过」**。
+测试 `a dynamic note on the ROW never leaks onto an unrelated field` 就是钉这一条的：
+行级 reason 是 `value_empty_for:…`、字段自己没有 note、档案里有 `preferred_name` → 必须仍是 `agent_profile_backed`。
+
+**闭环复核**：`categoryAnswered` 谓词（批次 A 成果）**一条没删**，新增的前缀路径同样过这一关。
+
+### 47.4 `apply_batch.mjs` / `supervisor_preflight.mjs`（各 +9 / +7）
+
+只做接线：读 provenance → 传给门 → 阻塞时把三件东西打出来。
+**已经问过就不再重复问句、改打三条查证去处**（`asked_in_this_batch` 分支）。
+
+### 47.5 派遣单 B1 五项逐条对照
+
+| # | 派遣单要求 | 落在哪 | 证据 |
+|---:|---|---|---|
+| 1 | 新建 `work_auth_identity.mjs`，5 情形 × 4 字段 = 20 格逐格断言 | `shared/work_auth_identity.mjs` | `test/work_auth_identity.test.mjs` 的 `TRUTH_TABLE`，20 格全断言（"不写"的格子断言 `!(path in answers)`） |
+| 2 | 两条设计纪律写死在代码里 | 同上，文件头注释 + 表本身 | 「F-1 还没批下来」那一行 `authorized_to_work_us` 一个字节都不写；`requires_sponsorship_future` 对全部 F-1 情形 = `true` |
+| 3 | 「说不清楚」不许是死胡同：三件东西 + `asked_in_this_batch` | `personal_fact_gate.mjs` + 两个调用点 | 4 条门测试；`WHERE_TO_CHECK` 三条来自同一个常量（不许两处各抄一份） |
+| 4 | 引导侧：A0 改三个是非题、删矛盾那段、A2 加半句 | `.claude/skills/mrweirdo-onboard/references/intake-and-profile.md` | 说明书守卫测试（三条问句逐字比对 + 断言旧四选一与那句"让门去问"**不存在**） |
+| 5 | 与批次 A 三个模块对接，复用不重写 | — | `record_profile_answers` / `answer_provenance` / `missing_field_questions` **零改写**（只加了一个 import 与问句文本）；`work_auth_identity` 不 import 任何东西，无循环依赖 |
+
+## 48. 「说不清楚」的完整链路（自己当用户走一遍，不是理论上应该可以）
+
+```
+Q1 你是美国公民，或者持有绿卡（永久居民卡）吗？        → 否
+Q2 你是持 F-1 学生签证在美国读书的留学生吗？          → 是
+Q3 学校已经给你批下来可以工作的许可了吗？（EAD 卡 / I-20 上 CPT 那一栏） → 说不清楚
+
+workAuthAnswers() →
+  situation      = f1_permission_unclear
+  answers        = { work_authorization.visa_status: "<他的原话>" }      ← 三个布尔一个都不写
+  unwritten_paths= [authorized_to_work_us, requires_sponsorship_now, requires_sponsorship_future]
+  needs_lookup   = true
+
+record_profile_answers.mjs --source user_answer → 只写 visa_status，档案里三个布尔仍是 null（实跑断言过）
+
+blockingProfileGaps(profile, {visa_status_source:'user_answer'}) →
+  ok: false
+  blocked_because : 投递表单几乎每一份都会问你的工作身份，这一格我不能替你猜——猜错了两个方向都伤你。
+  where_to_check  : ① 学校国际学生办公室（OISS）② I-20 第 2 页 Employment Authorization 那一栏 ③ EAD 卡
+  what_happens_next: 这一批我先不投；你查到了跟我说一声，一条命令就能续上，已经排好的队列不会白排。
+  asked_in_this_batch: true      ← 主对话据此不再重复弹同一个问题
+  remediation_command: node shared/record_profile_answers.mjs --json '{…}' --source user_answer …
+```
+
+`asked_in_this_batch` 的判据是**结构性事实、不是猜**：留痕文件说 `visa_status` 是**人亲口给的**
+（`user_answer` / `onboarding_a0` / `onboarding_a2`），而两个把门的布尔仍然没答——
+这个组合只可能来自「问过了，他答不出来」。留痕是 `legacy_unverified` / `resume_inferred` / 没记录时
+**一律当作没问过**（4 条断言钉住），因为「档案里有个字符串」不等于「有人问过他」。
+
+## 49. 现有真实用户逐格零变化（对照表，真实档案只读）
+
+方法与批次 A 同款：`git worktree add --detach` 把**本轮之前的 `8f9e546`** 检出到 scratchpad，
+同一份夹具分别喂给旧树和新树的 `apply_gap_report.mjs`；两边都用**真实 `profile.json`**
+（读出来复制进临时沙箱家目录，原文件只读；`MRWEIRDO_DB_PATH` 指向不存在路径确保 SQLite 不被打开）。
+**每个题面单独跑一次报告**——因为报告对每个类目只保留 5-8 个 examples，一次塞 25 个题面会被截断
+（我第一版就是这么干的，只看到 15 行，差点把「截断」当成「没变化」）。
+
+**60 格 = 25 题面 × 2 种形态（普通 remaining / Ashby 无选择器 pending）+ 10 个带 note 的动态用例。
+57 格逐字一致，3 格变了**，全部属同一族，逐条交代：
+
+| # | 用例（note + 题面） | BEFORE `8f9e546` | AFTER `5e4f76a` | 这是变好还是变坏 |
+|---:|---|---|---|---|
+| 1 | `relocation_commitment_policy_unset` + 「Are you able to work from our Denver office?」 | `unknown_user_fact` | `user_work_location_commitment` | **变好**。两边都是「问用户」，但新的带着**对的问句和对的写回路径**（`standard_qa.work_location_commitments`），旧的是万能句 |
+| 2 | `location_not_in_profile_preferences` + 同一道 Denver 题 | `agent_profile_backed` | `user_work_location_commitment` | **变好，且这是本轮唯一一处真正的行为改变**。他答过 Bay Area / New York / US = Yes，**没答过 Denver**；旧谓词是「commitments 非空 = 这个类目答过了」，于是报告说「档案里有，别问用户」——而驱动手里根本没有 Denver 这个值，**行就这么无声卡住**。新谓词按城市判（与题面规则 `locationCommitment` 同一套别名匹配） |
+| 3 | `location_not_in_profile_preferences` + 「Are you willing to work onsite?」（没点名城市） | `agent_profile_backed` | `user_work_location_commitment` | **变好**。题面没有任何城市 → 别名匹配落空 → 没答过 → 问。驱动自己发的 note 就是「这个地点不在档案偏好里」，报告不该反过来说"档案里有" |
+
+**其余 57 格（含全部 25 个工作授权 / EEO / 地址 / GPA / 学籍 / 附件题面，两种形态各一份）逐字一致**，
+包括那三道工作授权题在他档案齐全时仍然是 `agent_profile_backed`——**B0+B1 改的是「没问过就别答」，
+对档案齐全的用户一格不变**，这一点在他身上兑现了。
+
+第二条独立证据：干净检出里 `node shared/supervisor_preflight.mjs --json` 对**真实档案**，
+`work_authorization_answered: ok=true`（门直接放行），12 项检查唯一 FAIL 是 `cdp`（我故意没开浏览器）。
+
+## 50. 试过的错误方向（Iterations=6）
+
+**❌ 方向 1（B0 附加）：把 `value_empty_for:` / `no_bucket_for:` 做成「前缀 → 类目」的查表，
+统一归到 `unknown_user_fact`。**
+派遣单字面就是「做成前缀规则」，这是最直白的读法，5 行就写完了。**否决理由（先算后否，不是嫌麻烦）**：
+GPA 题今天的 note 正是 `value_empty_for:what is your gpa?`，一旦前缀查表命中并返回 `unknown_user_fact`，
+它就**丢掉了 `user_gpa` 这个类目自带的问句和 `education.gpa` 这条写回路径**，降级成万能句
+「请看下面原题逐题给真实答案」。而且现成的守卫会当场变红（`personal_facts_guard.test.mjs:206`
+断言新装用户的 GPA 题必须是 `user_gpa`）——**测试替我把这条路否掉了，这正是它存在的意义**。
+正确的读法是：前缀说的是「档案里没值」，不是「不知道这是什么」；它该否掉的是那个不看档案的结论，不是类目本身。
+
+**❌ 方向 2（B0 附加）：把降级写成 `driverFoundNoValue → return 'unknown_user_fact'`，不过 `categoryAnswered`。**
+少一行，看着也对。**否决理由**：结果文件在用户答完之后会被**重读**，note 描述的是**过去某一刻**的状态。
+不过谓词 = 同一道题永远问下去，闭环不闭——DESIGN §13.1 第 1 行点名的缺陷，派遣单也专门警告过。
+现在的写法是 `categoryAnswered('unknown_user_fact') ? 'agent_profile_backed' : 'unknown_user_fact'`，
+并给这个类目补了谓词（`custom_facts` 非空）。测试 `an empty-value note still loses to the profile once the user answers` 钉住。
+
+**❌ 方向 3（B1）：「F-1 还没批下来」顺手把 `authorized_to_work_us` 写成 `false`。**
+设计稿讨论区方向 7 已经论证过一次，我在写真值表时**又一次动了这个念头**——因为那一行看起来"就差这一格"，
+写上去五个情形里就有三个能开工。**否决理由（设计稿的原话我核过了，成立）**：能不能工作取决于岗位走不走 CPT、
+学校批不批，**是个案**；而 `false` 与「用户亲口说没有」在档案里字节相同，代码分不出来，
+在很多雇主那里等于**直接刷掉**。这一格现在一个字节都不写，测试用 `!(path in answers)` 钉住
+（不是断言它等于 `null`——那样连"根本没写"和"写了个 null"都分不出来）。
+
+**❌ 方向 4（B1）：`asked_in_this_batch` 用「`visa_status` 非空 + 两个布尔为 null」直接推。**
+不用改调用方，纯函数，最省事。**否决理由**：`visa_status` 在引导阶段是**模型从简历生成**的
+（`intake-and-profile.md` 就是这么写的），非空**不等于**问过他。照这个推法，
+一个从简历里推出 "F-1 OPT" 的新用户会被当成"已经问过了"，于是**永远看不到那个问题**——
+换了个位置重演本轮要消灭的那个 bug。改成读 `answer_provenance`（批次 A 的现成模块）：
+只有 `user_answer` / `onboarding_a0` / `onboarding_a2` 才算"人亲口说的"。
+
+**❌ 方向 5（B1）：`workAuthAnswers()` 对答不全的漏斗返回一个"尽力而为"的结果。**
+比如 Q1 没答就当 `false` 往下走。**否决理由**：内部传参缺失 = 调用方的 bug，兜底会把它变成
+一次**关于别人移民身份的静默猜测**。现在一律 throw，7 种非法输入逐条断言（包括"Q1 已定案却还答了 Q2"
+这种自相矛盾的输入——宁可报错也不选一个）。
+
+**❌ 方向 6（B0）：Ashby 洞 2 只放宽守卫，不改去重键。**
+派遣单三处都写了，但我一度觉得去重键是"顺带的"。**实测否决**：Ashby 每次 attempt 重新生成
+`mrw_pending_xxxxxx`，旧键根本挡不住重复；放宽守卫后还会多一条 `selector: null` 的副本。
+测试里三次 `addPendingQuestion`（两个不同选择器 + 一个 null）断言 `pending.length === 1` 才逼出这一点。
+
+## 51. 交付自查清单（第 6 轮）
+
+### 51.1 CI 四步 —— 链上**每个提交**单独干净检出各跑一遍
+
+（`git worktree add --detach`，三棵树 `git status --porcelain` 均 **0 个脏文件**）
+
+| 提交 | 内容 | Unit tests | role_guard_smoke | public_alpha_gate | syntax（85 个 .mjs） |
+|---|---|---|---:|---:|---:|
+| `8eb581c` | B0 | 199 / 199 / fail 0 → **0** | **0** | **0** | **0** |
+| `66882ab` | B1 | 212 / 212 / fail 0 → **0** | **0** | **0** | **0** |
+| `5e4f76a` | 变更日志（tip） | 212 / 212 / fail 0 → **0** | **0** | **0** | **0** |
+
+### 51.2 主流程冒烟
+
+干净检出（`ci-5e4f76a`）里 `npm run demo:check` → **exit 0**。
+WARN 三条与本轮无关且同源：`skill_not_linked_workspace`（临时检出没跑 setup.sh）、
+`chrome_cdp_not_running`（我故意没开浏览器）、`supervisor_preflight_not_clean`
+（12 项里唯一 FAIL 是 `cdp`，`work_authorization_answered` = ok）。
+`ready rows: 0` **不是本轮造成的**——同一条命令在 `8f9e546` 的干净检出里也是 0（队列已被前几轮跑空）。
+
+### 51.3 逐条勾
+
+- ☑ TDD：三批改动**全部先写测试、先看它红**，原始报错原文见第 46 节（不是事后补写）
+- ☑ 自审循环跑了（第 47 节，逐段自述 + 自查）
+- ☑ 测试全绿 212/212，干净检出上复核；覆盖率按**实际改动面**报（46.4），CLI 两个文件诚实标注为行为覆盖
+- ☑ 无端点 —— 本轮零接口 / 零路由 / 零出入参改动，API 8 项契约不适用
+  （逐项确认：无 REST 路径、无状态码、无出入参校验、无版本前缀、无限流、无跨域、无分页、无错误响应结构）
+- ☑ ◇ 主流程冒烟（登记表填了 `ci_smoke.main_chain`）：`demo:check` exit 0
+- ☐ ◇ 结构升级双路 / ◇ 数据隔离字段 —— 登记表两格仍为空 → 跳过；本轮也无数据表结构变更
+- ☑ 无 `try/except` 压异常（`grep -n "catch" shared/work_auth_identity.mjs` → 0 命中；本轮新增代码零 try/catch）
+- ☑ 无 mock 假数据兜底进生产代码
+- ☑ 偏离设计稿 3 处**全部显式标注**（第 52 节），没有闷头照抄也没有闷头改
+- ☑ 没顺手改无关老 bug（扫到的进第 53 节只报告）
+- ☑ 不涉及 UI 演示稿（本项目无 UI）
+- ☑ Iterations=6，第 50 节含 **6 个**被否决方向
+- ☑ 没用 fallback（兜底降级）/ workaround（绕行补丁）遮盖：确定不了的档案格子**一个都不写**
+- ☑ 文件膨胀铁律：`ashby_apply_driver.mjs` **1170 → 1170（净增 0）**；
+  `apply_gap_report.mjs` 564 → 589；新建 `work_auth_identity.mjs` 182 行；均远低于 800
+- ☑ 主入口 `mrweirdo-onboard/SKILL.md` **一行未碰**（496 行，500 门禁不动）
+- ☑ 变更日志（登记表 `paths.changelog`）：`CHANGELOG.md` `[Unreleased] → Fixed` 顶部加 3 条
+- ☑ 用词：全文用「用户 / 投递 / 岗位」
+- ☑ 提交只 stage 我自己的 13 个文件；`docs/active/…_TASK.md`（另一位成员在改）
+  与 `docs/active/2026-07-26_first-user_PRODUCT_SPEC.md`、`.claude/arnold_state/`（别人的）**没 stage、没编辑**
+
+### 51.4 `~/.mrweirdo-jobs/` 零写入证据
+
+```
+跑前：find ~/.mrweirdo-jobs -exec stat -f '%N|%z|%m|%Sp' → 7205 个条目
+跑后：同一条命令                                        → 7205 个条目
+diff  home_before.txt home_after.txt                    → 0 行差异
+```
+
+（跑前跑后之间跑过：`npm test` ×N、CI 四步 ×3 棵树、`demo:check` ×3、第 49 节的 120 次报告真跑。）
+
+### 51.5 边界
+
+未 push；`origin/main` 仍 `8f9e546`，本地 ahead 3；`batchA-backup` 未碰；
+无 force / rebase / 改历史；未真跑投递、未提交表单、未开浏览器碰真实网站、未发邮件。
+
+## 52. 偏离设计稿（3 处，逐条写清「设计怎么说 / 照做会出什么问题 / 我怎么做的」）
+
+### 偏离 1 · 前缀规则不是「前缀 → 类目」的查表
+
+- **设计怎么说**：DESIGN §13.5 与派遣单说「把『靠题面猜分类』改成『读驱动传来的信号』…请做成前缀规则」。
+- **照字面做会出什么问题**：前缀的后缀就是题面本身，按后缀分类等于绕回题面猜测；
+  而统一映射到一个类目会让 GPA 丢掉 `user_gpa` 的问句与 `education.gpa` 的写回路径（第 50 节方向 1，现成测试当场变红）。
+- **我怎么做的**：前缀只承担它真正携带的那条信息——「驱动跑的那一刻档案里没值」——用它**否掉唯一一条不看档案的结论**
+  `agent_profile_backed`；具体类目仍由题面规则给出，并统一过 `categoryAnswered`。
+  **信号仍然主导（它有一票否决权），题面退为「是哪个事实」的判断依据**，与 ADR-3 的分工一致。
+
+### 偏离 2 · 顺手改了地点类目的「已答过吗」谓词
+
+- **设计怎么说**：没说。批次 A 写的是 `nonEmpty(work_location_commitments)`。
+- **不改会出什么问题**：我新加的 `relocation_commitment_policy_unset` 一旦命中这个谓词，
+  真实用户的 Denver 题就会从「问用户」变成「档案里有，别问」——**我自己的改动会制造一处静默卡住**
+  （第 49 节对照实测出来的，不是推演）。这与本轮的目的正好相反。
+- **我怎么做的**：改成按城市判（`locationCommitment !== null`，与题面规则同一套别名匹配），
+  并把它写成测试。**代价与已知牺牲**：真实用户身上有 2 格从 `agent_profile_backed` 变成「问用户」
+  （第 49 节 #2 #3）——即他将来可能会被多问一次没答过的城市。
+  我认为这是对的：那两行本来就是**卡住但不说为什么**，多问一句换回一行能投出去。
+  **这一处请 verify 重点复核**，它是本轮唯一一处真实用户可见的行为改变。
+
+### 偏离 3 · A2 的「满 18 岁」只加了问句，没加档案字段
+
+- **设计怎么说**：DESIGN §10-C 给了四步：① 新增 `legal_attestations.at_least_18`；② 引导 A2 加半句；
+  ③ 填表时三态；④ 删掉写死的 `'Yes'`。派遣单只点了第 ② 步。
+- **照单只做 ② 会出什么问题**：问了却没地方存——`record_profile_answers.mjs` 会拒绝一个没有任何问题声明过的路径（exit 2）。
+- **我怎么做的**：② 做了；①③④ **一行未碰**（它们属 B2，且 ③④ 必须与驱动改动同一个提交落地，
+  拆开会留下「档案里有答案但没人读」的中间态）。说明书里**明写了这件事**，
+  并告诉模型在字段到位前只问、不手写档案、不要绕过写回口。**这是一处需要 lead 知道的缺口，不是静默跳过**——
+  见第 53 节第 1 条。
+
+## 53. 发现的旧 bug 与遗留事项（**本轮一行未改，只报告**）
+
+1. **A2 的「满 18 岁」答案暂时无处安放**（本轮引入的缺口，见偏离 3）。
+   建议 B2 做 §10-C 时把 ①③④ 一起落地；那之前用户答了这半句只存在于对话里。
+2. **note 路径分不出「拒答」这一档**：`categoryAnswered` 返回的是布尔，命中就一律 `agent_profile_backed`。
+   于是「他明确说不去的城市」（`Singapore: false`）走 note 路径时是 `agent_profile_backed`（"从档案填"），
+   而走题面路径时是 `system_profile_declined_location`（"跳过这行别再问"）——**后者才是对的**。
+   **未改**：要让 `categoryAnswered` 从布尔改成返回结论，是一次跨全表的重构，超出本轮范围。
+   已用测试**把现状钉住并写明它是已知偏差**（`apply_gap_report.test.mjs` 那条 city 测试的末段注释）。
+3. **`no_value_rule_text:<题面>` 也是动态 note，同样不在任何表里**（本轮扫前缀时发现）。
+   它的语义是「这个题面根本没有规则」，落回题面规则后多半是 `unknown_user_fact` / `agent_open_text`，
+   **方向不危险**（不会变成"从档案填"），所以没纳入本轮的两个前缀。建议 B2 一并评估。
+4. **第 42 节的第 3、4、5、6 条状态不变**（GPA 真值 0.0、`earliest_start_date` 占位符、
+   §16 的 A-K、投递截图）——本轮一行未碰。
+
+## 54. 本项目铁律对照（`.claude/arnold/roles/builder.md`）
+
+| 铁律 | 遵守情况 |
+|---|---|
+| 测试必须**串行**跑 | ✅ 全程 `npm test`（脚本自带 `--test-concurrency=1`），未手工并行 |
+| 交活前把 CI **每一步**在本地跑一遍全绿，不能只跑 `npm test` | ✅ 四步 × **三个提交**全跑，且全部跑在 `git worktree` 的干净检出上（51.1） |
+| 主流程冒烟优先保证不断 | ✅ 干净检出里 `npm run demo:check` exit 0（51.2） |
