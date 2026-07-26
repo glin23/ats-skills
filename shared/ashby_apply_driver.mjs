@@ -1139,7 +1139,7 @@ async function main() {
             return null;
           })()
         `);
-        if (sel) addPendingQuestion(pendingForMainClaude, { question: m, selector: sel.sel, tag: sel.tag });
+        if (sel) addPendingQuestion(pendingForMainClaude, { question: m, selector: sel.sel, tag: sel.tag, note: a.note || null }); // note = why we stopped; the report routes on it
       }
       log('  answer', m.slice(0, 50), '→', JSON.stringify(a).slice(0, 100));
     }
