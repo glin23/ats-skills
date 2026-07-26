@@ -9,9 +9,37 @@ before discovery; do not split these into separate confirmation moments.
 
 | ID | Question | Options |
 |---|---|---|
-| A0 | Work authorization | US citizen / green card; F-1 CPT/OPT; F-1 now and future sponsorship; other |
+| A0 | Which kind of person are you (three yes/no questions, see below) | yes / no / “说不清楚” on Q3 only |
 | A1 | Geography | current/school metro only; named metros; anywhere in the US; user-listed countries |
-| A2 | Legal attestations | ask/skip sensitive legal questions when needed; explicitly confirm no blocking obligations/prohibited-possessor issue; other/uncertain |
+| A2 | Legal attestations + age | ask/skip sensitive legal questions when needed; explicitly confirm no blocking obligations/prohibited-possessor issue, and confirm 「你已满 18 岁了吗」 in the same breath; other/uncertain |
+
+### A0: ask what he is, never whether he is authorized
+
+拍板原话（关卡 3 ①）：问「你是美国公民或绿卡吗？」「你是持 F-1 的留学生吗？」，
+**不许问「你有没有工作授权」——这没人能知道**。「有没有工作授权」是一个法律结论：
+对 F-1 学生来说，它取决于岗位能不能走 CPT、学校批不批、什么时候批。让用户自己下这个结论，
+答错了两个方向都伤他（国际生说「有」是不实陈述，公民说「没有」会被直接刷掉）。
+所以只问他能从自己证件上读出来的事实，结论交给代码推。
+
+Ask in order and stop as soon as the answers settle the case. The exact wording
+lives in `shared/work_auth_identity.mjs` (`IDENTITY_QUESTIONS`) — read it from
+there rather than retyping it, so the guide and the code cannot drift:
+
+1. Q1（总是问）：你是美国公民，或者持有绿卡（永久居民卡）吗？
+2. Q2（Q1 答否时问）：你是持 F-1 学生签证在美国读书的留学生吗？
+3. Q3（Q2 答是时问）：学校已经给你批下来可以工作的许可了吗？（就是那张 EAD 卡，或者你的 I-20 上写着 CPT 那一栏）
+   —— 答不上来就答「说不清楚」，这是一个正当答案。
+
+三题仍然放在**同一个** AskUserQuestion 调用里（与 A1/A2 一起，不拆成多轮确认）：Q2 与 Q3
+各带一个「不适用（上一题已经答完了）」选项，Q3 另带「说不清楚」。「不适用」= 没问过 = `null`，
+不要把它当成「否」——`workAuthAnswers()` 会因为 Q1 已定案而拒绝一个多余的 Q2 答案并报错，
+这是故意的：它宁可报错也不猜。
+
+把三个答案交给 `workAuthAnswers()`，它返回的就是可以直接喂给
+`shared/record_profile_answers.mjs` 的那组路径与值。**它只写它能确定的格子**：
+一个还没批下 CPT 的 F-1 学生，`authorized_to_work_us` **一格都不写**（不是写 `false`——
+写 `false` 与「用户亲口说没有」在档案里字节相同，而且会让他被雇主直接刷掉）。
+`requires_sponsorship_future` 对全部 F-1 情形都是 `true`，这一格是身份本身决定的、能推。
 
 Parse A1 into:
 
@@ -27,11 +55,26 @@ default is ask/skip until a real form needs the fact.
 A0 and A2 answers must reach `profile.json` through
 `shared/record_profile_answers.mjs` (see `run-and-database.md`), not by writing
 the file by hand. The four `work_authorization` keys are three-state — `true`,
-`false`, or `null` meaning "never asked". If the user's answer does not settle a
-key, leave it `null`: the pre-batch gate will ask before anything is submitted,
-which is far cheaper than a guess that lands on a real form. Recording A0 also
-matters because the batch refuses to start while `authorized_to_work_us` or
-`requires_sponsorship_future` is unanswered.
+`false`, or `null` meaning "never asked".
+
+If the answers do not settle `authorized_to_work_us` / `requires_sponsorship_future`
+(Q3 answered “说不清楚”, or a status other than citizen/green card/F-1), those keys
+stay `null` — and that is **not** a normal path to be left alone. The batch cannot
+start with them unanswered, so say all three of these to the user in the same
+breath, before he walks away thinking he is set up:
+
+1. 卡在哪：投递表单几乎每一份都会问工作身份，这一格没人能替他猜。
+2. 去哪里查 —— 三个具体去处，读 `WHERE_TO_CHECK` from `shared/work_auth_identity.mjs`
+   （学校国际学生办公室 / I-20 第 2 页 Employment Authorization 那一栏 / EAD 卡）。
+3. 查清楚之前会怎样：这一批先不投，查到了说一声，一条命令就能续上，排好的队列不会白排。
+
+The pre-batch gate repeats the same three things and marks `asked_in_this_batch`
+once he has answered once, so nobody asks him the same unanswerable question twice.
+
+A2 的年龄半句（关卡 2 ②）：与法律声明同一组里顺带确认「你已满 18 岁了吗」，**不新增独立问题**。
+档案里目前还没有这一格（`legal_attestations.at_least_18` 与驱动侧的三态判定一起落地，
+见设计稿 §10-C）；在那之前只问、不手写档案——`record_profile_answers.mjs` 会拒绝一个
+没有任何问题声明过的路径，这是设计如此，不要绕过它。
 
 ## Profile Generation Prompt
 

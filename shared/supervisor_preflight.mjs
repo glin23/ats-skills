@@ -7,6 +7,7 @@ import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { validateProfileBundle } from './validate_user_profile.mjs';
 import { blockingProfileGaps } from './personal_fact_gate.mjs';
+import { sourceFor } from './answer_provenance.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
@@ -169,7 +170,13 @@ const cdp = await checkCdp();
 // automated flow walks straight past all of them. Failing here costs two seconds
 // and one question; passing here with an unanswered work-authorization key costs
 // twenty browser tabs, twenty blocked rows and a "0 submitted" report.
-const profileGate = blockingProfileGaps(profile);
+// The provenance record answers "was he ever actually asked": a visa_status a
+// human supplied while the two gated booleans stay unanswered means the honest
+// reply was "I can't tell", and repeating the question this batch would only
+// get the same answer back. `detail` carries the three places to look instead.
+const profileGate = blockingProfileGaps(profile, {
+  visa_status_source: sourceFor(home, 'work_authorization.visa_status', profile.work_authorization?.visa_status),
+});
 
 const checks = [
   { name: 'profile_json', ok: existsSync(profilePath), detail: profilePath },

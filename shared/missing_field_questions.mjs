@@ -8,6 +8,8 @@
 // value_type / path_value_types drive the write-back validator: three-state
 // booleans refuse "yes"/"true"/1 rather than coercing them, because a coerced
 // value about immigration status ends up typed onto a real form.
+import { IDENTITY_QUESTIONS } from './work_auth_identity.mjs';
+
 export const QUESTION_TEMPLATES = {
   user_work_authorization: {
     // Deliberately below user_full_address (1): a missing work-authorization
@@ -20,8 +22,12 @@ export const QUESTION_TEMPLATES = {
       'work_authorization.requires_sponsorship_now',
       'work_authorization.requires_sponsorship_future',
     ],
-    question: '你在美国的工作授权属于哪一种？（A）美国公民或绿卡持有者；（B）F-1 学生签证，已经有 CPT/OPT，现在就能工作；（C）F-1 学生签证，现在和将来都需要公司担保；（D）其他或不确定（请补一句说明）。这一格空着，几乎每一份投递表单都会卡住。',
-    answer_type: 'single_choice',
+    // 关卡 3 ① 拍板：不问「你有没有工作授权」——那是一个法律结论，「这没人能知道」。
+    // 只问他从自己的证件和生活里读得出来的事实，结论由 work_auth_identity.mjs 去推。
+    question: `这一格空着，几乎每一份投递表单都会卡住。请按顺序回答（答到能定案就停）：${
+      IDENTITY_QUESTIONS.map((q, i) => `${i + 1}. ${q.question}`).join(' ')
+    } 第 3 题如果你查不到，直接说「说不清楚」——我会告诉你去哪里查，这一批先不投，查到了一条命令就能续上。`,
+    answer_type: 'yes_no_sequence',
     value_type: 'boolean',
     path_value_types: { 'work_authorization.visa_status': 'string' },
     enum_values: null,

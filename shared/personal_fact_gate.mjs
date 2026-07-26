@@ -21,8 +21,14 @@
 // A0 was already supposed to have collected — which is the difference between an
 // instruction to a model and an assertion.
 import { QUESTION_TEMPLATES } from './missing_field_questions.mjs';
+import { BLOCKED_BECAUSE, VISA_STATUS_LABELS, WHAT_HAPPENS_NEXT, WHERE_TO_CHECK } from './work_auth_identity.mjs';
 
 const GATE_CATEGORY = 'user_work_authorization';
+
+// Sources that mean "a person told us this", as opposed to "it was already on
+// disk" or "we read it off a resume". Only the first kind proves the question
+// was actually put to him — which is what makes asking a second time pointless.
+const USER_SUPPLIED_SOURCES = new Set(['user_answer', 'onboarding_a0', 'onboarding_a2']);
 
 /** Paths whose absence stops a real batch. Declared by the question template so
  *  the gate can never ask for something the write-back command cannot store. */
@@ -42,8 +48,10 @@ function remediationCommand(missingPaths) {
   for (const path of missingPaths) answers[path] = '<true|false>';
   // visa_status is not gated (an empty string is a legitimate "did not say"),
   // but a user answering this question always knows it, and having it on file
-  // keeps the drivers from re-deriving it from the booleans.
-  answers['work_authorization.visa_status'] = '<US Citizen | Green Card | F-1 CPT | F-1 OPT | Other>';
+  // keeps the drivers from re-deriving it from the booleans. The labels are the
+  // ones work_auth_identity derives, so a hand-run command and the funnel put
+  // the same strings on disk.
+  answers['work_authorization.visa_status'] = `<${Object.values(VISA_STATUS_LABELS).join(' | ')} | 你自己的原话>`;
   return [
     'node shared/record_profile_answers.mjs',
     `--json '${JSON.stringify(answers)}'`,
@@ -53,24 +61,56 @@ function remediationCommand(missingPaths) {
 
 /**
  * @param {object} profile parsed ~/.mrweirdo-jobs/profile.json
+ * @param {{visa_status_source?: string}} context what shared/answer_provenance.mjs
+ *        says about `work_authorization.visa_status` — i.e. whether a human ever
+ *        supplied it. Callers read it with `sourceFor()`; the gate itself stays
+ *        pure so it can run from a dry run, a preflight or a test alike.
  * @returns {{ok: boolean, missing_paths: string[], category: string,
- *            question: string, remediation_command: string}}
+ *            question: string, asked_in_this_batch: boolean,
+ *            blocked_because: string, where_to_check: string[],
+ *            what_happens_next: string, remediation_command: string}}
  *
  * Not ok exactly when a gated path holds neither `true` nor `false`. Only real
  * booleans count: `"true"` and `"Yes"` are treated as never asked rather than
  * coerced, because coercing here writes a claim about someone's immigration
  * status onto a live application form.
+ *
+ * When it is not ok it always hands back three things together (设计稿 §13.3):
+ * what it is stuck on, three concrete places that hold the answer, and what
+ * happens meanwhile. A stop without those three is the "0 submitted, no reason"
+ * behaviour this round exists to delete.
  */
-export function blockingProfileGaps(profile = {}) {
+export function blockingProfileGaps(profile = {}, context = {}) {
   const missing_paths = GATED_PATHS.filter((path) => typeof valueAtPath(profile, path) !== 'boolean');
   if (missing_paths.length === 0) {
-    return { ok: true, missing_paths: [], category: GATE_CATEGORY, question: '', remediation_command: '' };
+    return {
+      ok: true,
+      missing_paths: [],
+      category: GATE_CATEGORY,
+      question: '',
+      asked_in_this_batch: false,
+      blocked_because: '',
+      where_to_check: [],
+      what_happens_next: '',
+      remediation_command: '',
+    };
   }
+  // He answered the question and still could not settle it (the classic case:
+  // an F-1 student who does not know whether his CPT is approved). Asking again
+  // this batch can only produce the same answer, so the main conversation shows
+  // the three places to look instead of re-opening the same prompt.
+  const visaStatus = valueAtPath(profile, 'work_authorization.visa_status');
+  const asked_in_this_batch = USER_SUPPLIED_SOURCES.has(context.visa_status_source)
+    && typeof visaStatus === 'string' && visaStatus.trim() !== '';
   return {
     ok: false,
     missing_paths,
     category: GATE_CATEGORY,
     question: QUESTION_TEMPLATES[GATE_CATEGORY].question,
+    asked_in_this_batch,
+    blocked_because: BLOCKED_BECAUSE,
+    where_to_check: [...WHERE_TO_CHECK],
+    what_happens_next: WHAT_HAPPENS_NEXT,
     remediation_command: remediationCommand(missing_paths),
   };
 }
