@@ -37,6 +37,7 @@ Suggested subfolders:
 6. After any write, run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/validate_user_profile.mjs
 ```

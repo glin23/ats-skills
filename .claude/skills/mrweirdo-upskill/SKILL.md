@@ -17,6 +17,7 @@ Use this skill to turn scored job gaps into a learning plan.
 ## Run The Local Aggregation
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/upskill_report.mjs --json
 ```

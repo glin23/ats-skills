@@ -15,7 +15,10 @@
 //   └── repo/               # git clone of mrweirdo-jobs repo
 //
 // All `shared/*.mjs` should import from this module instead of hard-coding paths.
-// SKILL.md files set `MRWEIRDO_HOME` + `MRWEIRDO_REPO_ROOT` env at top and pass via process.env.
+// SKILL.md files set `MRWEIRDO_HOME` + `MRWEIRDO_REPO_ROOT` env and pass via process.env.
+// Each SKILL.md bash block runs in its OWN shell, so every block that needs the repo
+// root must re-export both vars itself (`${VAR:-default}` form) before `cd`-ing —
+// exporting once at the top of the file does NOT carry over to the next block.
 
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';

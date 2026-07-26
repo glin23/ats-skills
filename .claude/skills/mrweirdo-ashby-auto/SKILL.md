@@ -36,6 +36,7 @@ If any pre-condition fails on entry, log skip + return — do NOT attempt to fil
 Run this guard before opening the URL:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/validate_auto_row.mjs --row-id "$ROW_ID"
 ```
@@ -191,6 +192,7 @@ After the onboard caller gets a successful recorder result, it appends the
 submission audit:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/job_report.mjs --row-id "$ROW_ID" --append-submission
 ```

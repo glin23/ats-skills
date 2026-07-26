@@ -56,6 +56,7 @@ plausible match.
 Run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/tracker_cli.mjs --row-id "<ROW_ID>" --outcome "<OUTCOME>" --note "<short user note>"
 ```
@@ -67,6 +68,7 @@ Then summarize what was recorded.
 Run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/tracker_cli.mjs --funnel --json
 ```
@@ -82,6 +84,7 @@ gate and returns "样本不足" instead of weak conclusions.
 Run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/analyze_patterns.mjs --json
 ```
@@ -100,6 +103,7 @@ Write config/profile changes only after the user confirms that specific item.
 When the user asks who to follow up with, run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/tracker_cli.mjs --funnel --json
 ```
@@ -115,6 +119,7 @@ Never send a follow-up. Show the draft and wait for the user to send it
 manually. After the user confirms they sent it, record:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/tracker_cli.mjs --row-id "<ROW_ID>" --followup-sent --note "<where/how user sent it>"
 ```
