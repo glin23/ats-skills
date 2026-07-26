@@ -60,6 +60,29 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **A fresh install no longer agrees to relocate on the user's behalf**
+  (2026-07-26). Asked "Would you be willing to relocate to our New York
+  office?", six profile shapes were fed to the shipped Greenhouse driver: five
+  surfaced the question to the user, and the factory template answered `Yes`.
+  Two template values each reached it on their own —
+  `standard_qa.willing_to_relocate_scope: "Anywhere US"` and
+  `target_filters.relocation_policy: "anywhere_primary_country"`, both of which
+  resolve to the driver's `anywhere_us` alias. Both now ship empty, along with
+  `standard_qa.willing_to_relocate`. Same rule as the work-authorization block:
+  a factory value is byte-for-byte what a real answer looks like, so nothing
+  downstream can tell "the user agreed to move" from "nobody ever asked".
+  Relocation is named in the red line itself and was the last name on that list
+  with no assertion behind it; it has one now, including an end-to-end guard
+  that drives the shipped driver. A user who did state a relocation scope is
+  still answered from their own words.
+- **`secure_profile_files.sh` now locks the optional files it was meant to**
+  (2026-07-26). The optional-file loop sat after the required-file loop, which
+  exits on the first file it cannot find — and `answer_provenance.json` exists
+  from the answer write-back while `search_intent.json` is not written until a
+  later onboarding step, so the block never ran in the window it was added for.
+  Measured: `answer_provenance.json` left at 644. The optional loop now runs
+  first; a missing required file is still a hard exit 1. The script had no test
+  beyond a syntax check and now has one.
 - **Main entry no longer dies on its first command** (2026-07-25). All 9 bash
   blocks in `.claude/skills/mrweirdo-onboard/SKILL.md` did `cd "$MRWEIRDO_REPO_ROOT"`
   while nothing ever set that variable: `cd ""` returns 0 without changing
