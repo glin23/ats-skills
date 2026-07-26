@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { GATED_PATHS, blockingProfileGaps } from '../shared/personal_fact_gate.mjs';
 import { ask, BASE } from './greenhouse_driver_harness.mjs';
+import { categoryOf, runGapReport } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const readText = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -148,6 +149,73 @@ test('greenhouse driver: a user who actually said "anywhere in the US" is still 
   const { res, fills } = await ask(said, RELOCATE_LABEL);
   assert.equal(res.ok, true, `a stated relocation scope must still answer the question: ${JSON.stringify(res)}`);
   assert.equal(fills.at(-1)?.value, 'Yes', `expected the user's own answer on the form: ${JSON.stringify(fills)}`);
+});
+
+// GPA is named in the same red line as relocation ("never fabricate visa / GPA /
+// demographic / attestation / background-check / relocation") and was the last
+// name on it still shipping a value: education.gpa = "3.9". It is the same
+// disease as work_authorization and relocation, with one twist — it is not a
+// three-state boolean but a number, and "3.9" is truthy, so
+// apply_gap_report.mjs:266 filed every GPA question under "the agent fills this
+// from the profile". A user who copied the template was therefore never asked
+// for a GPA and had a 3.9 he never claimed typed onto real application forms
+// (verified against the shipped Greenhouse driver, below).
+const GPA_LABEL = 'What is your GPA?';
+const TEXT_FIELD = { type: 'text' };
+
+test('profile.template.json: GPA ships EMPTY, no number is invented for the user', () => {
+  const education = readJson('shared/profile.template.json').education;
+  assert.ok(education && typeof education === 'object', 'education block missing');
+  assert.ok('gpa' in education, 'education.gpa key must stay present (as "") for shape stability');
+  assert.equal(
+    education.gpa,
+    '',
+    `education.gpa ships as "${education.gpa}"; that is a claim about the user's grades nobody made`,
+  );
+});
+
+test('greenhouse driver: a fresh install types no GPA onto the form', async () => {
+  const template = readJson('shared/profile.template.json');
+  const { res, fills } = await ask(template, GPA_LABEL, TEXT_FIELD);
+  assert.equal(
+    res.ok,
+    false,
+    `the factory template answered a GPA question it was never asked: ${JSON.stringify(res)} ${JSON.stringify(fills)}`,
+  );
+  assert.deepEqual(fills, [], `nothing may be typed on the form: ${JSON.stringify(fills)}`);
+});
+
+// The other half of the rule, twice over. Emptying the template must not turn
+// into "no GPA is ever answered" (the user's own 3.2 must still be typed), and
+// an empty GPA must BLOCK — not fall back to "" or 0, which on a real form is a
+// worse lie than saying nothing.
+test('greenhouse driver: a user who stated a GPA still gets it typed, and an empty one blocks', async () => {
+  const stated = { ...BASE, education: { ...BASE.education, gpa: '3.2' } };
+  const said = await ask(stated, GPA_LABEL, TEXT_FIELD);
+  assert.equal(said.res.ok, true, `a stated GPA must still answer the question: ${JSON.stringify(said.res)}`);
+  assert.equal(said.fills.at(-1)?.value, '3.2', `expected the user's own GPA on the form: ${JSON.stringify(said.fills)}`);
+
+  const blank = await ask({ ...BASE, education: { ...BASE.education, gpa: '' } }, GPA_LABEL, TEXT_FIELD);
+  assert.equal(blank.res.ok, false, `an unknown GPA must block: ${JSON.stringify(blank.res)}`);
+  assert.deepEqual(blank.fills, [], `an unknown GPA must not be typed as "" or 0: ${JSON.stringify(blank.fills)}`);
+});
+
+// Blocking is only half a fix: a blocked row that never becomes a question is
+// "stuck with no idea why". The report must file the factory template's GPA
+// question under "ask the user", not under "fill it from the profile".
+test('gap report: a fresh install is ASKED for a GPA instead of being answered from the template', () => {
+  const template = readJson('shared/profile.template.json');
+  const { report } = runGapReport('mrw-gpa-gap-', template, [{
+    outcome: 'skip',
+    reason: 'value_empty_for:what is your gpa?',
+    job_id: 901,
+    remaining: [{ label: GPA_LABEL, type: 'text', required: true, note: 'value_empty_for:what is your gpa?' }],
+  }]);
+  assert.equal(
+    categoryOf(report, GPA_LABEL),
+    'user_gpa',
+    `a GPA nobody stated must become a question: ${JSON.stringify(report.user_questions)}`,
+  );
 });
 
 test('the shipped template does not open the pre-batch gate on its own', () => {

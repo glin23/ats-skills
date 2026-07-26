@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { QUESTION_GROUPS, condenseMissingQuestions, validateQuestionGroups } from '../shared/missing_field_questions.mjs';
-import { onboardTestEnv } from './helpers.mjs';
+import { categoryOf, onboardTestEnv, runGapReport } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_QUESTION_TEMPLATES = {
@@ -82,48 +82,8 @@ function sorted(values) {
   return [...values].sort((a, b) => a.localeCompare(b));
 }
 
-// Runs the real CLI against a throwaway home + result dir and returns the report.
-function runGapReport(prefix, profile, outcomes) {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  const home = join(root, 'home');
-  const resultDir = join(root, 'run');
-  mkdirSync(home, { recursive: true });
-  mkdirSync(resultDir, { recursive: true });
-  writeFileSync(join(home, 'profile.json'), JSON.stringify(profile));
-
-  const summaryRows = [];
-  for (const outcome of outcomes) {
-    const resultPath = join(resultDir, `apply-result-${outcome.job_id}.jsonl`);
-    writeFileSync(resultPath, `${JSON.stringify(outcome)}\n`);
-    summaryRows.push({ row_id: outcome.job_id, result_file: resultPath });
-  }
-  const summaryPath = join(resultDir, 'summary.json');
-  writeFileSync(summaryPath, JSON.stringify({ rows: summaryRows }));
-
-  const jsonPath = join(resultDir, 'gap.json');
-  const run = spawnSync(process.execPath, [
-    'shared/apply_gap_report.mjs',
-    '--summary', summaryPath,
-    '--json-output', jsonPath,
-    '--md-output', join(resultDir, 'gap.md'),
-  ], { cwd: ROOT, env: onboardTestEnv(home), encoding: 'utf8' });
-
-  assert.equal(run.status, 0, run.stderr);
-  return { report: JSON.parse(readFileSync(jsonPath, 'utf8')), home, resultDir, summaryPath, jsonPath };
-}
-
-function categoryOf(report, label) {
-  for (const question of report.user_questions) {
-    if (question.examples.some((e) => e.label === label)) return question.category;
-  }
-  for (const action of report.agent_actions) {
-    if (action.examples.some((e) => e.label === label)) return action.category;
-  }
-  for (const blocker of report.system_blockers) {
-    if (blocker.examples.some((e) => e.label === label)) return blocker.category;
-  }
-  return null;
-}
+// runGapReport() and categoryOf() now live in test/helpers.mjs — a second test
+// file needed them, and two copies of a runner drift apart silently.
 
 test('apply_gap_report separates factual user gaps from agent-fillable fields', () => {
   const root = mkdtempSync(join(tmpdir(), 'mrw-gap-'));

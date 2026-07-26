@@ -28,11 +28,12 @@
   },
 
   "education": {
+    "_gpa_notes": "gpa ships EMPTY on purpose, same as work_authorization and the relocation keys. A factory number is byte-for-byte what a real answer looks like, so nothing downstream can tell 'the user told us his GPA' from 'the factory guessed one' — apply_gap_report.mjs:266 reads any truthy value as 'the profile knows this', so a template GPA is never questioned and gets typed onto real forms. Empty means nobody said: the driver blocks the field and the report asks (category user_gpa).",
     "school": "Your School",
     "degree": "B.S. in Your Major",
     "major": "Your Major",
     "graduation_date": "MM/YYYY",
-    "gpa": "3.9",
+    "gpa": "",
     "currently_enrolled": true
   },
 

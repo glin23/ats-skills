@@ -30,8 +30,10 @@ const BROWSER_FNS = ['findFieldByLabel', 'reactSelectOneOf', 'reactSelect', 'sel
 const STUBS = `
 // ---- test harness: browser boundary only ----------------------------------
 async function findFieldByLabel(tab, labelText) {
-  // Greenhouse renders these custom questions as react-select comboboxes.
-  return { ok: true, id: 'question_1', type: 'select-one', is_react_select: true };
+  // Greenhouse renders these custom questions as react-select comboboxes, which
+  // stays the default. A test may ask for a different control — a plain text
+  // input, which is how real forms ask for a GPA — via ask()'s third argument.
+  return { ok: true, id: 'question_1', ...(globalThis.__MRW_FIELD || { type: 'select-one', is_react_select: true }) };
 }
 async function reactSelect(tab, id, value, opts = {}) {
   globalThis.__MRW_FILLS.push({ via: 'reactSelect', value });
@@ -46,7 +48,10 @@ async function selectNativeOneOf(tab, id, values) {
   return { ok: true, picked: values[0] };
 }
 function cdp(...args) {
-  globalThis.__MRW_FILLS.push({ via: 'cdp', args });
+  // cdp('typetext', tab, selector, value) is how the driver types into a text
+  // input; recording args[3] as \`value\` keeps "what landed on the form" readable
+  // the same way it is for the select stubs above.
+  globalThis.__MRW_FILLS.push({ via: 'cdp', args, value: args[0] === 'typetext' ? args[3] : undefined });
   return { stdout: '{"ok":true}', stderr: '' };
 }
 async function evalInTab(tab, js) { return { ok: false }; }
@@ -86,12 +91,18 @@ export async function loadDriver(profile) {
 }
 
 // Asks the shipped driver one real form question. Returns its decision plus
-// everything it tried to put on the form.
-export async function ask(profile, label) {
+// everything it tried to put on the form. `field` overrides the control the
+// question is rendered as, e.g. { type: 'text' } for a free-text answer.
+export async function ask(profile, label, field = null) {
   const { answerMissing } = await loadDriver(profile);
   globalThis.__MRW_FILLS = [];
-  const res = await answerMissing('tab-1', label);
-  return { res, fills: globalThis.__MRW_FILLS.slice() };
+  globalThis.__MRW_FIELD = field;
+  try {
+    const res = await answerMissing('tab-1', label);
+    return { res, fills: globalThis.__MRW_FILLS.slice() };
+  } finally {
+    globalThis.__MRW_FIELD = null;
+  }
 }
 
 // A minimal profile with nothing to say about work authorization or relocation.
