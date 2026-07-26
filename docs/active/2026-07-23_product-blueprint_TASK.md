@@ -147,3 +147,14 @@ Spawned_subtasks: none
 - Round 23 P1: 模板三处出厂值清空（`willing_to_relocate`→null、`willing_to_relocate_scope`→""、`target_filters.relocation_policy`→""），守卫**先写先看红**（原始报错 `FILLED "Yes"` 已贴 BUILD §31）。8 档案实跑：6 种没答过的全 BLOCKED、2 种**真答过的仍 FILLED "Yes"**（反向守卫，防矫枉过正）。闭环未断：note `location_not_in_profile_preferences` → 既有类目 `user_work_location_commitment`，零新增类目。清空 `relocation_policy` 不触碰校验器（required 的是 search_intent 那一份）
 - Round 23 P2: 可选文件循环挪到必需循环之前，必需文件缺失**仍 exit 1 未放松**；该脚本此前只有 `bash -n`，本轮补 3 例测试。**未做并上报**：脚本只有一个调用点（onboard SKILL.md:198，Step 2，那时 `answer_provenance.json` 尚未生成），顺序修好在正常引导流程里仍轮不到——彻底解法是 STATE_AUDIT C11 / 批次 B R2「写入侧统一上锁」，加第二个调用点属绕行补丁且 SKILL.md 只剩 5 行预算，**请拍板人排期**
 - Round 23 边界: 未 push、未动远端（`origin/main` 仍 `6e31883`）、未真跑投递、未提交表单；`~/.mrweirdo-jobs/` 跑前跑后 mtime 快照 `diff` 逐行一致 = 零写入。派遣单点名排队的三条（`ashby_apply_driver.mjs:1142` 丢 note、模板 `gpa: "3.9"`、截图文件名标错）**一行未碰**
+- Round 24: arnold-builder 完成回炉，最终提交 `61c70f0`，工作区 0 脏文件，未 push。**P0 用重排而非追加**（判据：批次 A 那 6 条守卫断言的对象全在那 18 个未提交文件里，守卫必须站在被守代码之后，否则中间提交照旧红、git bisect 撞进去是假阳性；四提交未 push 重排零风险）。新链 10 个提交，旧链留本地分支 `batchA-backup` 当安全绳
+- Round 24 builder 自证: 链上 9 个提交逐个 npm test 全绿（128→183 递增）；tip CI 四步 0/0/0/0；对照旧 `71c3bef` 同法为 165/159 pass/6 fail/exit 1。还原保真用 `git diff | shasum` 校过逐字节一致
+- Round 24 **lead 独立复验（不采信自述）**: 全新 `git worktree add --detach` 干净副本 → tip `61c70f0` **183/183 pass、fail 0**；抽查中间提交 `a4cdf5e`（旧链翻车位置）**140/140 pass、fail 0**；主仓工作区 0 脏文件。**P0 确认已真正修复**
+- Round 24 P1: 守卫先红后绿（原始报错 `FILLED "Yes"` 已存档），改后 8 档案实跑——6 种没答过的全 BLOCKED，2 种真答过的仍 FILLED "Yes"（**故意的反向守卫**，防止清空出厂值变成一律拒答）。闭环未断：note 映射到既有类目 `user_work_location_commitment`，零新增类目
+- Round 24 **P2 未彻底修（builder 主动申报）**: `secure_profile_files.sh` 只有一个调用点（onboard SKILL.md:198 Step 2），那时 `answer_provenance.json` 尚未生成，顺序修好在正常引导流程里仍轮不到它。彻底解法是 STATE_AUDIT C11 / 批次 B R2「写入侧统一上锁」（还能覆盖求职信与投递截图）。**lead 裁决：不加绕行补丁，并入批次 B R2**
+- Round 24 lead 裁决其余两条: ① builder 改了 A4 的提交信息（原文「其余约 30 个文件仍未提交」重排后已不成立，留着会让人找一批不存在的文件），代码一行未动——**同意** ② 「搬迁意愿」须补进 DESIGN §16 同类清单——**同意，与 BUILD §24 的 8 处设计修正合并，由 architect 在批次 B 启动前一并完成**
+- Round 24 排队未碰: `ashby_apply_driver.mjs:1142` 丢 `a.note`、模板 `gpa: "3.9"`、截图文件名把失败标成成功
+- Round 25: lead 判定批次 A 达标，等拍板人决定是否 push（10 个提交，对外动作）
+
+**关卡 3 决策**：🩺 🔒 [用户] 拍板 — ① **工作授权改成能对号入座的问法**：问「你是美国公民或绿卡吗？」「你是持 F-1 的留学生吗？」，**不许问「你有没有工作授权」**（用户原话：这没人能知道）。此为批次 B 的引导提问设计依据 ② **批准 push**（条件：已验证完成——lead 已用干净 worktree 独立复验 tip 183/183、中间提交 140/140）
+- Round 26: lead 派 arnold-ops 推送 10 个提交
