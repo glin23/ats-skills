@@ -178,6 +178,34 @@ export const QUESTION_GROUPS = [
   },
 ];
 
+/**
+ * The write-back whitelist, derived from the questions themselves: a path is
+ * writable exactly when some question declares it. "What we ask" and "what we
+ * may write" cannot drift apart, because they are the same list read twice.
+ * Everything else — email, phone, resume_path, the resume-derived experience
+ * blocks — stays out of reach of an answer.
+ * @param {object} templates
+ * @returns {Map<string, {value_type: string, categories: string[]}>}
+ */
+export function answerWritePaths(templates = QUESTION_TEMPLATES) {
+  const paths = new Map();
+  for (const [category, template] of Object.entries(templates)) {
+    for (const path of template.profile_paths || []) {
+      const value_type = template.path_value_types?.[path] || template.value_type || 'string';
+      const existing = paths.get(path);
+      if (!existing) {
+        paths.set(path, { value_type, categories: [category] });
+        continue;
+      }
+      if (existing.value_type !== value_type) {
+        throw new Error(`answerWritePaths: ${path} is declared as both ${existing.value_type} and ${value_type}`);
+      }
+      existing.categories.push(category);
+    }
+  }
+  return paths;
+}
+
 export function isUserFillableCategory(category, questionTemplates) {
   return (category.startsWith('user_') || category === 'unknown_user_fact') &&
     Array.isArray(questionTemplates[category]?.profile_paths) &&

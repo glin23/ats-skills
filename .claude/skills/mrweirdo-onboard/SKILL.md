@@ -123,6 +123,7 @@ Mr. Weirdo Jobs 已准备开始。
 Then run:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 bash scripts/preflight.sh
 ```
@@ -149,6 +150,7 @@ Ask for one intake message:
 Copy the resume:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 bash scripts/intake_resume.sh "<path from user>"
 ```
@@ -191,6 +193,7 @@ The required `work_authorization` runtime shape is in
 After writing:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 bash scripts/secure_profile_files.sh
 node shared/validate_user_profile.mjs
@@ -243,6 +246,7 @@ change target direction, update JSON and restart Step 4.
 Read `references/run-and-database.md`.
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/init_db_cli.mjs
 node shared/discover_candidates.mjs --plan
@@ -293,6 +297,7 @@ Do not continue until every usable row has the complete score object required in
 Store:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/store_scored_jobs.mjs \
   --to-score /tmp/mrweirdo-onboard/to_score.json \
@@ -323,6 +328,7 @@ count, suspicious count, and the DB path with this layout:
 Before a real batch, run a dry-run and diagnostics:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/apply_supervisor.mjs --dry-run > /tmp/mrweirdo-onboard/dry-run.json
 node shared/queue_diagnostics.mjs --json > /tmp/mrweirdo-onboard/queue-diagnostics.json
@@ -368,6 +374,7 @@ row after the batch begins.
 Run the real foreground batch:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node shared/apply_supervisor.mjs --real --max "$MRWEIRDO_MAX_AUTO_APPLY"
@@ -418,11 +425,13 @@ Never list each job's missing fields line by line for the user. The user should
 see the minimal cross-application question set, not a manual application audit.
 Leave lower-impact grouped questions for a later batch.
 
-After the user answers, update only that user's local profile/essay/answer
-templates as needed, validate, then requeue affected rows:
+After the user answers, record the answers with `shared/record_profile_answers.mjs`
+(never hand-write profile.json; see `references/run-and-database.md`), then requeue:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
+node shared/record_profile_answers.mjs --json '<answers>' --source user_answer --category <category>
 node shared/validate_user_profile.mjs
 node shared/retry_gap_rows.mjs \
   --apply \
@@ -442,6 +451,7 @@ Use the second batch as the conversion-rate check. If the gap report lists
 Generate the report and prune without an extra pause:
 
 ```bash
+export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 REPORT_PATH=$(node shared/apply_report.mjs --since "$(date -u +%Y-%m-%d)")
 echo "$REPORT_PATH"

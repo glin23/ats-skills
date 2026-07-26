@@ -163,6 +163,51 @@ node shared/prune_discovered_jobs.mjs \
   --json > /tmp/mrweirdo-onboard/prune-summary.json
 ```
 
+## Recording User Answers
+
+Never hand-write `profile.json`. Every answer the user gives — the A0/A2
+hard-boundary answers in Step 3 and the Step 6 follow-up answers — goes in
+through one command:
+
+```bash
+cd "$MRWEIRDO_REPO_ROOT"
+node shared/record_profile_answers.mjs \
+  --json '{"work_authorization.visa_status": "F-1 OPT",
+           "work_authorization.authorized_to_work_us": true,
+           "work_authorization.requires_sponsorship_now": false,
+           "work_authorization.requires_sponsorship_future": true}' \
+  --source onboarding_a0 --category user_work_authorization --asked-by intake
+```
+
+- `--json` keys are dotted profile paths. A path is writable only when some
+  entry in `QUESTION_TEMPLATES` (`shared/missing_field_questions.mjs`) declares
+  it, so the answer set and the write permissions cannot drift apart. To record
+  something no question asks for, add the question first.
+- `--source` is one of `user_answer`, `onboarding_a0`, `onboarding_a2`,
+  `resume_inferred`, `legacy_unverified`.
+- `--category` is the gap-report category the answer came from; `--asked-by`
+  records which moment asked (`intake`, `queue_gate`, `step6`).
+- `--dry-run` prints what would change and writes nothing.
+
+Values are checked, never coerced. `authorized_to_work_us` takes `true` or
+`false` — `"true"`, `"Yes"` and `1` are rejected, because a coerced value here
+becomes a claim about the user's immigration status typed onto a live form.
+
+Exit codes:
+
+| Code | Meaning | What to do |
+|---:|---|---|
+| 0 | Written. `changed[]` lists every path that moved. | Continue. |
+| 2 | Bad arguments, or a path no question declares. | Fix the path, or add the question template. Nothing was written. |
+| 3 | Wrong value type. | Send a real boolean/string. Nothing was written. |
+| 4 | The profile validator rejected the file. | `profile.json` is byte-identical to before; read the printed validator output. |
+
+On success the command also updates `$MRWEIRDO_HOME/answer_provenance.json`
+(chmod 600), which records, per path, where the answer came from, when, and a
+fingerprint of the value — never the value itself. It is read-only context for
+the Step 5 identity block and audit; it never affects what gets filled onto a
+form. A missing or corrupt provenance file cannot block an application.
+
 ## Eligibility
 
 `store_scored_jobs.mjs` marks a row auto-apply eligible only when:

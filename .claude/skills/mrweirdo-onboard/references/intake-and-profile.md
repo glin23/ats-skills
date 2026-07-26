@@ -24,6 +24,15 @@ Write A2 legal defaults only when explicitly confirmed. Otherwise keep nullable
 fields null and let drivers skip legally sensitive rows. The recommended A2
 default is ask/skip until a real form needs the fact.
 
+A0 and A2 answers must reach `profile.json` through
+`shared/record_profile_answers.mjs` (see `run-and-database.md`), not by writing
+the file by hand. The four `work_authorization` keys are three-state — `true`,
+`false`, or `null` meaning "never asked". If the user's answer does not settle a
+key, leave it `null`: the pre-batch gate will ask before anything is submitted,
+which is far cheaper than a guess that lands on a real form. Recording A0 also
+matters because the batch refuses to start while `authorized_to_work_us` or
+`requires_sponsorship_future` is unanswered.
+
 ## Profile Generation Prompt
 
 Analyze the resume PDF plus the self-introduction and produce three JSON artifacts:
