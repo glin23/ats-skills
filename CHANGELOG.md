@@ -60,6 +60,32 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **A fact he had already answered stopped being asked over and over**
+  (2026-07-26). The fix above reads the custom-facts bucket one fact at a time,
+  but it was only wired into the two paths that name a bucket up front. The
+  bucket's main entrance is the catch-all at the end of the classifier — the
+  bucket is defined as "facts with no bucket of their own", which is exactly
+  what reaches that line — and it never looked at the profile at all. Measured
+  against the real profile's eleven answered facts: eight of ten probes were
+  asked again anyway, `us_citizen` among them, which he had answered `false`.
+  Three of those were also handed a key of their own alongside the one already
+  in the bucket (`rate_your_excel_proficiency` beside `excel_proficiency`), so
+  answering as instructed would have written a duplicate and asked again next
+  run. Now two of ten, both of them keys written by hand rather than published
+  by the report; answering either once under the published key ends it for good.
+- **The concierge refusal now leads with the action that fixes the machine**
+  (2026-07-26). The likeliest way to meet this message is the note outliving the
+  run — the runbook deletes the sandbox first — and the message opened by
+  telling the owner to re-run against that deleted sandbox. "Delete the note"
+  was the sixth line, in English, under a Node stack trace that reads as a crash
+  to someone who does not program. It now opens with a copy-paste `rm`, in
+  Chinese, printed plainly with exit code 3 instead of an uncaught throw, and a
+  test holds the Node and shell wordings identical. The note also gained its
+  missing half: the sandbox carries a marker naming the home that left the note,
+  and both entrances refuse a sandbox whose note has gone missing or points
+  somewhere else — before this, forgetting the note or deleting it early turned
+  the entire protection off with no sign at all. A run that skips the setup step
+  outright still cannot be detected, and the runbook says so.
 - **A question nobody was ever asked no longer comes back as "the profile has
   it"** (2026-07-26). The catch-all "unknown fact" bucket counted itself
   answered whenever `standard_qa.custom_facts` held anything at all. The real
