@@ -4,7 +4,7 @@ Owner: arnold-builder
 Type: BUILD_NOTES
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, test/ashby_driver_harness.mjs, test/helpers.mjs, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 6
+Iterations: 7
 Updated: 2026-07-26
 ---
 
@@ -1806,3 +1806,402 @@ diff  home_before.txt home_after.txt                    → 0 行差异
 | 测试必须**串行**跑 | ✅ 全程 `npm test`（脚本自带 `--test-concurrency=1`），未手工并行 |
 | 交活前把 CI **每一步**在本地跑一遍全绿，不能只跑 `npm test` | ✅ 四步 × **三个提交**全跑，且全部跑在 `git worktree` 的干净检出上（51.1） |
 | 主流程冒烟优先保证不断 | ✅ 干净检出里 `npm run demo:check` exit 0（51.2） |
+
+---
+
+# 第 7 轮（Round 34）— 验收指出的两件必做
+
+派遣单：件一 = 谓词细粒度化（验收 §5.4 ❌1，P2 真 bug）；件二 = 人肉门房代跑的隔离两个洞（验收 §5.8）。
+本轮**没有回炉**上一轮的东西，上一轮三处偏离一行未动。
+
+## 55. 实现摘要（第 7 轮）
+
+3 个提交，16 个文件，**+692 / −35**（`git diff --shortstat a1ffd15..229fd1b`）。
+
+| 提交 | 内容 | 文件 |
+|---|---|---|
+| `ce48d4f` | **件一**：`unknown_user_fact` 谓词按事实判 + 报告公布写回键 | `missing_field_questions.mjs` `apply_gap_report.mjs` + 新测试 `custom_fact_key.test.mjs` |
+| `210cd7a` | **件二**：过程文件跟着家走 + 「勿入纸条」守卫 + 说明书去硬编码 | `onboard_tmp.mjs` `paths.mjs` `retry_gap_rows.mjs` `concierge_guard.sh`（新）`intake_resume.sh` `preflight.sh` + 3 份说明书 + 新测试 `concierge_isolation.test.mjs` + 1 条断言迁移 |
+| `229fd1b` | 变更日志 + 操作卡 | `CHANGELOG.md` `docs/active/2026-07-26_concierge-run_RUNBOOK.md`（新） |
+
+**行数门禁**：`apply_gap_report.mjs` 593 → **613**；`missing_field_questions.mjs` 378 → **447**；
+`onboard_tmp.mjs` 11 → **19**；`paths.mjs` 158 → **189**——全部远低于 800。
+主入口 `mrweirdo-onboard/SKILL.md` **496 → 496 行**（全部是同行替换，500 门禁未动）。
+
+### 55.1 件一：谓词从「桶里有没有东西」改成「这道题的那条事实答过没有」
+
+`shared/missing_field_questions.mjs` 新增两个导出（**放在这里而不是 CLI 里**：CLI 在 import 时就读文件、
+单元测试进不去，而这个模块本来就被两边 import，还能进覆盖率统计）：
+
+| 函数 | 做什么 |
+|---|---|
+| `customFactKey(label)` | 题面 → 答案写回时用的键（`Preferred name` → `preferred_name`；`What is your primary phone number?` → `primary_phone_number`）。剥掉的只有问句措辞，剩下的**始终是题面里的一段连续词**——测试逐条钉住这一点 |
+| `customFactAnswered(label, facts)` | 桶里有没有**这道题**的键。整词匹配（`us` 不算答了 `bonus`），`false` 算答案、空串 / `null` 不算 |
+
+`apply_gap_report.mjs` 里 `unknown_user_fact` 的谓词换成 `customFactAnswered(label, standard.custom_facts)`——
+与偏离 ② 的地点谓词同构（那条是「这道题问的那个城市答过没有」）。
+
+**这个类目只被 `noValueCategory()` 一处调用**（`NOTE_CATEGORY` 表里没有任何一项映射到
+`unknown_user_fact`，我逐行核过），所以影响面严格限定在「驱动说自己没值可填」那条路上。
+
+### 55.2 件一的附加动作：报告**公布**写回键（超出派遣单字面，故意的）
+
+派遣单只要求「谓词细粒度化 + 一条闭环测试」。**只做到这里，闭环测试会是假绿**：
+细粒度谓词找的是「与题面匹配的键」，而今天**没有任何东西规定答案该写成什么键**——
+`standard_qa.custom_facts` 的 11 个键全是模型当时自己起的。测试里我按 `preferred_name` 写、
+线上模型写成 `preferred_name_for_forms`，测试绿、真人还是被反复问——**正是 BUILD §50 方向 2 否掉的死循环换了个位置重演**。
+
+所以我让报告自己把键发出来：`unknown_user_fact` 这一档的每个 example 多一个 `profile_key`
+（`exampleForCustomFact()`），问句也改成「用它自己那条 profile_key 当键（换个键写＝下次还会问同一题）」。
+**发出去的键和下次查找的键是同一个函数算的**，两边不可能漂开。
+闭环测试因此测的是真链路：跑一次 → 把报告发的键原样写进档案 → 再跑一次 → 那三题全部消失。
+
+### 55.3 件二洞 1：过程文件跟着家走
+
+`shared/onboard_tmp.mjs` 默认值 `/tmp/mrweirdo-onboard` → `join(atsHome(), 'run-tmp')`（验收补法 1）。
+`MRWEIRDO_ONBOARD_TMP_DIR` 显式设了仍然优先（测试钉住）。
+
+### 55.4 件二洞 2：给「静默回落」做的出口 —— 一张放在家里的「勿入」纸条
+
+**判据是派遣单给的**：「一个漏了前缀的 bash 块，不能再无声地写进创始人自己的家。」
+
+我做成 `~/.mrweirdo-jobs/.concierge_run_active`：代跑开始时写一行沙箱路径进去，
+`atsHome()` 与 `scripts/concierge_guard.sh` 一旦看见它就**拒绝这个家并报错**，报错里带着
+① 这次该去哪个沙箱 ② 该怎么重跑 ③ 跑完怎么撕纸条。
+
+三个设计要点，每一个都是为了不做成「假守卫」：
+
+1. **为什么用文件而不是提示语**：洞 2 的病根就是「环境变量不跨 bash 块活着」。
+   文件**跨 shell 活着**——用一个能活下来的东西去补一个活不下来的东西。
+2. **判据是「解析后的家」，不是「变量有没有设」**。说明书里全是
+   `export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"`——**变量总是被设上的**，
+   只是设成了创始人自己的家。按「变量缺不缺」判会**整个错过真实发生的那种情况**。
+   突变测试 M7 专门钉这一条（把判据换成 `if (!process.env.MRWEIRDO_HOME)` → 当场红）。
+3. **Node 侧不够，还得有 shell 侧**：`scripts/intake_resume.sh` 用 `cp` 拷简历，**根本不经过 Node**——
+   而简历正是最不能拷错地方的那个文件。所以 `scripts/concierge_guard.sh` 独立成一个脚本
+   （`intake_resume.sh` / `preflight.sh` 各调一行），**报错话术只有一份**，不许两处各抄一遍。
+
+**没有纸条时它完全无感**：不打印任何东西、不拖慢任何东西（测试 `an unmarked home is used without a word`
+断言 stderr 为空）。这是一个**opt-in（用时才开）**的守卫，不是常驻拦截。
+
+## 56. TDD 落地证据（先红后绿，原始报错原文，不是事后补写）
+
+### 56.1 件一（`test/custom_fact_key.test.mjs` 新建 5 条）
+
+第一次跑（函数还不存在）：
+
+```
+SyntaxError: The requested module '../shared/missing_field_questions.mjs' does not provide an export named 'customFactAnswered'
+```
+
+函数写完、谓词还没换（**这一红最关键，它就是 ❌1 本身**）：
+
+```
+✖ gap report: a full custom_facts bucket does not answer a question nobody was asked
+  AssertionError: Preferred name: the driver said it had nothing to type, so the report may not answer "fill it from the profile"
+  + actual   'agent_profile_backed'
+  - expected 'unknown_user_fact'
+
+✖ gap report: the fact he really answered stays answered, the others get asked
+  + actual   'agent_profile_backed'
+  - expected 'unknown_user_fact'
+
+✖ gap report: answering under the key the report itself hands out ends the question
+  AssertionError: the three facts must be asked the first time round
+```
+
+**2 pass / 3 fail** → 改完 **5 pass / 0 fail**。
+
+### 56.2 件二（`test/concierge_isolation.test.mjs` 新建 7 条）
+
+```
+✖ run artefacts follow the home switch instead of a shared /tmp directory
+  AssertionError: one switch has to move everything, or the sandbox leaks the answers it typed onto forms
+  + actual   '/tmp/mrweirdo-onboard'
+  - expected '/var/folders/.../mrw-tmp-follow-AV2GTY/.mrweirdo-jobs/run-tmp'
+
+✖ a home marked as off-limits is refused, not silently used
+  AssertionError: expected a refusal, got: /var/folders/.../mrw-lock-explicit-RJbBym/.mrweirdo-jobs
+  0 !== 9
+
+✖ a home marked as off-limits is refused when nothing set the switch at all
+✖ the shell entry points refuse the marked home too, before anything is copied
+```
+
+**3 pass / 4 fail** → 改完 **7 pass / 0 fail**。
+
+### 56.3 测试数与覆盖率（真实数字）
+
+`npm test`：**212 → 224**，本轮新增 **12 条**（件一 5 + 件二 7），全绿。
+
+| 模块 | line | branch | function |
+|---|---:|---:|---:|
+| `shared/apply_gap_report.mjs` | **97.23** | 78.10 | 86.36 |
+| `shared/missing_field_questions.mjs` | **95.53** | 80.46 | **100.00** |
+| `shared/onboard_tmp.mjs` | **100.00** | **100.00** | **100.00** |
+| `shared/paths.mjs` | 57.67 | 66.67 | 23.08 |
+
+（`node --test --test-concurrency=1 --experimental-test-coverage test/*.test.mjs`，跑在干净检出 `ci-229fd1b` 上）
+
+**`paths.mjs` 那个 57.67% 要说清楚**：未覆盖行是 **78 行以后**的一批老 loader
+（`loadProfile` / `loadCompanyList` / `loadEnv` / `notion*`，它们只在被 spawn 的 CLI 里跑），
+**本轮新增的守卫代码（33-60 行）在覆盖内**，不是"新代码没测"。我不拿模块总数冒充新代码的覆盖。
+
+## 57. 突变测试（7 处改回旧写法 / 改成看似等价的写法，全部当场变红）
+
+| # | 把什么改掉 | 结果 |
+|---:|---|---|
+| M1 | 谓词改回 `nonEmpty(custom_facts)` | 🔴 fail 3 |
+| M2 | 报告不再公布 `profile_key` | 🔴 fail 1（闭环测试） |
+| M3 | 整词匹配降级成 `includes(phrase)` 子串匹配 | 🔴 fail 1（`us` 会答上 `bonus`） |
+| M4 | 过程文件默认值改回 `/tmp/mrweirdo-onboard` | 🔴 fail 1 |
+| M5 | `atsHome()` 不再看纸条 | 🔴 fail 2 |
+| M6 | `intake_resume.sh` 不再看纸条 | 🔴 fail 1 |
+| M7 | 判据改成「变量没设才查」（`${VAR:-default}` 陷阱） | 🔴 fail 1 |
+
+**7/7 全红。** M2 / M3 / M7 是三个「看起来一样、其实把守卫掏空」的写法，它们红了才说明测试真的在测东西。
+
+## 58. 现有真实用户逐格对照（真实档案只读，改前 `a1ffd15` vs 改后）
+
+方法与前几轮同款：`git worktree add --detach` 检出 `a1ffd15`，真实 `profile.json`
+**只读复制**进临时沙箱家目录，同一批探针分别喂给两棵树的 `apply_gap_report.mjs`，每个题面单独跑一次报告。
+**20 个题面 × 2 种形态（带 `value_empty_for:` 动态 note / 不带 note）= 40 格。**
+
+**14 格变了，26 格逐字一致。变的 14 格全部是「带 note」那一列。**
+
+| 题面（都带 `value_empty_for:`） | 改前 | 改后 |
+|---|---|---|
+| Preferred name | `agent_profile_backed` | `unknown_user_fact` |
+| Primary phone number | `agent_profile_backed` | `unknown_user_fact` |
+| Expected graduation month | `agent_profile_backed` | `unknown_user_fact` |
+| Location | `agent_profile_backed` | `unknown_user_fact` |
+| Where do you currently live? | `agent_profile_backed` | `unknown_user_fact` |
+| Have you previously applied to this company? | `agent_profile_backed` | `unknown_user_fact` |
+| What is your expected compensation? | `agent_profile_backed` | `unknown_user_fact` |
+| Please attach your resume | `agent_profile_backed` | `unknown_user_fact` |
+| What is your major? | `agent_profile_backed` | `unknown_user_fact` |
+| Which work style(s) do you prefer? | `agent_profile_backed` | `unknown_user_fact` |
+| What is your notice period? | `agent_profile_backed` | `unknown_user_fact` |
+| Company name | `agent_profile_backed` | `unknown_user_fact` |
+| Job title | `agent_profile_backed` | `unknown_user_fact` |
+| Start date month | `agent_profile_backed` | `unknown_user_fact` |
+
+**验收点名的三格（前三行）确实翻过来了 —— 这三个数字是我自己重跑出来的，没有引用验收的表。**
+
+**没变的 26 格里，几件重要的事**：
+
+| 探针 | 改前 = 改后 |
+|---|---|
+| 上面 14 个题面**不带 note** 的那一列（14 格） | 全部仍是 `agent_profile_backed`（GPA 题因为他档案里真有 GPA，也是这一档） |
+| `Are you legally authorized to work…`（两种形态） | 两边都不受影响（走工作授权那条规则） |
+| `Are you able to work from our Denver office?` | 上一轮偏离 ② 的结论原样保留，本轮没碰 |
+| `Tell us why you are interested…` | `agent_open_text` 不变 |
+
+**反向守卫（他确实答过的那条事实必须仍然「不用问」）**：把真实档案的 `custom_facts` 加一个
+`preferred_name`（模拟他答完了）再跑同一批探针 —— `Preferred name` **变回 `agent_profile_backed`**，
+而 `Primary phone number` 仍然是 `unknown_user_fact`。**闭环在他自己的数据上闭上了，而且没有变成"一律要问"。**
+
+### 58.1 代价，说清楚
+
+- **他会被多问一批题**：只在「驱动明说这一格没值可填」时发生。这 14 格**过去的结局是那一行无声卡住**
+  （报告说"档案里有，自己填"，而驱动手里根本没值）——**多问一次换回一行能投出去**，与偏离 ② 同一个交易。
+- **答一次就不再问**：只要按报告给的 `profile_key` 写回，同一题永久消失（58 节反向守卫实测）。
+- **不会波及没有 note 的老路径**：26 格零变化，包括工作授权 / EEO / 地址 / GPA 那几族。
+
+## 59. 件二的兼容性：`/tmp/mrweirdo-onboard` 里那 165 个既有文件怎么办
+
+**结论先说：一个都没动、一个都没删；没有发现「必须停下问 lead」的硬冲突，但有三处「安静地少给你看东西」，逐条列在下面。**
+
+**① 那些文件的去向**：**原地不动**。改动只改「以后往哪写 / 从哪读」，不搬不删（派遣单硬边界）。
+本机实测目录仍是 165 个条目（我自己跑测试掉进去的 4 个文件已按下面 §59.3 复原）。
+
+**② 有没有代码路径因为读不到旧目录而行为改变** —— 我逐个调用点核过，三处：
+
+| 位置 | 改后的行为 | 严重度 |
+|---|---|---|
+| `store_scored_jobs.mjs` 默认读 `to_score.json` / `scored.json` | 文件不存在时 `readJson(path, [])` 返回空数组 → **入库 0 行**，不报错。只影响「发现在改动前跑、入库在改动后跑」这种跨越升级的半程运行 | ⚠️ **会安静地少做事**（但屏幕上会显示 stored 0） |
+| `apply_gap_report.mjs` 不带 `--summary` 时扫目录找最新批次 | 新目录里没有旧批次 → 扫到 0 个结果文件 → 报告说没有缺口 | ⚠️ 同上，只影响升级当天的历史批次 |
+| `job_report.mjs` 按行号找 `apply-result-<id>.jsonl` | 历史行的结果文件在旧目录 → `result_file: null`，报告照出，只是少了那一栏明细 | 🟡 少一栏，不影响主流程 |
+
+**③ 要不要留一次性回退读（"新目录没有就去旧目录找一下"）—— 我的判断是不留，理由不是省事**：
+旧目录**正是跨人串档的那个共享目录**。验收 §5.8 点名的正确性风险原话是
+「`store_scored_jobs.mjs` 默认从该目录读 → 下一次运行可能读到上一个人留下的文件」。
+**加一条回退读，等于把刚焊死的那个洞又开一条缝**，而且是在最难发现的路径上（悄悄读到别人的数据，没有任何提示）。
+所以选择「读不到就是读不到」，代价是升级当天的半程运行要重跑一次发现步骤，或者创始人**自己决定**把旧文件拷过去
+（一条命令：`cp /tmp/mrweirdo-onboard/{to_score,scored}.json ~/.mrweirdo-jobs/run-tmp/`）。
+**我不替他拷，也不替他删。**
+
+**④ 硬冲突有没有？有一处，我处理了而不是绕过去**：
+**说明书里 20 多处把 `/tmp/mrweirdo-onboard/...` 写死在命令里**（`SKILL.md` 8 处、`run-and-database.md` 8 处、
+tracker 说明书 1 处、`preflight.sh` 1 处、`retry_gap_rows.mjs` 用法 1 处）。
+只改代码默认值、不改说明书，**主链路当场断**：发现步骤把 `to_score.json` 写进新目录，
+第 4 步的打分命令却去旧目录读——**读到的是上一次运行的残留，或者什么都没有**。
+所以这些硬编码一并换成 `$MRWEIRDO_HOME/run-tmp/...`（说明书的 bash 块本来就 export 了这个变量），
+`preflight.sh` 的 `mkdir` 也跟着换（它是第 0 步，负责把目录建好，后面的重定向才有地方落）。
+**这属于「不做就是残品」的连带改动，不属于顺手扩范围**，但仍然显式报出来。
+
+**⑤ 一条我自己撞上的实证（本轮最好的一条证据）**：
+**CI 第 2 步 `role_guard_smoke.mjs` 自己就在往那个共享目录里漏文件。** 它只设了 `MRWEIRDO_HOME`（临时家目录）、
+没设第二个开关，于是它的 `apply_batch --dry-run` 把批次摘要写进了 `/tmp/mrweirdo-onboard`。控制实验：
+
+```
+基线                                        165 个条目
+在改动前的检出上跑 CI 第 2 步   → 167 个条目（漏了 2 个）
+在改动后的检出上跑 CI 第 2 步   → 167 个条目（漏了 0 个）
+删掉我自己漏的那 2 个            → 165 个条目，复原
+```
+
+**这台机器上没有第二个人，所以漏出去的只是测试假数据；换成代跑，同一条路径漏的就是别人的表单答案。**
+
+### 59.1 我按操作卡自己走了一遍（不是"理论上应该可以"）
+
+用假的家目录（`HOME` 指向临时目录，**没有碰创始人真实的 `~/.mrweirdo-jobs`**）把操作卡从第 1 步走到第 6 步：
+
+| 操作卡步骤 | 实测结果 |
+|---|---|
+| 第 1 步 贴纸条 | 纸条内容回显 `/tmp/concierge-s1test` ✅ |
+| 第 3 步**漏了开关**跑 `intake_resume.sh` | 拒绝，exit **3**，打印沙箱路径 + 重跑命令；**简历没有被拷进去**（`ls` 确认不存在）✅ |
+| 第 2+3 步开关设好后再跑 | 简历落进 `/tmp/concierge-s1test/resume.pdf`，权限 `-rw-------` ✅ |
+| 漏了开关跑一个 node 步骤 | 拒绝，exit **1**（Node 抛错，信息第一行就是那句拒绝）✅ |
+| 开关设好后跑同一个 node 步骤 | 产物落进沙箱 `run-tmp/`，旧共享目录**零新增**、假家目录**零新增** ✅ |
+| 第 5 步三条核对命令 | ①②**都是空白**（真的什么都没打印，连纸条自己都不打印——这一点我按实测把操作卡的措辞改准了）③ 列出沙箱内容 ✅ |
+| 第 6 步清理 | 沙箱删除、纸条撕掉后 `atsHome()` 立刻恢复正常 ✅ |
+
+**操作卡里唯一一条我没能在真链路上验的命令**是 `apply_supervisor.mjs --dry-run`（要有完整的求职方向和数据库才跑得动）；
+我在空沙箱里跑了一次，它给的是一句可读的 `Missing role targets`，**我把这句原文写进了操作卡**，
+免得拍板人以为是出错了。
+
+## 60. 自审记录（逐段自述 + 自查）
+
+### 60.1 `customFactKey` / `customFactAnswered`（+67 行，纯函数、无 IO）
+
+**做什么**：题面 ⇄ 键的双向约定。输入题面（和一个桶），输出键 / 布尔。
+**自查**：① 无 try/catch，无兜底；② 空题面返回空串、空串键**永不匹配**（否则一个空键会答上所有题）；
+③ 全是词一级匹配，没有正则回溯风险；④ `false` 与 `''` / `null` 分开处理——**"他说没有"是答案，"没填"不是**
+（项目长期原则第 2 条的同一个形状）；⑤ 剥问句前缀会不会剥出一个"不在题面里的键"？
+测试用「剥完必须仍是题面里的一段连续词」这条不变式钉住，而不是靠我肉眼看几个例子。
+
+### 60.2 `refuseIfLockedForConciergeRun`（+28 行）
+
+**做什么**：解析出的家目录里有没有纸条；有就抛，抛之前把纸条第一行（沙箱路径）读出来放进错误信息。
+**自查**：① 抛而不是打印——打印会被淹没在输出里，而"淹没"正是洞 2 的形状；
+② 没有纸条时不读盘、不打印，零副作用；③ 纸条读不出内容时用 `<see the file>` 兜住，**但仍然抛**
+（兜的是文案，不是判断，不构成静默降级）；④ 放在 `atsHome()` 里而不是各调用点——**收口在信息最丰富的一处**。
+
+### 60.3 那条被我改掉的现成断言（必须自己交代）
+
+`test/onboard_presentation.test.mjs:24` 原本钉的是「队列关口的话术里含 `/tmp/mrweirdo-onboard/manual_or_unsupported.json`」。
+路径搬家之后这条必红。**我改了它的地址，没有削弱它**：它钉的事实是「关口必须告诉用户 manual 清单在哪」，
+改后仍然逐字断言新地址，强度一致。改动处留了注释写明为什么。
+**这是本轮唯一一处改动现成断言**，请验收重点看这一条是不是"改测试迁就代码"。
+
+## 61. 试过的错误方向（Iterations=7）
+
+**❌ 方向 1（件一）：谓词只按「键 ⊂ 题面」单向匹配就收工，键怎么写交给模型。**
+派遣单字面只要求谓词细粒度化。**否决理由**：档案里那 11 个键是模型历史上自己起的名，
+没有任何约定。测试里我按 `preferred_name` 写就绿，线上模型写成别的就永远绿不了——
+**闭环测试会变成假绿**，而假绿正是本项目的老坑形状。所以补了「报告公布键」这一半（§55.2）。
+
+**❌ 方向 2（件一）：匹配做成双向（题面 ⊂ 键 也算答过）。**
+能多兜住一些模型自创的长键，看着更"聪明"。**否决理由**：方向反了。
+`Phone` 这种短题面会被 `phone_screen_availability` 这种无关键一口吞掉 →
+**又变回"档案里有，别问用户"** —— 正是本轮要消灭的那个结论。
+宁可多问一次（安全方向），不要错答一次（危险方向）。测试里用 `us` / `bonus` 那条钉住整词匹配。
+
+**❌ 方向 3（件二）：守卫做成「`MRWEIRDO_HOME` 没设就报警」。**
+最直觉的读法，一行搞定。**否决理由（实测否决）**：说明书里的写法是
+`export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"`——**变量永远是被设上的**。
+按"没设"判，**在真实发生的那种情况下一次都不会触发**。改判「解析后的家被贴了纸条」。
+突变测试 M7 把这条错误写法固定成一个会红的用例。
+
+**❌ 方向 4（件二）：只在 `paths.mjs` 里做守卫，shell 脚本不管。**
+"所有工具都是 node"——**核下来是错的**：`intake_resume.sh` 用 `cp` 拷简历，全程不经过 node，
+而它拷的正是最不该拷错地方的那份文件。于是加了 `scripts/concierge_guard.sh`，
+两个入口各调一行，话术只有一份。
+
+**❌ 方向 5（件二）：给旧目录留一次性回退读，"新目录没有就去老地方看一眼"。**
+对创始人最省事。**否决理由**：那个旧目录就是跨人串档的源头（验收 §5.8 原话）。
+回退读＝把刚焊死的洞重新开一条缝，而且是"悄悄读到别人的文件"这种最难发现的形态。
+改成读不到就是读不到，代价写进 §59 交给拍板人。
+
+**❌ 方向 6（件二）：把两个环境变量写进 shell 配置文件（`.zshrc`）一劳永逸。**
+验收也列过这条。**否决理由**：方向会反过来——创始人下次跑自己的求职时忘了删，
+**他自己的数据会静默流进代跑目录**。操作卡里明确用「开一个带开关的终端窗口」的做法，用完关窗口即可。
+
+**❌ 方向 7（件二）：顺手把 `/tmp/mrweirdo-onboard` 里的历史文件搬进新目录。**
+搬完就没有"读不到旧数据"这回事了，看起来最干净。**否决理由**：派遣单硬边界写着不许删、
+搬 = 删 + 建，是不可逆动作；而且那 165 个文件里有投递历史，动它们要拍板人点头。
+现在的做法是原地不动 + 在 §59 给出他自己想拷时的那一条命令。
+
+## 62. 交付自查清单（第 7 轮）
+
+### 62.1 CI 四步 —— 链上**每个提交**单独干净检出各跑一遍
+
+（`git worktree add --detach`，三棵树 `git status --porcelain` 均 **0 个脏文件**）
+
+| 提交 | 内容 | Unit tests | role_guard_smoke | public_alpha_gate | syntax（85 个 .mjs） |
+|---|---|---|---:|---:|---:|
+| `ce48d4f` | 件一 | 217 / 217 / fail 0 → **exit 0** | **0** | **0** | **0** |
+| `210cd7a` | 件二 | 224 / 224 / fail 0 → **exit 0** | **0** | **0** | **0** |
+| `229fd1b` | 日志 + 操作卡 | 224 / 224 / fail 0 → **exit 0** | **0** | **0** | **0** |
+| 本文件所在提交 | 本施工记录（tip，SHA 见 `git log`；四步在提交后的干净检出上重跑过一遍） | 224 / 224 / fail 0 → **exit 0** | **0** | **0** | **0** |
+
+### 62.2 主流程冒烟
+
+干净检出 `ci-229fd1b` 与 `ci-f7c0ba4` 里 `npm run demo:check` → 均 **exit 0**。
+三条 WARN 与本轮无关且同源：`skill_not_linked_workspace`（临时检出没跑 setup.sh）、
+`chrome_cdp_not_running`（我故意没开浏览器）、`supervisor_preflight_not_clean`（唯一 FAIL 是 cdp）。
+
+### 62.3 逐条勾
+
+- ☑ TDD：两件**都先写测试、先看它红**，报错原文见第 56 节
+- ☑ 自审循环跑了（第 60 节）
+- ☑ 测试全绿 **224 / 224**；覆盖率按实际改动面报（56.3），`paths.mjs` 的低数字诚实拆开解释
+- ☑ 无端点 —— 本轮零接口 / 零路由 / 零出入参改动，API 8 项契约不适用
+- ☑ ◇ 主流程冒烟：`demo:check` exit 0
+- ☐ ◇ 结构升级双路 / ◇ 数据隔离字段 —— 登记表两格仍为空 → 跳过；本轮无数据表结构变更
+- ☑ 无 `try/except` 压异常（本轮新增代码零 try/catch；`grep -n "catch" shared/onboard_tmp.mjs shared/concierge*`→ 0）
+- ☑ 无 mock 假数据兜底进生产代码
+- ☑ 偏离显式标注：§55.2（超出派遣单字面的附加动作）、§59④（连带改说明书）、§60.3（改了一条现成断言）
+- ☑ 没顺手改无关老 bug；派遣单列的五项不在本轮范围的东西**一行未碰**
+  （核过 diff：`lever_apply_driver.mjs` / `greenhouse_apply_driver.mjs` / `ashby_*` / `profile.template.json` / `secure_profile_files.sh` 零改动）
+- ☑ Iterations=7，第 61 节含 **7 个**被否决方向
+- ☑ 没用 fallback / workaround 遮盖：读不到旧目录就是读不到，不偷偷回退
+- ☑ 文件膨胀铁律：全部远低于 800；`SKILL.md` 496 → 496（500 门禁未动）
+- ☑ 变更日志：`CHANGELOG.md` `[Unreleased] → Fixed` 顶部加 2 条
+- ☑ 用词：全文「用户 / 投递 / 岗位」；操作卡全文大白话，**零内部代号**
+
+### 62.4 `~/.mrweirdo-jobs/` 零写入证据
+
+```
+跑前：find ~/.mrweirdo-jobs -exec stat -f '%N|%z|%m|%Sp' → 7205 个条目
+跑后：同一条命令                                        → 7205 个条目
+diff  home_before.txt home_after.txt                    → 0 行差异
+```
+
+期间跑过：`npm test` ×N、CI 四步 ×3 棵树、`demo:check` ×2、80 次真实档案探针、7 次突变测试、
+操作卡全流程走查一遍（**走查用的是假家目录，`HOME` 指向临时目录**）。
+
+### 62.5 `/tmp/mrweirdo-onboard` 的处置（逐条对边界交代）
+
+- **既有 165 个条目：一个没删、一个没改、一个没搬。**
+- 我自己在跑改动前的代码时**漏进去 4 个测试假数据文件**（`apply-batch-summary-*.json`，
+  内容是空档案的 dry-run 结果，与创始人无关），**已全部删除**，目录复原到 165 个条目；
+  `find /tmp/mrweirdo-onboard -newermt <本轮开工时刻>` → **0 个文件**。
+  （删的只是我自己制造的、且能逐条指认的文件；**既有历史文件一律没碰**。）
+
+### 62.6 边界
+
+未 push；`origin/main` 仍 `8f9e546`，本地 ahead **8**（本轮 4 个 + 上轮 4 个）；`batchA-backup` 未碰；无 force / rebase / 改历史；
+未真跑投递、未提交表单、未开浏览器碰真实网站、未发邮件；未改 TASK 档案。
+
+## 63. 需要 lead 知道 / 拍板的三件事
+
+1. **`.claude/settings.json` 里那条 `Read(//private/tmp/mrweirdo-onboard/**)` 权限我没动。**
+   过程文件搬家之后，创始人读新目录（`~/.mrweirdo-jobs/run-tmp/`）可能会多一次授权提示。
+   **改权限配置是拍板人自己的地盘，我不代改**——要不要加一条新权限，请他自己决定。
+2. **`store_scored_jobs.mjs` 读不到输入文件时返回空数组、不报错**（§59②第一行）。
+   这是既有写法，不是本轮引入，但我的改动让它多了一种触发方式（跨越升级的半程运行）。
+   要不要把它改成读不到就报错退出（Fail Fast），**是一次独立的小改动，本轮没做**，请 lead 决定排不排。
+3. **`jobs.db` 仍是 644**（B3-a 写入侧统一上锁的范围，本轮按派遣单未做）。
+   已如实写进操作卡的「现存限制」一节，拍板人代跑前会看到。
