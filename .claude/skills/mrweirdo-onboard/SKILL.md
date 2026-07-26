@@ -349,7 +349,7 @@ Always include this identity block and fixed statement inside the queue gate:
 [Step 5/7] Queue gate - 最终确认后才真实提交 (~1 min review)
 
 身份 / Identity
-将以以下身份提交：<name> / <email> / <phone> / <visa 状态>
+将以以下身份提交：<name> / <email> / <phone> / <visa 状态>（来源 <source>）
 
 本批次 / Batch counts
 自动投 <N> 行 | manual 清单 <M> 行（不会替你投）| quota 保护 <Q> 行 | suspicious 待复核 <S> 行
@@ -360,6 +360,7 @@ Always include this identity block and fixed statement inside the queue gate:
 | 1 | <company> | <title> | <score> | <ats> | <location> | <ok/anomaly> |
 
 规则 / Rules
+若 dry-run 输出的 `profile_gate.ok` 为 false，先问那一个问题、按 `remediation_command` 记录答案再往下走（否则整批投不出去）。
 只有标记 auto 的行会被自动提交；manual 清单在 /tmp/mrweirdo-onboard/manual_or_unsupported.json，系统不会替你处理。
 对需要 cover letter 的岗位，我会基于你的简历/profile/essay_profile/answer_bank 与岗位匹配证据自动生成并附上 cover letter；不会编造个人或公司事实。
 

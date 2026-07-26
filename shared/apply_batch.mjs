@@ -13,6 +13,7 @@ import {
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
+import { blockingProfileGaps } from './personal_fact_gate.mjs';
 import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
 import { progress, sleepWithProgress } from './progress.mjs';
 import { onboardTmpDir } from './onboard_tmp.mjs';
@@ -211,6 +212,24 @@ function acquireBatchLock() {
 
 mkdirSync(tmpDir, { recursive: true });
 
+// Dry-run counts the gate but does not stop on it. The point is that the queue
+// gate can show the gap while the user is still reading the queue, instead of
+// preflight rejecting the batch one second after they type 开始. The real run
+// still fails hard, in supervisor_preflight.
+function readProfileForGate() {
+  try {
+    return JSON.parse(readFileSync(join(home, 'profile.json'), 'utf8'));
+  } catch {
+    return {};
+  }
+}
+const profileGate = blockingProfileGaps(readProfileForGate());
+if (!profileGate.ok) {
+  progress('apply', `profile gate: unanswered ${profileGate.missing_paths.join(', ')}`);
+  progress('apply', `profile gate: ask "${profileGate.question}"`);
+  progress('apply', `profile gate: then run ${profileGate.remediation_command}`);
+}
+
 progress('apply', `repo=${repoRoot}`);
 progress('apply', `home=${home}`);
 progress('apply', `max=${formatMaxRows(maxRows)} role_targets=${roleTargets || '(from search_intent)'} dry_run=${dryRun} skip_liveness=${skipLiveness}`);
@@ -402,6 +421,7 @@ if (!dryRun) {
 const batchSummary = {
   ok: true,
   dry_run: dryRun,
+  profile_gate: profileGate,
   started_at: batchStartedAt,
   finished_at: new Date().toISOString(),
   rows: summaries,

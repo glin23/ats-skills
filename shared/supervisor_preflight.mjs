@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { validateProfileBundle } from './validate_user_profile.mjs';
+import { blockingProfileGaps } from './personal_fact_gate.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
@@ -164,9 +165,16 @@ const syntax = syntaxFiles.map((file) => {
 const smoke = runNode(['scripts/role_guard_smoke.mjs']);
 const cdp = await checkCdp();
 
+// A hard check, not a warning: this file already emits five kinds of WARN and an
+// automated flow walks straight past all of them. Failing here costs two seconds
+// and one question; passing here with an unanswered work-authorization key costs
+// twenty browser tabs, twenty blocked rows and a "0 submitted" report.
+const profileGate = blockingProfileGaps(profile);
+
 const checks = [
   { name: 'profile_json', ok: existsSync(profilePath), detail: profilePath },
   { name: 'profile_shape', ok: !existsSync(profilePath) || profileValidation.ok, detail: profileValidation.issues },
+  { name: 'work_authorization_answered', ok: profileGate.ok, detail: profileGate },
   { name: 'resume_pdf', ok: existsSync(resumePath), detail: resumePath },
   { name: 'search_intent_json', ok: existsSync(intentPath), detail: intentPath },
   { name: 'role_targets_nonempty', ok: allowedRoleTypes.length > 0, detail: allowedRoleTypes },
@@ -213,6 +221,7 @@ const result = {
   repoRoot,
   maxRows: formatMaxRows(maxRows),
   allowedRoleTypes,
+  profile_gate: profileGate,
   checks,
   warnings,
   queue_diagnostics: queueDiagnostics,
@@ -229,6 +238,11 @@ if (process.argv.includes('--json')) {
   console.log(`queue rows: ${queueRows.length}`);
   for (const check of checks) {
     console.log(`- ${check.ok ? 'OK' : 'FAIL'} ${check.name}`);
+    if (!check.ok && check.name === 'work_authorization_answered') {
+      console.log(`  missing: ${check.detail.missing_paths.join(', ')}`);
+      console.log(`  ask: ${check.detail.question}`);
+      console.log(`  then: ${check.detail.remediation_command}`);
+    }
     if (!check.ok && check.name === 'cdp') {
       console.log(`  host: ${check.detail.host}`);
       if (check.detail.error) console.log(`  error: ${check.detail.error}`);

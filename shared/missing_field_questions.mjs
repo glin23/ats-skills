@@ -25,6 +25,14 @@ export const QUESTION_TEMPLATES = {
     value_type: 'boolean',
     path_value_types: { 'work_authorization.visa_status': 'string' },
     enum_values: null,
+    // The subset that stops a batch before it opens a single browser tab. It is
+    // declared here, next to the question, so the gate cannot ask for a path the
+    // write-back command has no permission to store. No other template has one:
+    // every other fact blocks some rows, this one blocks essentially all of them.
+    gate_paths: [
+      'work_authorization.authorized_to_work_us',
+      'work_authorization.requires_sponsorship_future',
+    ],
   },
   user_full_address: {
     priority: 1,
@@ -201,6 +209,17 @@ export function answerWritePaths(templates = QUESTION_TEMPLATES) {
         throw new Error(`answerWritePaths: ${path} is declared as both ${existing.value_type} and ${value_type}`);
       }
       existing.categories.push(category);
+    }
+  }
+  // A gated path is one the batch refuses to start without, so it must also be
+  // one the write-back command can store, or the gate is a dead end. gate_paths
+  // are declared as a subset of profile_paths, which makes this a check rather
+  // than a merge — if it ever fires, the template is inconsistent with itself.
+  for (const [category, template] of Object.entries(templates)) {
+    for (const path of template.gate_paths || []) {
+      if (!paths.has(path)) {
+        throw new Error(`answerWritePaths: ${category} gates ${path} but does not declare it in profile_paths`);
+      }
     }
   }
   return paths;
