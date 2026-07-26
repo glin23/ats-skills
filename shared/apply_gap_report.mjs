@@ -3,7 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { dbPath } from './local_db.mjs';
-import { QUESTION_TEMPLATES, buildMissingFieldRanking, condenseMissingQuestions } from './missing_field_questions.mjs';
+import {
+  QUESTION_TEMPLATES,
+  buildMissingFieldRanking,
+  condenseMissingQuestions,
+  customFactAnswered,
+  customFactKey,
+} from './missing_field_questions.mjs';
 import { atsHome } from './paths.mjs';
 import { onboardTmpDir } from './onboard_tmp.mjs';
 
@@ -217,7 +223,12 @@ function classifyField(field, outcome = {}) {
     // he never named turns into "fill it from the profile" — asked of nobody,
     // answered by nobody, row stuck. Mirrors the label rule for the same fact.
     user_work_location_commitment: () => locationCommitment !== null,
-    unknown_user_fact: () => nonEmpty(standard.custom_facts),
+    // Not `nonEmpty(custom_facts)`: that bucket holds every fact with no bucket
+    // of its own, so "it has something in it" answers no particular question —
+    // the real profile's 11 entries made this rule say "the profile holds it"
+    // for every question the user has never been asked. Same shape as the
+    // per-city location rule right above: ask about THIS fact, not the bucket.
+    unknown_user_fact: () => customFactAnswered(label, standard.custom_facts),
   };
   const categoryAnswered = (category) => Boolean(CATEGORY_ANSWERED[category]?.());
 
@@ -354,6 +365,14 @@ function exampleFor(item) {
   };
 }
 
+// The generic bucket is the one category with no named field to write into, so
+// the report names one per question. Left to whoever writes the answer, the key
+// would be invented fresh each time, the next run would not recognise it, and
+// the same question would come back forever — the loop this rule exists to close.
+function exampleForCustomFact(item) {
+  return { ...exampleFor(item), profile_key: customFactKey(item.label) };
+}
+
 const explicitSummaryPath = argValue('--summary', null);
 const explicitResultDir = argValue('--result-dir', null);
 const summaryPath = explicitSummaryPath || (explicitResultDir ? null : newestSummary());
@@ -409,7 +428,8 @@ const user_questions = userQuestionCategories.map((category) => ({
   category,
   count: grouped[category].length,
   ...QUESTION_TEMPLATES[category],
-  examples: grouped[category].slice(0, 5).map(exampleFor),
+  examples: grouped[category].slice(0, 5)
+    .map(category === 'unknown_user_fact' ? exampleForCustomFact : exampleFor),
 }));
 
 const missing_field_ranking = buildMissingFieldRanking(entries, QUESTION_TEMPLATES);

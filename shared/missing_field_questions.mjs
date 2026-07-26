@@ -10,6 +10,71 @@
 // value about immigration status ends up typed onto a real form.
 import { IDENTITY_QUESTIONS } from './work_auth_identity.mjs';
 
+// ---------------------------------------------------------------------------
+// standard_qa.custom_facts — the bucket for facts that have no bucket of their
+// own. "Is the bucket non-empty?" is not an answer to any one question: a user
+// who told us his current city has said nothing about his preferred name, and
+// reading the bucket as an answer is how a question nobody was ever asked comes
+// back as "fill it from the profile" — the driver has nothing to type, the
+// report says the profile holds it, and the row sticks with no one to unstick
+// it. The real profile holds 11 such facts, which cancelled the rule outright.
+//
+// So the key IS the question: customFactKey() turns a form label into the key
+// the answer is written under, customFactAnswered() looks for exactly such a
+// key, and the report publishes the key next to the question. Both halves read
+// the same string the same way, so "what we ask" and "where the answer lands"
+// cannot drift apart — which is what closes the loop (ask → answer → never
+// asked again) instead of asking the same question forever.
+// ---------------------------------------------------------------------------
+
+// Leading words that belong to the phrasing of a question rather than to the
+// fact it asks about. Dropping them keeps the key readable (`preferred_name`,
+// not `what_is_your_preferred_name`) without breaking the match: what is left
+// is still a contiguous run of words taken from the label itself.
+const LABEL_LEAD_INS = new Set([
+  'what', 'whats', 'which', 'is', 'are', 'do', 'does', 'did', 'have', 'has',
+  'can', 'could', 'will', 'would', 'please', 'provide', 'enter', 'tell',
+  'you', 'your', 'the', 'a', 'an',
+]);
+
+const factWords = (text) => String(text ?? '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+  .split(' ')
+  .filter(Boolean);
+
+/**
+ * The custom_facts key a given form label's answer is written under.
+ * @param {string} label form label, as it appeared on the application
+ * @returns {string} snake_case key, always a word run of the label
+ */
+export function customFactKey(label) {
+  const words = factWords(label);
+  let start = 0;
+  while (start < words.length && LABEL_LEAD_INS.has(words[start])) start += 1;
+  // A label made of nothing but lead-ins keeps all of its words: an empty key
+  // would match every question at once.
+  return (start < words.length ? words.slice(start) : words).join('_');
+}
+
+/**
+ * Has THIS question's fact been answered — not "does the bucket hold anything".
+ * Matches whole words only, so `us` does not answer a question about a `bonus`.
+ * @param {string} label form label
+ * @param {object} facts standard_qa.custom_facts
+ * @returns {boolean}
+ */
+export function customFactAnswered(label, facts) {
+  const haystack = ` ${factWords(label).join(' ')} `;
+  return Object.entries(facts || {}).some(([key, value]) => {
+    // `false` is an answer ("no, I never worked there"). Empty is not.
+    if (value === null || value === undefined || value === '') return false;
+    const phrase = factWords(key).join(' ');
+    return phrase !== '' && haystack.includes(` ${phrase} `);
+  });
+}
+
 export const QUESTION_TEMPLATES = {
   user_work_authorization: {
     // Deliberately below user_full_address (1): a missing work-authorization
@@ -149,7 +214,11 @@ export const QUESTION_TEMPLATES = {
   unknown_user_fact: {
     priority: 20,
     profile_paths: ['standard_qa.custom_facts'],
-    question: '有表单问到了系统无法安全推断的事实。请看下面原题，逐题给真实答案。',
+    // The write-back key is not left to the writer's imagination: each example
+    // carries its own `profile_key`, and that same key is what the next run
+    // looks for. Answer under a key of your own choosing and the question comes
+    // back next run, which is the loop this category kept falling into.
+    question: '有表单问到了系统无法安全推断的事实。请看下面原题，逐题给真实答案；写回 standard_qa.custom_facts 时，每一题都用它自己那条 profile_key 当键（换个键写＝下次还会问同一题）。',
     answer_type: 'short_text',
     value_type: 'object',
     enum_values: null,
