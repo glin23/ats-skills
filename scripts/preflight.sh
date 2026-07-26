@@ -6,7 +6,10 @@ export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
 
 cd "$MRWEIRDO_REPO_ROOT"
-mkdir -p "$MRWEIRDO_HOME/log" /tmp/mrweirdo-onboard
+# First step of every run, so it is the cheapest place to catch a shell that
+# never inherited the concierge switches (see scripts/concierge_guard.sh).
+bash scripts/concierge_guard.sh "$MRWEIRDO_HOME"
+mkdir -p "$MRWEIRDO_HOME/log" "${MRWEIRDO_ONBOARD_TMP_DIR:-$MRWEIRDO_HOME/run-tmp}"
 
 NODE_MAJOR="$(node --version | sed -E 's/^v([0-9]+).*/\1/')"
 if [ "$NODE_MAJOR" -lt 24 ]; then

@@ -12,7 +12,7 @@ State stays local:
 
 - `$MRWEIRDO_HOME/jobs.db`
 - reports under `$MRWEIRDO_HOME/reports/`
-- temporary analysis under `/tmp/mrweirdo-onboard/`
+- temporary analysis under `$MRWEIRDO_HOME/run-tmp/`
 
 ## Trigger
 

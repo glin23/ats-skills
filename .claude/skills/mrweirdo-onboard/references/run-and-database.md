@@ -8,7 +8,8 @@ Use this reference during `/mrweirdo-onboard` Steps 4-7.
 - Default state path is `$MRWEIRDO_HOME`, usually `~/.mrweirdo-jobs`.
 - The main database is `$MRWEIRDO_HOME/jobs.db`.
 - The source window cursor is `$MRWEIRDO_HOME/source_cursor.json`.
-- Temporary run artifacts live in `/tmp/mrweirdo-onboard`.
+- Temporary run artifacts live in `$MRWEIRDO_HOME/run-tmp` (inside the home, so
+  one switch moves the whole run — they hold what forms were filled with).
 - There is no shared company cache, no remote backend, and no bundled demo corpus.
 - Checked-in public board slug lists are source enumerators only, not per-user
   job results and not shared company caches.
@@ -44,12 +45,12 @@ finishes. This makes run 2 inspect the next source slice, run 3 the slice after
 that, and so on. Use `--source-window-size 0` only for a full source-list crawl.
 
 Scoring is done by the main agent using `shared/scoring/score_prompt.md` over
-`/tmp/mrweirdo-onboard/to_score.json`, writing
-`/tmp/mrweirdo-onboard/scored.json`. `to_score.json` is limited to currently
+`$MRWEIRDO_HOME/run-tmp/to_score.json`, writing
+`$MRWEIRDO_HOME/run-tmp/scored.json`. `to_score.json` is limited to currently
 auto-supported Greenhouse/Ashby job rows. Manual-only and unsupported URLs
-are kept in `/tmp/mrweirdo-onboard/manual_or_unsupported.json` for review, but
+are kept in `$MRWEIRDO_HOME/run-tmp/manual_or_unsupported.json` for review, but
 they do not consume the batch auto-apply scoring budget.
-Discovery also writes `/tmp/mrweirdo-onboard/discovery_funnel.json`, which
+Discovery also writes `$MRWEIRDO_HOME/run-tmp/discovery_funnel.json`, which
 shows the run's raw discovery count, hard-filter drops, auto-supported rows,
 manual rows, and score-cap drops.
 
@@ -77,9 +78,9 @@ Store scored job rows and recompute eligibility:
 ```bash
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/store_scored_jobs.mjs \
-  --to-score /tmp/mrweirdo-onboard/to_score.json \
-  --scored /tmp/mrweirdo-onboard/scored.json \
-  > /tmp/mrweirdo-onboard/db_result.json
+  --to-score "$MRWEIRDO_HOME/run-tmp/to_score.json" \
+  --scored "$MRWEIRDO_HOME/run-tmp/scored.json" \
+  > "$MRWEIRDO_HOME/run-tmp/db_result.json"
 ```
 
 Run the guarded batch apply supervisor:
@@ -107,8 +108,8 @@ spending gate. Do not add it to `.claude/settings.json`.
 The real batch writes a JSON summary and generates:
 
 ```text
-/tmp/mrweirdo-onboard/apply-gap-report.json
-/tmp/mrweirdo-onboard/apply-gap-report.md
+$MRWEIRDO_HOME/run-tmp/apply-gap-report.json
+$MRWEIRDO_HOME/run-tmp/apply-gap-report.md
 ```
 
 If that report contains `user_questions`, pause before pruning. Ask the user
@@ -121,7 +122,7 @@ cd "$MRWEIRDO_REPO_ROOT"
 node shared/validate_user_profile.mjs
 node shared/retry_gap_rows.mjs \
   --apply \
-  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
+  --gap-report "$MRWEIRDO_HOME/run-tmp/apply-gap-report.json"
 if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node shared/apply_supervisor.mjs \
     --real \
@@ -160,7 +161,7 @@ node shared/prune_discovered_jobs.mjs \
   --delete-stale --stale-days "${MRWEIRDO_PRUNE_STALE_DAYS:-30}" \
   --retry-limit "${MRWEIRDO_PRUNE_RETRY_LIMIT:-3}" \
   --clear-first-run \
-  --json > /tmp/mrweirdo-onboard/prune-summary.json
+  --json > "$MRWEIRDO_HOME/run-tmp/prune-summary.json"
 ```
 
 ## Recording User Answers

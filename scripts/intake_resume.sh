@@ -12,6 +12,10 @@ case "$RESUME_PATH" in
 esac
 
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"
+# Before the copy, not after: a resume is the one file that must never land in
+# somebody else's home, and the line above happily falls back to this machine's
+# owner when nothing was inherited.
+bash "$(dirname "${BASH_SOURCE[0]}")/concierge_guard.sh" "$MRWEIRDO_HOME"
 mkdir -p "$MRWEIRDO_HOME"
 
 [ -f "$RESUME_PATH" ] || { echo "Resume not found: $RESUME_PATH" >&2; exit 1; }

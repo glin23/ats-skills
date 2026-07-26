@@ -26,7 +26,7 @@ function compact(value) {
 
 function usage() {
   console.error(`usage:
-  node shared/retry_gap_rows.mjs --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
+  node shared/retry_gap_rows.mjs --gap-report "$MRWEIRDO_HOME/run-tmp/apply-gap-report.json"
   node shared/retry_gap_rows.mjs --apply --max 10
 
 Requeues skipped rows from the latest missing-info report after the agent has

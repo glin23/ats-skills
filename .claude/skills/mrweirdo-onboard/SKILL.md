@@ -284,7 +284,7 @@ raw <R> -> hard-filter dropped <D> -> auto-supported <A> -> manual <M> -> to sco
 看板：`npm run status`
 ```
 
-Score `/tmp/mrweirdo-onboard/to_score.json` in batches of 50 using
+Score `$MRWEIRDO_HOME/run-tmp/to_score.json` in batches of 50 using
 `shared/scoring/score_prompt.md`. After each batch, output one line:
 
 ```text
@@ -300,9 +300,9 @@ Store:
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
 node shared/store_scored_jobs.mjs \
-  --to-score /tmp/mrweirdo-onboard/to_score.json \
-  --scored /tmp/mrweirdo-onboard/scored.json \
-  > /tmp/mrweirdo-onboard/db_result.json
+  --to-score "$MRWEIRDO_HOME/run-tmp/to_score.json" \
+  --scored "$MRWEIRDO_HOME/run-tmp/scored.json" \
+  > "$MRWEIRDO_HOME/run-tmp/db_result.json"
 ```
 
 Summarize stored count, eligible count, manual/unsupported count, quota-guarded
@@ -330,8 +330,8 @@ Before a real batch, run a dry-run and diagnostics:
 ```bash
 export MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"; export MRWEIRDO_REPO_ROOT="${MRWEIRDO_REPO_ROOT:-$MRWEIRDO_HOME/repo}"
 cd "$MRWEIRDO_REPO_ROOT"
-node shared/apply_supervisor.mjs --dry-run > /tmp/mrweirdo-onboard/dry-run.json
-node shared/queue_diagnostics.mjs --json > /tmp/mrweirdo-onboard/queue-diagnostics.json
+node shared/apply_supervisor.mjs --dry-run > "$MRWEIRDO_HOME/run-tmp/dry-run.json"
+node shared/queue_diagnostics.mjs --json > "$MRWEIRDO_HOME/run-tmp/queue-diagnostics.json"
 ```
 
 Surface a compact queue preview. Include company, title, fit score, ATS,
@@ -361,7 +361,7 @@ Always include this identity block and fixed statement inside the queue gate:
 
 规则 / Rules
 若 dry-run 输出的 `profile_gate.ok` 为 false，先问那一个问题、按 `remediation_command` 记录答案再往下走（否则整批投不出去）。
-只有标记 auto 的行会被自动提交；manual 清单在 /tmp/mrweirdo-onboard/manual_or_unsupported.json，系统不会替你处理。
+只有标记 auto 的行会被自动提交；manual 清单在 $MRWEIRDO_HOME/run-tmp/manual_or_unsupported.json，系统不会替你处理。
 对需要 cover letter 的岗位，我会基于你的简历/profile/essay_profile/answer_bank 与岗位匹配证据自动生成并附上 cover letter；不会编造个人或公司事实。
 
 你要做 / Action
@@ -392,8 +392,8 @@ serial liveness gate, and `--skip-liveness` escape hatch.
 After every real batch, inspect:
 
 ```text
-/tmp/mrweirdo-onboard/apply-gap-report.json
-/tmp/mrweirdo-onboard/apply-gap-report.md
+$MRWEIRDO_HOME/run-tmp/apply-gap-report.json
+$MRWEIRDO_HOME/run-tmp/apply-gap-report.md
 ```
 
 Before asking the user anything, handle open-text answers as agent work per
@@ -436,7 +436,7 @@ node shared/record_profile_answers.mjs --json '<answers>' --source user_answer -
 node shared/validate_user_profile.mjs
 node shared/retry_gap_rows.mjs \
   --apply \
-  --gap-report /tmp/mrweirdo-onboard/apply-gap-report.json
+  --gap-report "$MRWEIRDO_HOME/run-tmp/apply-gap-report.json"
 if [ -n "${MRWEIRDO_MAX_AUTO_APPLY:-}" ]; then
   node shared/apply_supervisor.mjs --real --max "$MRWEIRDO_MAX_AUTO_APPLY"
 else
@@ -465,7 +465,7 @@ node shared/prune_discovered_jobs.mjs \
   --delete-stale --stale-days "${MRWEIRDO_PRUNE_STALE_DAYS:-30}" \
   --retry-limit "${MRWEIRDO_PRUNE_RETRY_LIMIT:-3}" \
   --clear-first-run \
-  --json > /tmp/mrweirdo-onboard/prune-summary.json
+  --json > "$MRWEIRDO_HOME/run-tmp/prune-summary.json"
 ```
 
 End with a compact final report, not raw JSON:
@@ -486,7 +486,7 @@ discovered <D> -> scored <S> -> queued <Q> -> submitted <A> -> gaps <G>
 路径 / Files
 - 本轮报告：`<REPORT_PATH>`
 - DB：`<DB_PATH>`
-- manual 清单：`/tmp/mrweirdo-onboard/manual_or_unsupported.json`
+- manual 清单：`$MRWEIRDO_HOME/run-tmp/manual_or_unsupported.json`
 - prune：<one-line summary>
 
 下一步 / Next

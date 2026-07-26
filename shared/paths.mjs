@@ -30,11 +30,42 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // repo root = parent of /shared
 export const repoRoot = () => process.env.MRWEIRDO_REPO_ROOT || resolve(__dirname, '..');
 
+// The file a "concierge run" (someone else's resume, run on this machine) drops
+// in the owner's home to say: nothing may be written here until I am done.
+// It exists because the isolation is otherwise carried entirely by environment
+// variables, and those do not survive from one bash block to the next — every
+// skill block re-exports `MRWEIRDO_HOME="${MRWEIRDO_HOME:-$HOME/.mrweirdo-jobs}"`,
+// so a single un-prefixed block used to write a stranger's data into the
+// owner's home with no sign that anything had gone wrong. A file survives
+// between shells; that is the whole idea. `scripts/concierge_guard.sh` reads the
+// same file for the entry points that never reach Node.
+export const CONCIERGE_LOCK_FILE = '.concierge_run_active';
+
+// Note this refuses the RESOLVED home, not "the variable was missing": the
+// `${VAR:-default}` idiom above sets the variable to the owner's own home, so a
+// missing-variable check would sail straight past the case that actually happens.
+const refuseIfLockedForConciergeRun = (home) => {
+  const lock = join(home, CONCIERGE_LOCK_FILE);
+  if (!existsSync(lock)) return;
+  const sandbox = readFileSync(lock, 'utf8').trim().split('\n')[0] || '<see the file>';
+  throw new Error(
+    `refusing to use ${home}: a concierge run is in progress, so this home is off limits.\n` +
+    `This run belongs in: ${sandbox}\n` +
+    'Re-run the command with both switches in front of it, e.g.\n' +
+    `  MRWEIRDO_HOME=${sandbox} MRWEIRDO_ONBOARD_TMP_DIR=${sandbox}/run-tmp node <script>\n` +
+    `When the concierge run is finished, delete ${lock}.`
+  );
+};
+
 // user state dir
 //
 // A skill is installed and run by one local user. All state is local to that
 // install unless the caller explicitly overrides MRWEIRDO_HOME for testing.
-export const atsHome = () => process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+export const atsHome = () => {
+  const home = process.env.MRWEIRDO_HOME || join(homedir(), '.mrweirdo-jobs');
+  refuseIfLockedForConciergeRun(home);
+  return home;
+};
 
 // profile.json — user-owned runtime profile. Never fall back to repo-local data.
 export const profilePath = () => join(atsHome(), 'profile.json');
