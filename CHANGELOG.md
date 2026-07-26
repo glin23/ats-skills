@@ -60,6 +60,32 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **The shipped template no longer claims a 3.9 GPA for the user** (2026-07-26).
+  `shared/profile.template.json` shipped `education.gpa: "3.9"` — a fact about
+  the user's grades nobody stated. Measured against the shipped Greenhouse
+  driver: a factory profile asked "What is your GPA?" typed `3.9` onto the form.
+  It is also truthy, and `apply_gap_report.mjs:266` reads any truthy value as
+  "the profile knows this", so the question was filed under *fill it from the
+  profile* and the user was never asked. It now ships empty: the Greenhouse
+  driver blocks the field (nothing typed — not `0`, not `""`), Lever leaves it
+  unresolved, and the report files it as `user_gpa`, a question with an existing
+  write-back path. A user who did state a GPA still gets exactly that GPA typed.
+  Same disease and same treatment as work authorization, demographics and
+  relocation; GPA is named in the same red line and was the last name on it
+  still shipping a value.
+- **An Ashby application that stops on an unknown fact now says why**
+  (2026-07-26). The driver returns a precise reason (`specific_city_fact_unconfirmed`,
+  `work_authorization_required`, …) with each blocked question, but the pending
+  list dropped it, keeping only question/selector/tag. The gap report then had
+  to guess from the form's own wording: "Do you currently live in the San
+  Francisco Bay Area?" matched its `currently live` label rule and landed in
+  `agent_profile_backed` — *do not ask the user, fill from the profile* — for a
+  profile holding no such fact. The row was blocked and the user was never
+  asked. The pending entry now carries the driver's note (one line, no new
+  lines); the same question is now routed to `user_logistics_fact` and becomes a
+  real question. Work authorization was unaffected either way — the report has a
+  label rule for it; residence, transport and legal facts had no such net. The
+  Ashby driver has a test harness now, built the same way as the Greenhouse one.
 - **A fresh install no longer agrees to relocate on the user's behalf**
   (2026-07-26). Asked "Would you be willing to relocate to our New York
   office?", six profile shapes were fed to the shipped Greenhouse driver: five
