@@ -84,8 +84,9 @@
     "work_location_commitments": {},
     "external_form_confirmations": {},
     "custom_facts": {},
-    "willing_to_relocate": true,
-    "willing_to_relocate_scope": "Anywhere US",
+    "_relocation_notes": "Ships EMPTY on purpose, same as work_authorization. Agreeing to move to an employer's city is a promise about the user's life, and a factory `true` here is byte-for-byte identical to a real answer — with it set, a brand-new install answered 'Yes' to 'Would you be willing to relocate to our New York office?' for a user who was never asked. Onboarding fills these from the user's own words; until then the driver surfaces the question instead of guessing.",
+    "willing_to_relocate": null,
+    "willing_to_relocate_scope": "",
     "countries_open_to": ["US"],
     "preferred_work_arrangement": "Open to onsite, hybrid, or remote"
   },
@@ -95,12 +96,13 @@
       "用于 mrweirdo-jobs sourcing + AI matching。",
       "role_types mirrors search_intent.role_type_targets after onboarding; leave empty in the template.",
       "role_types 决定 AI 接受什么类型的岗位；不在列表里的 role 会被 AI 自动 fit_score ≤ 3。",
-      "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。必须按用户目标职能生成；模板不预设任何职能排除。"
+      "exclude_keywords：JD 或 title 含任何这些词，会触发 hard exclusion (fit_score -5)。必须按用户目标职能生成；模板不预设任何职能排除。",
+      "relocation_policy 出厂留空：它是 apply 驱动读取搬迁意愿的第二个来源（greenhouse_apply_driver.mjs:308 的 target_filters 回退），预填 anywhere_primary_country 会让新用户在「你愿意搬到纽约吗」这类题上被自动答 Yes。引导阶段按用户原话写入 search_intent.geographic_preference.relocation_policy。"
     ],
     "role_types": [],
     "locations": ["US", "Remote-US", "United States"],
     "countries_open_to": ["US"],
-    "relocation_policy": "anywhere_primary_country",
+    "relocation_policy": "",
     "exclude_keywords": [],
     "min_fit_score": 5,
     "visa_must_sponsor": false,

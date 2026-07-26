@@ -1,14 +1,8 @@
 // Exercises the REAL Greenhouse driver decision path for work-authorization
-// questions — not a re-implementation of it.
-//
-// Why a harness: greenhouse_apply_driver.mjs is a CLI entry point (it reads
-// profile.json and argv at import time and calls main() at the bottom), so it
-// cannot simply be imported. The harness takes the shipped source verbatim,
-// strips ONLY the `main().catch(...)` invocation, and renames the six functions
-// that touch the browser (findFieldByLabel / reactSelect / reactSelectOneOf /
-// selectNativeOneOf / cdp / evalInTab) so stubs can take their place. Every
-// decision under test — label routing, the three-state work-auth branches, the
-// blocking guard — is the driver's own code, byte for byte.
+// questions — not a re-implementation of it. The harness that loads the shipped
+// driver lives in test/greenhouse_driver_harness.mjs; every decision under test
+// (label routing, the three-state work-auth branches, the blocking guard) is
+// the driver's own code, byte for byte.
 //
 // The defect this locks (2026-07-25): the driver answered "Are you legally
 // authorized to work in the US?" from a SHARED answer-bank default ("Yes"),
@@ -16,94 +10,14 @@
 // Greenhouse, so this was the majority of the fabrication surface.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ask, BASE } from './greenhouse_driver_harness.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SHARED = join(ROOT, 'shared');
-const DRIVER_SRC = readFileSync(join(SHARED, 'greenhouse_apply_driver.mjs'), 'utf8');
-
-// The only functions the harness replaces: the browser boundary.
-const BROWSER_FNS = ['findFieldByLabel', 'reactSelectOneOf', 'reactSelect', 'selectNativeOneOf', 'cdp', 'evalInTab'];
-
-const STUBS = `
-// ---- test harness: browser boundary only ----------------------------------
-async function findFieldByLabel(tab, labelText) {
-  // Greenhouse renders these custom questions as react-select comboboxes.
-  return { ok: true, id: 'question_1', type: 'select-one', is_react_select: true };
-}
-async function reactSelect(tab, id, value, opts = {}) {
-  globalThis.__MRW_FILLS.push({ via: 'reactSelect', value });
-  return { ok: true, picked: value };
-}
-async function reactSelectOneOf(tab, id, values, opts = {}) {
-  globalThis.__MRW_FILLS.push({ via: 'reactSelectOneOf', value: values[0], candidates: values });
-  return { ok: true, picked: values[0] };
-}
-async function selectNativeOneOf(tab, id, values) {
-  globalThis.__MRW_FILLS.push({ via: 'selectNativeOneOf', value: values[0], candidates: values });
-  return { ok: true, picked: values[0] };
-}
-function cdp(...args) {
-  globalThis.__MRW_FILLS.push({ via: 'cdp', args });
-  return { stdout: '{"ok":true}', stderr: '' };
-}
-async function evalInTab(tab, js) { return { ok: false }; }
-export { answerMissing };
-`;
-
-let seq = 0;
-async function loadDriver(profile) {
-  const home = mkdtempSync(join(tmpdir(), 'mrw-gh-workauth-'));
-  writeFileSync(join(home, 'profile.json'), JSON.stringify(profile, null, 2));
-  let src = DRIVER_SRC.replace(/\nmain\(\)\.catch\([\s\S]*$/, '\n');
-  for (const fn of BROWSER_FNS) {
-    const decl = `function ${fn}(`;
-    assert.ok(src.includes(decl), `harness stale: ${decl} not found in the driver`);
-    src = src.replace(decl, `function __unused_${fn}(`);
-  }
-  src = src.replace(/from '\.\//g, `from '${SHARED}/`) + STUBS;
-  const file = join(home, `driver_under_test_${seq++}.mjs`);
-  writeFileSync(file, src);
-
-  const prevHome = process.env.MRWEIRDO_HOME;
-  const prevRepo = process.env.MRWEIRDO_REPO_ROOT;
-  const prevArgv = process.argv.slice();
-  process.env.MRWEIRDO_HOME = home;
-  process.env.MRWEIRDO_REPO_ROOT = ROOT; // use the REAL shipped answer_bank.json
-  process.argv[2] = 'https://job-boards.greenhouse.io/testco/jobs/1';
-  try {
-    return await import(file);
-  } finally {
-    if (prevHome === undefined) delete process.env.MRWEIRDO_HOME; else process.env.MRWEIRDO_HOME = prevHome;
-    if (prevRepo === undefined) delete process.env.MRWEIRDO_REPO_ROOT; else process.env.MRWEIRDO_REPO_ROOT = prevRepo;
-    process.argv = prevArgv;
-  }
-}
-
-const BASE = {
-  personal: {
-    first_name: 'Test', last_name: 'User', email: 't@example.com', phone: '+1 555 0100',
-    address_city: 'Boston', address_state: 'MA', address_country: 'United States',
-    linkedin: 'https://linkedin.com/in/test',
-  },
-  education: { school: 'Babson College', major: 'Business Analytics', degree: "Bachelor's degree", graduation_date: '2027-05' },
-};
 const withAuth = (work_authorization) => ({ ...BASE, work_authorization });
 
 // Real Greenhouse question labels.
 const AUTH_LABEL = 'Are you legally authorized to work in the United States?';
 const SPONSOR_LABEL = 'Do you require visa sponsorship for employment?';
 const FUTURE_SPONSOR_LABEL = 'Will you now or in the future require sponsorship for employment visa status?';
-
-async function ask(profile, label) {
-  const { answerMissing } = await loadDriver(profile);
-  globalThis.__MRW_FILLS = [];
-  const res = await answerMissing('tab-1', label);
-  return { res, fills: globalThis.__MRW_FILLS.slice() };
-}
 
 test('greenhouse driver: explicitly NOT authorized -> the form gets "No", never "Yes"', async () => {
   const notAuthorized = withAuth({

@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { GATED_PATHS, blockingProfileGaps } from '../shared/personal_fact_gate.mjs';
+import { ask, BASE } from './greenhouse_driver_harness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const readText = (p) => readFileSync(join(ROOT, p), 'utf8');
@@ -86,6 +87,69 @@ test('profile.template.json: work authorization ships EMPTY, so a guard can tell
   assert.equal(auth.visa_status, '', `visa_status ships as "${auth.visa_status}", which is a claim nobody made`);
 });
 
+// Relocation willingness is named in the red line itself (PRD-v3: "never
+// fabricate visa / GPA / demographic / attestation / background-check /
+// RELOCATION"), and until 2026-07-26 it was the only name on that list with no
+// assertion behind it. Found by verify on 2026-07-26: of six profile shapes fed
+// to the shipped driver, the factory template was the ONLY one that answered
+// "Would you be willing to relocate to our New York office?" — with "Yes".
+// Same disease as the work_authorization block above: a factory value is
+// byte-for-byte what a real answer looks like, so no code downstream can tell
+// "the user agreed to move across the country" from "nobody ever asked".
+//
+// Two template values each trigger it on their own (found by bisecting the
+// template, one key removed at a time):
+// standard_qa.willing_to_relocate_scope and target_filters.relocation_policy
+// both resolve to the driver's `anywhere_us` alias. willing_to_relocate is a
+// third copy of the same statement, live only through ashby_helpers.js:1222.
+test('profile.template.json: relocation willingness ships EMPTY, nobody is volunteered to move', () => {
+  const template = readJson('shared/profile.template.json');
+  const qa = template.standard_qa || {};
+  assert.equal(
+    qa.willing_to_relocate,
+    null,
+    `standard_qa.willing_to_relocate ships as "${qa.willing_to_relocate}"; that is a promise to an employer nobody made`,
+  );
+  assert.equal(
+    qa.willing_to_relocate_scope,
+    '',
+    `standard_qa.willing_to_relocate_scope ships as "${qa.willing_to_relocate_scope}", which resolves to the driver's anywhere_us alias`,
+  );
+  assert.equal(
+    template.target_filters?.relocation_policy,
+    '',
+    `target_filters.relocation_policy ships as "${template.target_filters?.relocation_policy}"; it independently resolves to anywhere_us`,
+  );
+});
+
+// The end-to-end version: the shape assertion above is only worth something if
+// it changes what the shipped driver puts on a real form.
+const RELOCATE_LABEL = 'Would you be willing to relocate to our New York office?';
+const ONSITE_LABEL = 'This role is based in our San Francisco office. Are you able to work from there?';
+
+test('greenhouse driver: a fresh install does not agree to relocate on the user\'s behalf', async () => {
+  const template = readJson('shared/profile.template.json');
+  for (const label of [RELOCATE_LABEL, ONSITE_LABEL]) {
+    const { res, fills } = await ask(template, label);
+    assert.equal(
+      res.ok,
+      false,
+      `the factory template answered a relocation question it was never asked: ${label} -> ${JSON.stringify(res)} ${JSON.stringify(fills)}`,
+    );
+    assert.deepEqual(fills, [], `nothing may be selected on the form: ${JSON.stringify(fills)}`);
+  }
+});
+
+// The other half of the same rule: a user who DID say "anywhere in the US" must
+// still be answered from their own words. Emptying the template must not turn
+// into a blanket refusal that blocks every relocation question for everyone.
+test('greenhouse driver: a user who actually said "anywhere in the US" is still answered', async () => {
+  const said = { ...BASE, standard_qa: { willing_to_relocate_scope: 'Anywhere US' } };
+  const { res, fills } = await ask(said, RELOCATE_LABEL);
+  assert.equal(res.ok, true, `a stated relocation scope must still answer the question: ${JSON.stringify(res)}`);
+  assert.equal(fills.at(-1)?.value, 'Yes', `expected the user's own answer on the form: ${JSON.stringify(fills)}`);
+});
+
 test('the shipped template does not open the pre-batch gate on its own', () => {
   // The end-to-end version of the assertion above: a fresh install must be
   // stopped by the gate and asked, not waved through on factory values.
@@ -100,7 +164,10 @@ test('the shipped template does not open the pre-batch gate on its own', () => {
 // shipped bank answered both with "Yes" — so every user, including one who had
 // said "I am NOT authorized", got "Yes" typed onto real application forms.
 // 88% of the eligible-but-unapplied queue is on Greenhouse, which read that
-// default until 2026-07-25. No driver may read those two keys again.
+// default until 2026-07-25. No driver may read those keys again.
+// willing_to_relocate is on the list for the same reason and while it still has
+// zero readers: the bank ships it as "Yes", so the day someone wires it up they
+// would re-create the defect this file exists to prevent, silently.
 test('drivers: work-auth / sponsorship answers never come from a shared bank default', () => {
   for (const file of [
     'shared/greenhouse_apply_driver.mjs',
@@ -112,7 +179,7 @@ test('drivers: work-auth / sponsorship answers never come from a shared bank def
     const offenders = readText(file)
       .split('\n')
       .map((line, i) => `${file}:${i + 1}: ${line.trim()}`)
-      .filter((entry) => /yes_no_defaults\s*\??\.\s*(work_authorization|sponsorship_future)/.test(entry));
+      .filter((entry) => /yes_no_defaults\s*\??\.\s*(work_authorization|sponsorship_future|willing_to_relocate)/.test(entry));
     assert.deepEqual(
       offenders,
       [],
