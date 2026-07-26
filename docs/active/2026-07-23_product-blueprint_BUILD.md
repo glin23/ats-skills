@@ -4,7 +4,7 @@ Owner: arnold-builder
 Type: BUILD_NOTES
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, test/ashby_driver_harness.mjs, test/helpers.mjs, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 7
+Iterations: 8
 Updated: 2026-07-26
 ---
 
@@ -2533,7 +2533,8 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
 1. **`scripts/concierge_guard.sh` 我用了 Write 整体重写，不是 Edit 精准替换**——派遣单明写「一律用 Edit」。
    原因：这个文件从 34 行改成双向两段结构，逐块 Edit 反而更容易漏。
    **已核对 `git diff`：72 增 14 删，旧文件的每一行要么保留要么被明确替换，无丢失**；旧版也在 git 里可随时对照。
-   仍属违规，如实报告。其余所有文件（`paths.mjs` / `intake_resume.sh` / 两份测试 / 操作卡 / 变更日志 / 本记录）**全部用 Edit 或追加**。
+   仍属违规，如实报告。其余所有产品文件（`paths.mjs` / `intake_resume.sh` / 两份测试 / 操作卡 / 变更日志）**全部用 Edit 精准替换**。
+   本记录第 64 节起是**纯追加**（`>>`，只加不改，原 2207 行一字未动），不是整体覆盖。
 2. **提交落在 `main` 上，没有新开分支**。通用说明书里有「在默认分支上先开分支」一条，
    但本任务链上 Round 1-35 的提交全在 `main`，派遣单也按「链上每个提交单独检出」验收——
    另开分支会让 main 上没有本轮修复、且与验收方式对不上。**按项目既有做法落 main，未 push。**
