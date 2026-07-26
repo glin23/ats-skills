@@ -60,6 +60,39 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **A question nobody was ever asked no longer comes back as "the profile has
+  it"** (2026-07-26). The catch-all "unknown fact" bucket counted itself
+  answered whenever `standard_qa.custom_facts` held anything at all. The real
+  profile holds eleven entries, so the rule added the day before — "the driver
+  reported it had nothing to type, so do not claim the profile holds it" — was
+  cancelled out for the only real user: the row stayed stuck, silently, exactly
+  as before. The bucket is now read one fact at a time, the way the location
+  rule already read one city at a time: a form label is turned into the key its
+  answer is written under, and only a key matching that label counts as an
+  answer. The report publishes that key next to each question, so answering it
+  actually ends it — left to whoever writes the answer, a fresh key would be
+  invented each round and the same question would come back forever. Measured
+  on the real profile: 14 of 40 probed cells move from "fill it from the
+  profile" to "ask him", every one of them a cell where the driver had already
+  said it had nothing to type; the 26 cells without such a report are
+  byte-identical.
+- **Running someone else's resume on this machine can no longer leak into the
+  owner's home** (2026-07-26). Two holes. Run artefacts — the scored job list,
+  what each form was actually filled with, which personal questions went
+  unanswered — defaulted to a shared `/tmp/mrweirdo-onboard` reachable only
+  through a second switch that no skill and no script ever set: moving
+  `MRWEIRDO_HOME` moved the profile, the resume and the database and left all of
+  that behind, world-readable, for the next run to read back as its own. They
+  now default to `<home>/run-tmp`, so one switch moves everything, and the skill
+  docs stop hard-coding the old path. The second hole was not code: the
+  isolation rides on environment variables, which do not survive from one bash
+  block to the next, so a single un-prefixed block wrote a stranger's data into
+  the owner's home without a word. A run now marks the owner's home with
+  `.concierge_run_active`, and both `atsHome()` and the shell entry points
+  (`scripts/concierge_guard.sh`, for the ones that copy the resume with `cp` and
+  never reach Node) refuse that home while the marker is there, naming the
+  sandbox the run belongs in. Nothing under `/tmp/mrweirdo-onboard` was moved or
+  deleted. Operator instructions: `docs/active/2026-07-26_concierge-run_RUNBOOK.md`.
 - **Onboarding asks what kind of person you are, not whether you are authorized
   to work** (2026-07-26). The old question was one four-option pick with CPT/OPT
   in the option text, and it asked the user to reach a legal conclusion about
