@@ -1107,7 +1107,7 @@ P1 的处置方式（出厂置空 + 缺值转问用户）与 DESIGN §10-I 对�
 
 # 第 5 轮 — 排队中的两件小修（GPA 出厂预填 / Ashby 丢 note）
 
-> 边界遵守声明：**没有 push、没有动远端**（`origin/main` 仍是 `6e31883`，本轮 3 个提交全在本地）、
+> 边界遵守声明：**没有 push、没有动远端**（`origin/main` 仍停在 `61c70f0`，本轮 4 个提交全在本地）、
 > **没有真跑投递、没有提交任何表单、没有碰投递截图**。本地分支 `batchA-backup` 一行未动。
 > `~/.mrweirdo-jobs/` **零写入**：跑前跑后各取一次全目录 `stat` 快照，`diff` 逐行一致（下面第 41 节贴了）；
 > 唯一的只读访问是主流程冒烟 `npm run demo:check` 和一次「当前用户档案里有没有填过 GPA」的布尔判断。
@@ -1356,7 +1356,7 @@ Lever 驱动同题（出货源码 + 同样的替身做法）：`""` → 答案�
 - ☑ 没用 fallback（兜底降级）/ workaround（绕行补丁）遮盖：缺 GPA 一律阻塞，不填 `0`、不填 `""`
 - ☑ 文件膨胀铁律：`ashby_apply_driver.mjs` **1170 → 1170（净增 0）**；其余文件均远低于 800 行
 - ☑ 变更日志（登记表 `paths.changelog`）：`CHANGELOG.md` `[Unreleased] → Fixed` 顶部加 2 条
-- ☑ 边界：未 push、未动远端（`origin/main` 仍 `6e31883`，本地 ahead 4）、未动 `batchA-backup`
+- ☑ 边界：未 push、未动远端（`origin/main` 仍 `61c70f0`，本地 ahead 5）、未动 `batchA-backup`
   （仍指 `71c3bef`）、未真跑投递、未提交表单、**未碰投递截图**
 - ☑ `~/.mrweirdo-jobs/` 零写入：跑前跑后 `stat` 全目录快照 `diff` 逐行一致（198 个条目，0 处差异）
 - ☑ 提交只 stage 自己的 8 个文件；收尾 `git status` 唯一脏文件是另一位成员的
