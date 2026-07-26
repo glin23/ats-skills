@@ -60,6 +60,46 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **Onboarding asks what kind of person you are, not whether you are authorized
+  to work** (2026-07-26). The old question was one four-option pick with CPT/OPT
+  in the option text, and it asked the user to reach a legal conclusion about
+  himself — for an F-1 student that conclusion depends on the role, his school
+  and the timing, so nobody can answer it reliably, and a wrong answer hurts
+  both ways (saying "yes" is a misstatement on a real employer's form; a citizen
+  saying "no" is filtered out on the spot). It is now three yes/no questions
+  about facts a person can read off his own documents — citizen or green card /
+  F-1 student / has the work permission come through (the EAD card, or the CPT
+  line on the I-20) — with the four profile fields derived in code by the new
+  `shared/work_auth_identity.mjs`. The module writes only the cells it can
+  actually determine: an F-1 student whose permission has not come through gets
+  `requires_sponsorship_future: true` and **nothing** written to
+  `authorized_to_work_us`, because `false` there is byte-identical to "he said
+  no" and gets him rejected outright. "I can't tell" is now a supported answer
+  rather than a dead end: the pre-batch gate hands back what it is stuck on,
+  three concrete places that hold the answer (the school's international student
+  office, page 2 of the I-20, the EAD card) and the promise that the queue keeps,
+  and it marks the batch so nobody is asked the same unanswerable question twice.
+- **An Ashby question with no text box no longer disappears** (2026-07-26).
+  A blocked question only reached the pending list when the driver could point at
+  a `textarea`/`input[type=text]`; work authorization, sponsorship and residence
+  are dropdowns and radios on a real Ashby form, so question and reason both
+  vanished, leaving one bare label in `missing` and a row stuck for no stated
+  reason. The selector is now optional (it is for typing the answer back, not
+  for deciding whether to ask), and the pending list dedupes on the question —
+  Ashby re-generates the field id on every submit attempt, so the old
+  (question, selector) key let the same question through repeatedly.
+- **"The profile was empty" now beats a label rule that says "fill it from the
+  profile"** (2026-07-26). Drivers append the form's own label to some notes
+  (`value_empty_for:what is your gpa?`, `no_bucket_for:…`), so the report's
+  exact-match note table could never hold them and every one of them fell back
+  to guessing from the form's wording — the same guess that filed a blocked
+  residence question as "the agent fills this". A prefix rule now rules out that
+  one verdict while leaving the specific bucket to the label rules, so a GPA
+  stays `user_gpa` with its own question and write path. Ashby's
+  `relocation_commitment_policy_unset` joined the exact table, and the
+  "has the profile answered this" test for location became per city: he agreed
+  to the Bay Area, which says nothing about Denver, and treating it as an answer
+  is how a question about a city he never named turned into a silently stuck row.
 - **The shipped template no longer claims a 3.9 GPA for the user** (2026-07-26).
   `shared/profile.template.json` shipped `education.gpa: "3.9"` — a fact about
   the user's grades nobody stated. Measured against the shipped Greenhouse
