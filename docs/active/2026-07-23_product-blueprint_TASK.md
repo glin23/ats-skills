@@ -158,3 +158,18 @@ Spawned_subtasks: none
 
 **关卡 3 决策**：🩺 🔒 [用户] 拍板 — ① **工作授权改成能对号入座的问法**：问「你是美国公民或绿卡吗？」「你是持 F-1 的留学生吗？」，**不许问「你有没有工作授权」**（用户原话：这没人能知道）。此为批次 B 的引导提问设计依据 ② **批准 push**（条件：已验证完成——lead 已用干净 worktree 独立复验 tip 183/183、中间提交 140/140）
 - Round 26: lead 派 arnold-ops 推送 10 个提交
+- Round 27: arnold-architect 完成 DESIGN 修正（只动 DESIGN.md，+667/-37，未碰代码、未做 git 写）
+- Round 27 八处偏离逐条改正（新增 §13.1 索引表，每处写「原来怎么说 / 为什么错 / 现在怎么说」）: ① note 查表——设计内部自相矛盾，现写死「查表命中后必过『该类目已答吗』谓词，档案有最终发言权、note 只负责问哪件事」，并规定新增映射必须同时补谓词条目 ② `priority` 不许取 0——`|| 99` 把 0 当假值吃掉，最该先问的排到最后、每批只问四组等于永远问不到，改 0.5/5.5/15 ③ `value_type` 非全为字符串——两个法律字段是布尔、五个 `standard_qa` 是对象，照字面写会让写回口对一半类目拒写，改为 `path_value_types` 覆盖表。architect 并主动降级自己 §1.1「驱动侧已接线」为「只对 Greenhouse 成立」（当时只读到信号发出、没跟到写进结果文件）
+- Round 27 **§16 清单从十一处扩到十八处**: 补登搬迁意愿（L，已修 `91e2708`）与 `gpa: "3.9"`（M）；重扫又发现 **5 处**——学位占位符被当事实解析成「我不在读研」（N）、`earliest_start_date: "MM/DD/YYYY"` 既填进表单又让「你何时能开始」永不被问（O）、`how_did_you_hear: "LinkedIn"`（P）、**`why_company/why_role` 占位散文会被当成用户自己写的话渲染进作文**（Q）、`preferred_work_arrangement`（R）
+- Round 27 **漏掉的根因是扫法不是疏忽**（§10.2）: 原扫描是「在驱动里逐行找写死的答案」= **汇点扫描**；搬迁意愿的填表代码完全正常，有毒的是喂给它的出厂值，**现场没有指纹，顺着代码永远扫不到**。补法 = 加一次方向相反的**源点扫描** + 固化成测试（出厂非空值必须登记「配置 or 已论证例外」否则测试红，ADR-10）
+- Round 27 **整平台漏网（§13.6）**: `lever_apply_driver.mjs:265` 至今对「你是否有在美国工作的授权」**无条件答 Yes**，担保题两态压三态（没问过 = 我不需要担保，对国际生方向有害）。取证报告里有 **5 家真实 Lever 投递**。零件现成、文件 489 行不受净增 0 约束
+- Round 27 批次 B 内容重写: ① **对号入座提问**（§13.3）三个是非题（公民/绿卡？→ F-1？→ 学校批下工作许可了吗？），不出现 CPT/OPT 术语、三个布尔由代码推导；5 情形 × 4 字段真值表，「F-1 还没批下来」明确不许顺手写 false；「说不清楚」给三条查证去处（学校国际学生办公室 / I-20 那一栏 / EAD 卡）+「这批先不投、查到一条命令就续上」+ 同批不重复问；**并删掉原 §6「不确定就写 false」那句——那本身就是一次编造**（verify 当面指出，architect 认对） ② **写入侧统一上锁**（§13.4 ADR-8）谁写谁锁 + 一次全量补锁挂 preflight（补锁不可省，因 `cover_letter.pdf` 根本没有生产方） ③ **Ashby 丢 note 实为两个洞**（§13.5）——除 `a.note` 被丢，`addPendingQuestion` 还要求必须有选择器，**下拉框形态的阻塞题连题带 note 一起蒸发** ④ **投递截图**（§13.7 ADR-9）先读页面文案定判定再命名、读不出写 `unknown`、**禁止默认成功**，并改成提交前滚到底整页截图（只修文件名会得到「一批诚实但依然无用的截图」）
+- Round 27 **lead 裁决**: Lever（S）与工作方式（R）**纳入范围**——二者均属已拍板「bug 肯定要修」的同一缺陷在第三个平台/第 18 处的收尾，非新增范围。理由与此前批准 Greenhouse 补修一致
+- Round 27 lead 采纳 architect 的排期建议: B3（留证 + 上锁）与 B2 都碰 `-auto` 技能说明书，**串行不并行**
+- Round 28: arnold-builder 完成两处小修（`8e5a30b` 模板 GPA 置空、`360ff2f` Ashby 带出 note），证据取自干净检出
+- Round 28 GPA 实测确认缺陷真实存在: 出厂模板喂给出货 Greenhouse 驱动，问「What is your GPA?」→ `mode=text_fill value="3.9"`，**3.9 真的被打到表单上**；且 `"3.9"` 是 truthy，`apply_gap_report.mjs:266` 把该题归成 `agent_profile_backed`（"不要问用户，从档案里填"）→ **照抄模板的人永远不会被问 GPA**
+- Round 28 清空后下游行为实跑（阻塞而非填 0/空串）: Greenhouse 文本框阻塞 `value_empty_for:`（""/null/数字 0 三种全试）、下拉框本就无规则、Lever 答案空→unresolved、`greenhouse_helpers.js:372` addText 自带空值过滤、缺口报告归 `user_gpa` 进「该问用户」清单、闭环写回 3.4 后归 `agent_profile_backed` 且问句消失。反向守卫：用户自报 3.2 仍照填
+- Round 28 Ashby 实测: 驱动对三个真实题面返回 `specific_city_fact_unconfirmed` / `work_authorization_required`，出货那行造出的条目 `{question,selector,tag}` **note 一字未带**。后果比自报更具体——`Do you currently live in the San Francisco Bay Area?` 改前落 **`agent_profile_backed`**（驱动恰恰因档案没这事实才停，报告却说"从档案里填"，该行被拦下且永远不会被问），改后落 `user_logistics_fact`。文件改前改后均 1170 行，净增 0 成立
+- Round 28 证据: 守卫先写先红（5 条原始报错存 BUILD §37.2）、测试 183→**190** pass 190 fail 0、CI 四步跑在 `git worktree add --detach` 干净检出上 0/0/0/0、链上每个提交单独检出逐个跑过（183/187/190/190 全绿）、demo:check exit 0、`~/.mrweirdo-jobs/` 198 条目 stat 快照跑前跑后 diff 逐行一致 = 零写入、只 stage 自己的 8 个文件、DESIGN.md 全程未碰
+- Round 28 **lead 独立复验**: 干净 worktree 检出 tip `ce8e092` → **190/190 pass、fail 0**，脏文件 0。确认属实
+- Round 28 builder 报告两条（一行未改，归批次 B）: ① `value_empty_for:<题面>` 这类 note 不在 `NOTE_CATEGORY` 表里——GPA 题今天能正确归类靠的是报告侧题面规则 `/gpa/` 而非 note 通路，**而件二刚证明题面猜测会把"居住地"猜成 agent_profile_backed**，建议做成前缀规则 ② Ashby 的 `relocation_commitment_policy_unset` / `no_bucket_for:` 两个 note 现在能到报告侧但表里没有（实测不变差，只是没变准）
