@@ -4,7 +4,7 @@ Owner: arnold-builder
 Type: BUILD_NOTES
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, test/ashby_driver_harness.mjs, test/helpers.mjs, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 8
+Iterations: 9
 Updated: 2026-07-26
 ---
 
@@ -2571,3 +2571,248 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
    一条命令同时建沙箱、贴两张纸条），不是再加一层校验——**这属于新需求，请他决定排不排**。
 3. **上轮那三条待拍板仍原样挂着**（`.claude/settings.json` 权限 / `store_scored_jobs` Fail Fast / `jobs.db` 644），
    本轮按派遣单一律没动。
+
+---
+
+## 77. 第 9 轮（收尾三处小修）：实现摘要
+
+派遣单三件，**一件不多**。第 4 轮验收判的那条 P2 假阳性（兜底谓词射程放宽后 5 个题面从
+「问他」翻成「按档案填」）**本轮一行没碰**，其余「明确不在范围」的 8 项同样一行没碰（§82 逐条对账）。
+
+| 件 | 改了什么 | 文件 | 净增行 |
+|---|---|---|---:|
+| 一 · 操作卡两条硬警告搬到"读得到的位置" | 「第 1 步不能跳」从卡**最末尾**搬到**第 1 步正下方**并写明**跳了会怎样**；「不要越过第 4 步」在**第 4 步正下方**显式出现并写明**为什么不能越**；末尾两条改成"这里再说一遍"的复述 | `docs/active/2026-07-26_concierge-run_RUNBOOK.md` | +26 |
+| 二 · 防漂移测试从 1/4 补到 4/4 | 那条「node 与 shell 文案逐字节相同」的测试参数化成**四个情形各比一次** | `test/concierge_isolation.test.mjs` | +45 −11 |
+| 三 · 领先提交数写错 | §74 的 **14 改 15**，并写清是怎么数错、这次怎么数的 | 本记录 §74 | +5 |
+| 附带（件二的诚实收口） | 变更日志里那句「a test holds the Node and shell wordings identical」**当时只兑现了四分之一**，照实改写 | `CHANGELOG.md` | +7 −2 |
+
+两个改动提交：`8d352fd`（件一 + 件二）、`9562764`（件三 + 变更日志），
+加本记录自己 1 个提交，本轮共 **3 个**。**未 push**。
+
+---
+
+## 78. 件二的 TDD 证据：先让它红，四个变体各红一次
+
+### 78.1 先证「缺口是真的」——旧测试对另外三个变体确实一声不吭
+
+不是引用验收的结论，是我自己把**改动前的测试文件**取回来（`git checkout --`），
+在 `concierge_guard.sh` 上分别改一个字再跑：
+
+```
+--- 旧测试 + 突变 纸条不见了 -> 纸条不见啦        ℹ pass 13  ℹ fail 0
+--- 旧测试 + 突变 另一个地方 -> 另一个地点        ℹ pass 13  ℹ fail 0
+--- 旧测试 + 突变 没法确认纸条贴没贴 -> …贴没有   ℹ pass 13  ℹ fail 0
+```
+
+**三次全绿。** 旧测试只构造了「家被上锁」这一个情形，另外三条沙箱文案两侧各一份、无人比对。
+
+### 78.2 补测试后，四个变体各自当场红（原始报错原文，未转述）
+
+每次只改**一个字**，跑全文件（每次都是 **15 通过 / 1 失败**，而且**失败的正好是对应那一格**）：
+
+```
+### M1 locked-home wording   (暂时上锁了 -> 暂时上锁啦)
+✖ the Node refusal and the shell refusal say the same thing — the home is locked for a concierge run (85.273209ms)
+ℹ pass 15
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: the two copies have drifted apart
+    actual:   '[mrweirdo] 这台电脑正在「帮别人跑」，所以你自己的家暂时上锁啦：…'
+    expected: '[mrweirdo] 这台电脑正在「帮别人跑」，所以你自己的家暂时上锁了：…'
+
+### M2 note-missing wording   (纸条不见了 -> 纸条不见啦)
+✖ the Node refusal and the shell refusal say the same thing — the sandbox says its note was never left (56.524875ms)
+ℹ pass 15
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: the two copies have drifted apart
+    actual:   '…但你自己家里那张「勿入」纸条不见啦：…/.concierge_run_active…'
+    expected: '…但你自己家里那张「勿入」纸条不见了：…/.concierge_run_active…'
+
+### M3 crossed-note wording   (另一个地方 -> 另一个地点)
+✖ the Node refusal and the shell refusal say the same thing — the sandbox says its note points at another run (47.732583ms)
+ℹ pass 15
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: the two copies have drifted apart
+    actual:   '…但你自己家里那张纸条指的是另一个地点：/tmp/concierge-someone-else…'
+    expected: '…但你自己家里那张纸条指的是另一个地方：/tmp/concierge-someone-else…'
+
+### M4 empty-marker wording   (没法确认纸条贴没贴 -> 没法确认纸条贴没有)
+✖ the Node refusal and the shell refusal say the same thing — the sandbox marker does not say whose home left the note (33.184917ms)
+ℹ pass 15
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: the two copies have drifted apart
+    actual:   '…里没写你自己的家在哪，没法确认纸条贴没有。…'
+    expected: '…里没写你自己的家在哪，没法确认纸条贴没贴。…'
+```
+
+（上面 `actual` / `expected` 两行为版面计做了省略号截断，**每一处差异字符本身是原文**；
+四段完整原文含临时目录全路径，跑法见 §78.3。突变每次跑完立即 `git checkout -- scripts/concierge_guard.sh`
+复原，收尾 `git status` 对该文件 **0 处改动**。）
+
+### 78.3 顺带补的一格：两边"都得真的拒绝"
+
+参数化时加了一条断言：**node 与 shell 都必须退出码 3、且文案非空**。
+不加的话，「两边说同样的话」可以被**两边都一声不吭**满足——真到那天（比如守卫被整段绕过），
+这条测试会继续绿着。这是本轮唯一一处派遣单没点名、我自己加的断言，**不改产品行为**。
+
+测试数：**232 → 235**（那条测试从 1 条变 4 条）。
+
+---
+
+## 79. 件一：改完之后，从拍板人的真实落脚点把整张卡重走一遍
+
+**这是本轮唯一能证明件一真做对的方式**（派遣单原话）。
+起点 = 他的**用户文件夹**（不是仓库目录），壳是 zsh（macOS 终端默认，也是他真实的壳），
+**每条命令从改完的卡上原样复制、一个字没改**；`HOME` 指向临时假家目录，**创始人真实家目录零写入**。
+
+| 步 | 实测 |
+|---|---|
+| 落脚点 | `$PWD` = 用户文件夹 ✅ |
+| 第 1 步 | `✅ 纸条和临时家配好了，可以开工`，退出码 **0** |
+| 第 2 步 | `代码在=/Users/lee/Projects/mrweirdo-jobs`；家与过程文件都指向 `/tmp/concierge-s1` |
+| 第 3 步 | 打印 `/tmp/concierge-s1/resume.pdf`，退出码 **0** |
+| 第 4 步 | `Missing role targets…` —— **与卡上预告的一字不差**，退出码 0 |
+| 第 5 步 | ①②**一行都不打印**（污染核对命令仍然有效）；③ 列出 `resume.pdf` / `run-tmp` / `.concierge_sandbox` |
+| 第 6 步 | 沙箱与纸条都清掉，打印那句"已恢复正常" |
+| 第 7 步 | **故意写错文件名** → `⚠️ 这个路径上没有文件…简历八成还在你电脑上`；写对 → `✅ 已从你电脑上删除`；桌面剩 **0** 个文件 |
+
+跑完：`/tmp/concierge-s1` 已删、纸条已撕；**创始人家 7205 条目零差异**；`/tmp/mrweirdo-onboard` **169 → 169**（一个没删、一个没加）。
+
+### 79.1 卡上新写的那段话，我没有"想当然"，是真跑出来的
+
+新加的警告说了两句因果，两句都实测：
+
+```
+[A] 整段跳过第 1 步（手工建文件夹就开跑，不带开关）
+    intake_resume.sh 退出码=0
+    屏幕输出=<</tmp/claimA-home-XXXX/.mrweirdo-jobs/resume.pdf>>
+    别人的简历落进创始人自己家里了吗：是——已静默写入
+    拦截提示条数：0
+[B] 第 1 步跑过之后，把纸条误删
+    退出码=3，首行 [mrweirdo] 这里是一次「帮别人跑」的沙箱：…
+    简历有没有被拷进沙箱：没拷
+```
+
+**A 证「跳了第 1 步 = 静默写进你自己的家、零提示」为真**（这正是卡上新写的那三行），
+**B 证「只要跑过第 1 步，误删纸条会被当场拦下」为真**。两段都用假家目录跑，创始人家零写入。
+
+### 79.2 验收确认有效的三项，逐条复核没改坏
+
+| 项 | 结论 |
+|---|---|
+| 第 5 步污染核对命令有效 | ✅ §79 实测①②仍然一行不打印（命令本身一个字未动） |
+| `jobs.db` 644 如实写明 | ✅ 「现在还存在的限制」第 1 条**原文一字未动** |
+| 第 7 步写错文件名会说「简历还在」 | ✅ §79 实测两条分支都走了一遍 |
+| 全卡大白话、零内部代号、命令可原样粘贴 | ✅ 新增两段无任何内部代号；出现的 `Step 5` / `[Step 4/7]` 是**产品自己打印的进度标记**，卡上原有写法，非内部代号 |
+
+---
+
+## 80. 流水线四步 × 本轮两个提交（各自 `git worktree add --detach` 干净检出）
+
+| 提交 | 工作副本脏文件（跟踪中） | 单元测试 | 角色守卫冒烟 | 公测发布闸 | 语法检查 |
+|---|---:|---|---:|---:|---:|
+| `8d352fd` | 0 | **235 / 红 0**，exit **0** | 0 | 0 | 0 |
+| `9562764` | 0 | **235 / 红 0**，exit **0** | 0 | 0 | 0 |
+
+（两棵树里唯一的未跟踪项是我 `ln -s` 过去的 `node_modules`，不属于检出内容。）
+**主流程冒烟**：`npm run demo:check` 在 `9562764` 干净检出上 **退出码 0**；
+跑前跑后创始人家 **7205 条目零差异**、`/tmp/mrweirdo-onboard` **169 → 169**。
+
+登记表另两格（`schema_upgrade_path` / `isolation_field`）仍为空 → 对应两条自查**跳过**，本轮亦无数据表结构变更。
+
+---
+
+## 81. 自审记录（每段改完自述 + 自查）
+
+| 改的那一段 | 它做什么 / 输入输出 | 自查 |
+|---|---|---|
+| `driftCases` + `for` 循环 | 输入：四种"程序该拒绝"的现场（家被上锁 / 纸条没留 / 纸条指别处 / 回执空白）。每格各建各的临时家与沙箱，跑 node 与 shell 两个入口，比 stderr | 只读断言、不动产品代码；每格用独立 `mkdtemp` 前缀，串行跑无互踩（本项目铁律：测试必须串行）；四格**各自实测能红**，不是"应该能红" |
+| 新增的两条 `status === 3` 与"非空"断言 | 防"两边都沉默"冒充"两边说同样的话" | 不改产品行为；四格全绿可证不误伤 |
+| 操作卡第 1 步警告块 | 给不懂编程的人讲清"跳了会怎样" | 三条后果**逐条实测**（§79.1），没有一条是推测；不含内部代号；未动任何命令块 |
+| 操作卡第 4 步警告块 | 讲清"越过第 4 步 = 真投出去、收不回来" | 与卡上原有 ❌ 清单不重复（一个讲**为什么**、一个讲**别做哪几件**）；未动命令 |
+| 变更日志那句 | 把"有测试守住"改成"四个都守住了，最初只守了一个" | 与 §78 的实测数字一致；日期写明 |
+
+---
+
+## 82. 「不在本轮范围」逐条对账（证明没有静默做掉）
+
+| 明确不碰的 | 实际 |
+|---|---|
+| P2 假阳性（兜底谓词射程 → 5 个题面从"问他"翻成"按档案填"） | ✅ `shared/apply_gap_report.mjs` / `shared/answer_routing.mjs` **本轮零改动**（`git diff origin/main..HEAD --stat` 里本轮两个提交只含 1 份测试 + 3 份文档） |
+| 剩下 2 题的键迁移 | ✅ 未动，仍挂 §75 待 bug 成员 |
+| Lever 三处 / 出厂模板另 5 处 / 写入侧上锁 / 投递截图（含两个驱动写死公共 `/tmp`）/ 三个驱动「年满 18」 | ✅ 全部零改动 |
+| `.claude/settings.json` / `store_scored_jobs.mjs` 的 Fail Fast / `jobs.db` 644 | ✅ 零改动，仍待拍板 |
+| 验收给 builder 的另半条建议（5.2.5 两条提示里的坏命令：`/nonexistent/home/…` 与相对路径 `junk/…`） | ⚠️ **本轮没做**——派遣单只列了三件，这条不在其中。它只在有人手工改过回执文件时才出现，**不影响照卡代跑**。**列在这里等 lead 排**，没有顺手做掉 |
+
+---
+
+## 83. 试过的错误方向（第 9 轮，Iterations=9）
+
+**❌ 方向 1：件一按验收原话当成"1 行文档改动"——把那句话原样剪到第 1 步下面就完事。**
+验收建议里写的就是「1 行文档」，最省事，且看起来完全照办了。
+**失败原因**：原话是「第 1 步不能跳」六个字，**不说跳了会怎样**。
+对一个不懂编程的人，"不能跳"和"建议不要跳"读起来没差别——他真赶时间就会跳。
+真正让人不敢跳的是后果：**别人的简历静默写进你自己的家、屏幕上什么都不会说**。
+所以改成"后果三行 + 一句祈使句"，而且**这三行我全跑了一遍**（§79.1）才敢写。
+**教训：安全警告的有效性不在措辞强度，在于有没有把代价说清楚——而说出来的代价必须是跑出来的，不是想出来的。**
+
+**❌ 方向 2：件二的防漂移，想改成把四段文案抽成一份 golden 文件（fixture），两边都跟它比。**
+一处定义、两处引用，看着比"两边互比"更正统。
+**失败原因**：shell 那一份是 heredoc 里的中文，抽不进 JS；真做只能**再抄一份**到 fixture 里
+——从"两份会漂"变成"三份会漂"，而且 fixture 那份没人读，漂了更难发现。
+改回**两个真实入口各跑一次、比 stderr**：比的是**用户真正看到的东西**，中间没有第三份副本。
+**教训：为"消除重复"引入的第三份副本，通常是第三个漂移源。**
+
+**❌ 方向 3：突变验证的脚本第一版用 `perl -CSD -pi -e` 改中文文案。**
+`-CSD` 是"按 UTF-8 处理"的开关，改中文顺手就加上了。
+**失败原因**：加了 `-CSD` 之后 perl 把**文件**按字符解码、而**命令行给的模式**仍是原始字节，
+两边对不上，**四次替换一次都没生效**。我在脚本里留了一道
+`grep -q "$to" || echo MUTATION DID NOT APPLY` 的自检，四行全打了这句才发现。
+**要是没有这道自检，屏幕上会是四次"全绿"**——我会得出一个完全相反的结论（"新测试也抓不住"），
+甚至可能反过来去改本来是对的测试。
+**教训：突变测试必须先证明"突变真的改进去了"，否则"没红"分不清是测试没用还是突变没生效。**
+
+**❌ 方向 4：件二顺手把验收 5.2.5 那两条坏命令一起修了。**
+它就在同一个文件里，改动比测试还小，而且验收确实把它写在给 builder 的建议里。
+**失败原因**：派遣单明写本轮只有三件，5.2.5 不在其中；那两处文案一动，
+`concierge_guard.sh` 与 `paths.mjs` **两边都要同步改**，正好落在本轮新写的四格逐字节比对上——
+"顺手一改"会变成"两个文件 + 四条断言"的连带改动，**把一次小修变成半件新活**。
+**没做，写进 §82 等 lead 排。**
+**教训：越是"就在手边、改起来更小"的活，越容易在边界上开口子——边界是派遣单给的，不是手感给的。**
+
+---
+
+## 84. 交付自查清单（第 9 轮）
+
+- ☑ **TDD 先红后绿**：先用**改动前的测试**证明缺口真实（三次全绿，§78.1），再补测试、四个变体**各红一次**（§78.2 原始报错原文，未事后补写）
+- ☑ **测试全绿**：**235 / 235**（232 → +3）；流水线四步 × 本轮两个提交，各自 `git worktree add --detach` 干净检出全跑（§80）
+- ☑ **覆盖率**：本轮**零产品代码改动**（改的是 1 份测试 + 3 份文档），进程内覆盖率没有可动的分母；用**突变测试**回答"测试有没有在测东西"——**4 处突变 4 红**，且旧测试对其中 3 处**全绿**（§78.1 / §78.2）
+- ☑ **主流程冒烟**（登记表 `ci_smoke.main_chain` 填了 → 本项启用）：`demo:check` **退出码 0**（干净检出上跑，§80）
+- ☐ 结构升级双路 / 数据隔离字段：登记表两格为空 → **跳过**
+- ☑ **无 try/except 压异常**：`grep -rn "except.*pass"` / `catch {}` 在本轮改动里 0 命中
+- ☑ **无 mock 假数据兜底**混进生产代码：本轮没碰生产代码；测试与走查用的假家目录、假 PDF 全在临时目录，未落仓库
+- ☑ **不涉端点**（本项目无 HTTP 服务）→ 接口 8 契约与压测不适用
+- ☑ **UI/演示稿**：本轮无界面改动；操作卡是给人读的文档，按验收点名的两处失效位置改
+- ☑ **没顺手改无关老 bug**（§82 逐条对账；5.2.5 那两条明确没做、写出来等排期）
+- ☑ **变更日志已记**（登记表 `paths.changelog` 填了 → `CHANGELOG.md` 那条 Fixed 的两句过度声明改准）
+- ☑ **边界**：未 push（`origin/main` 仍 `8f9e546`；本轮开工时 `git rev-list --count origin/main..HEAD` = **15**，
+  本轮 3 个提交（2 个改动 + 1 个本记录）落完 = **18**，交付时已实数核对，**这次连本记录自己一起数了**）；
+  `batchA-backup` 未碰；无 force / rebase / 改历史；未真投递 / 未提交表单 / 未开浏览器碰真实网站 / 未发邮件；
+  未改 TASK 档案；未改 `.claude/settings.json`；**未写创始人 `~/.mrweirdo-jobs/`（跑前跑后 stat 快照逐行 diff：7205 条目零差异，§79 / §80）**；
+  `/tmp/mrweirdo-onboard` 一个文件没删（**169 → 169**）
+- ☑ **产物红线**：三份现有文件（操作卡 / 本记录 / 变更日志）**全部用 Edit 精准替换**；测试文件用 Edit 替换那一条测试；本节起为**纯追加**
+
+### 84.1 本项目铁律对照（`.claude/arnold/roles/builder.md`）
+
+| 铁律 | 结论 |
+|---|---|
+| 测试必须**串行**跑（并行会因临时目录互踩假失败） | ✅ `npm test` 自带 `--test-concurrency=1`，未改；新增四格各用独立 `mkdtemp` 前缀 |
+| 说「可以交付」前把 `ci.yml` **每一步**在本地跑一遍全绿 | ✅ 四步**全跑**，且**两个提交各自干净检出各跑一次**（§80），不是只跑 `npm test` |
+| 主流程冒烟优先保证不断 | ✅ `demo:check` 退出码 0（§80） |
+
+### 84.2 偏离派遣单 / 说明书的地方（逐条标注）
+
+1. **多改了一处派遣单没点名的地方**：`CHANGELOG.md` 里「a test holds the Node and shell wordings identical」
+   这句**当时只兑现了四分之一**。件二既然是"把过度声明补实"，留着这句不改就是留了一句假话在大事记里。
+   **只改这一句的措辞，不改任何事实性内容**，如实报在这里。
+2. **提交落在 `main` 上，没有新开分支**：与本任务链 Round 1-40 的既有做法一致（派遣单也按"链上提交单独检出"验收）。**未 push。**
+3. **验收给 builder 的 5.2.5 半条建议本轮没做**，理由与去向见 §82 末行 + §83 方向 4。
