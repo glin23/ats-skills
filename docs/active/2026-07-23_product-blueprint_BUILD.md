@@ -2516,8 +2516,12 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
 - ☑ **UI**：本轮无界面改动；操作卡是给人读的文档，按验收点名的三处失效点改
 - ☑ **没顺手改无关老 bug**（§75 只报告不动手）
 - ☑ **变更日志已记**（登记表 `paths.changelog` 填了 → `CHANGELOG.md` 顶部 Fixed 段两条）
-- ☑ **边界**：未 push（`origin/main` 仍 `8f9e546`，`git log origin/main..HEAD` 实数 **14** = 上两轮 8 + 本轮 6，
-  本轮 6 = 4 个改动提交 + 2 个本记录提交）；
+- ☑ **边界**：未 push（`origin/main` 仍 `8f9e546`，`git rev-list --count origin/main..HEAD` 实数 **15**
+  ~~14~~ = 上两轮 8 + 本轮 7（4 个改动提交 + 3 个本记录提交）。
+  **原写 14 是错的，第 9 轮改正**：我上一轮是在**写下这句话的那个提交还没落地时**数的，
+  数出来的 14 不含"记下这句话"的那个提交自己（`b9d4b5b`），提交完就成了 15，而记录停在 14。
+  这一轮的数法：`git rev-list --count origin/main..HEAD` 直接数，
+  并用 `git log --oneline origin/main..HEAD | wc -l` 逐行列出来对了一遍，两边都是 **15**）；
   `batchA-backup` 未碰；无 force / rebase；未真投递 / 未开浏览器 / 未发邮件；未改 TASK 档案；未改 `.claude/settings.json`；
   `/tmp/mrweirdo-onboard` 一个文件没删（169 → 169）；创始人家目录 7205 条目零差异
 

@@ -80,12 +80,19 @@ since shipped and now lives in `docs/archive/`; the current one is
   was the sixth line, in English, under a Node stack trace that reads as a crash
   to someone who does not program. It now opens with a copy-paste `rm`, in
   Chinese, printed plainly with exit code 3 instead of an uncaught throw, and a
-  test holds the Node and shell wordings identical. The note also gained its
-  missing half: the sandbox carries a marker naming the home that left the note,
+  test holds the Node and shell wordings identical — all four of them as of
+  2026-07-26 (the locked home, plus the three ways a sandbox can find its note
+  gone). That test first built only the locked-home case, so a one-character
+  change to any of the other three passed the whole suite; it is now
+  parameterised, and each of the four was proved to go red on its own. The note
+  also gained its missing half: the sandbox carries a marker naming the home that left the note,
   and both entrances refuse a sandbox whose note has gone missing or points
   somewhere else — before this, forgetting the note or deleting it early turned
   the entire protection off with no sign at all. A run that skips the setup step
-  outright still cannot be detected, and the runbook says so.
+  outright still cannot be detected, and the runbook says so — as of 2026-07-26
+  under step 1 itself, spelling out what a skipped step 1 costs, rather than in
+  a limitations list at the very end that a reader reaches after the damage. The
+  "stop at step 4" boundary is stated at step 4 for the same reason.
 - **A question nobody was ever asked no longer comes back as "the profile has
   it"** (2026-07-26). The catch-all "unknown fact" bucket counted itself
   answered whenever `standard_qa.custom_facts` held anything at all. The real
