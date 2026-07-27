@@ -128,19 +128,62 @@ test('the refusal leads with the fix, in his language, with no stack trace', () 
   assert.doesNotMatch(run.stderr, /throw new Error/, 'nor the throwing line itself');
 });
 
-test('the Node refusal and the shell refusal say the same thing', () => {
-  // Two copies of the wording exist because one entry point never reaches Node.
-  // Two copies drift; this is what notices.
-  const { root, home } = makeHome('mrw-lock-drift-', { locked: '/tmp/concierge-abc' });
-  const node = print('p.atsHome()', { MRWEIRDO_HOME: home, HOME: root });
-  const shell = spawnSync('bash', ['scripts/concierge_guard.sh', home], {
-    cwd: ROOT, env: { ...process.env, HOME: root }, encoding: 'utf8',
-  });
+// Two copies of the wording exist because one entry point never reaches Node.
+// Two copies drift; this is what notices. There are FOUR wordings, not one —
+// the locked home plus the three ways a sandbox can find its note gone — and
+// this test used to build only the locked-home case, so a one-character change
+// to any of the other three passed the whole suite without a word.
+const driftCases = [
+  {
+    what: 'the home is locked for a concierge run',
+    // The lock note sits in the home itself; the home is what both entrances see.
+    setUp: () => {
+      const { root, home } = makeHome('mrw-drift-locked-', { locked: '/tmp/concierge-abc' });
+      return { root, target: home };
+    },
+  },
+  {
+    what: 'the sandbox says its note was never left',
+    setUp: () => {
+      const { root, home } = makeHome('mrw-drift-gone-');            // note never left
+      return { root, target: makeSandbox('mrw-drift-gone-sandbox-', home) };
+    },
+  },
+  {
+    what: 'the sandbox says its note points at another run',
+    setUp: () => {
+      const { root, home } = makeHome('mrw-drift-crossed-', { locked: '/tmp/concierge-someone-else' });
+      return { root, target: makeSandbox('mrw-drift-crossed-sandbox-', home) };
+    },
+  },
+  {
+    what: 'the sandbox marker does not say whose home left the note',
+    setUp: () => {
+      const { root } = makeHome('mrw-drift-empty-');
+      const sandbox = mkdtempSync(join(tmpdir(), 'mrw-drift-empty-sandbox-'));
+      writeFileSync(join(sandbox, SANDBOX_NAME), '\n');              // marker left blank
+      return { root, target: sandbox };
+    },
+  },
+];
 
-  assert.equal(shell.status, REFUSAL_EXIT);
-  const strip = (t) => t.trim().split('\n').map((l) => l.trimEnd()).join('\n');
-  assert.equal(strip(shell.stderr), strip(node.stderr), 'the two copies have drifted apart');
-});
+for (const { what, setUp } of driftCases) {
+  test(`the Node refusal and the shell refusal say the same thing — ${what}`, () => {
+    const { root, target } = setUp();
+    const node = print('p.atsHome()', { MRWEIRDO_HOME: target, HOME: root });
+    const shell = spawnSync('bash', ['scripts/concierge_guard.sh', target], {
+      cwd: ROOT, env: { ...process.env, HOME: root }, encoding: 'utf8',
+    });
+
+    // Both entrances have to actually refuse, or "the same thing" would be
+    // satisfied by two empty strings.
+    assert.equal(node.status, REFUSAL_EXIT, `Node must refuse here: ${node.stdout}${node.stderr}`);
+    assert.equal(shell.status, REFUSAL_EXIT, `the shell must refuse here: ${shell.stdout}${shell.stderr}`);
+    const strip = (t) => t.trim().split('\n').map((l) => l.trimEnd()).join('\n');
+    assert.ok(strip(node.stderr).length > 0, 'a refusal with nothing to say is not a refusal');
+    assert.equal(strip(shell.stderr), strip(node.stderr), 'the two copies have drifted apart');
+  });
+}
 
 // ---------------------------------------------------------------------------
 // The note is a one-way check: it only speaks when it is there. Forgetting to
