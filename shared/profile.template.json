@@ -43,6 +43,8 @@
     "authorized_to_work_us": null,
     "requires_sponsorship_now": null,
     "requires_sponsorship_future": null,
+    "form_answer_policy": null,
+    "_user_words": "",
     "salary_expectation_usd": ""
   },
 

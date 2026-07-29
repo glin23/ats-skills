@@ -1,0 +1,16 @@
+{"ts": "2026-07-26T16:43:32", "hook": "check_task_file.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T16:47:05", "hook": "check_lead_output_format.py", "event": "PostToolUse", "outcome": "warn", "exit": 0}
+{"ts": "2026-07-26T16:48:35", "hook": "check_chat_terminology.py", "event": "Stop", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T16:56:30", "hook": "check_living_doc_present.py", "event": "PostToolUse", "outcome": "inject", "exit": 0}
+{"ts": "2026-07-26T17:45:38", "hook": "check_lead_output_format.py", "event": "PostToolUse", "outcome": "warn", "exit": 0}
+{"ts": "2026-07-26T17:46:28", "hook": "check_living_doc_present.py", "event": "PostToolUse", "outcome": "inject", "exit": 0}
+{"ts": "2026-07-26T17:47:10", "hook": "check_living_doc_present.py", "event": "PostToolUse", "outcome": "inject", "exit": 0}
+{"ts": "2026-07-26T18:10:13", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T19:14:56", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T19:19:07", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T20:11:05", "hook": "check_iterations_pretool.py", "event": "PreToolUse", "outcome": "warn", "exit": 0}
+{"ts": "2026-07-26T20:27:47", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T20:28:10", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T21:41:30", "hook": "check_living_doc_present.py", "event": "PostToolUse", "outcome": "inject", "exit": 0}
+{"ts": "2026-07-26T21:58:20", "hook": "check_terminology.py", "event": "PreToolUse", "outcome": "block", "exit": 2}
+{"ts": "2026-07-26T22:08:09", "hook": "check_living_doc_present.py", "event": "PostToolUse", "outcome": "inject", "exit": 0}

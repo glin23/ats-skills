@@ -8,7 +8,7 @@
 // value_type / path_value_types drive the write-back validator: three-state
 // booleans refuse "yes"/"true"/1 rather than coercing them, because a coerced
 // value about immigration status ends up typed onto a real form.
-import { IDENTITY_QUESTIONS } from './work_auth_identity.mjs';
+import { IDENTITY_QUESTIONS, Q4_NOTICE } from './work_auth_identity.mjs';
 
 // ---------------------------------------------------------------------------
 // standard_qa.custom_facts — the bucket for facts that have no bucket of their
@@ -86,15 +86,30 @@ export const QUESTION_TEMPLATES = {
       'work_authorization.authorized_to_work_us',
       'work_authorization.requires_sponsorship_now',
       'work_authorization.requires_sponsorship_future',
+      // Q4 的答案. 声明在这里才写得进档案 (ADR-5「模板即权限」) —— 少了这一行,
+      // 漏斗问出来的「碰到那道题你要我怎么办」落不了盘, 等于没问.
+      'work_authorization.form_answer_policy',
+      // 他自己的原话. 下划线开头 = 只给系统看; ADR-12 R4 把它从 visa_status 里
+      // 搬出来, 因为 visa_status 会被逐字渲染给雇主.
+      'work_authorization._user_words',
     ],
     // 关卡 3 ① 拍板：不问「你有没有工作授权」——那是一个法律结论，「这没人能知道」。
     // 只问他从自己的证件和生活里读得出来的事实，结论由 work_auth_identity.mjs 去推。
-    question: `这一格空着，几乎每一份投递表单都会卡住。请按顺序回答（答到能定案就停）：${
-      IDENTITY_QUESTIONS.map((q, i) => `${i + 1}. ${q.question}`).join(' ')
-    } 第 3 题如果你查不到，直接说「说不清楚」——我会告诉你去哪里查，这一批先不投，查到了一条命令就能续上。`,
+    // 两句被关卡 7 推翻的话（「几乎每一份都会卡住」「这一批先不投」）已删：实测被
+    // 阻塞的真实投递是 4/72 = 5.6%，而且不写一格只停问到那道题的那几行。
+    // Q4 的必带提示（关卡 8 决定一）跟着问句走，不许省——省了就是诱导。
+    question: `我需要知道你是哪一种人（法律结论由代码去推，不用你判断）。请按顺序回答，答到能定案就停：${
+      IDENTITY_QUESTIONS.map((q) => `${q.id}（${q.ask_when}）${q.question}${
+        q.options ? `【${q.options.map((o) => o.label).join(' / ')}】` : ''
+      }`).join(' ')
+    } 第 4 题必看：${Q4_NOTICE}`,
     answer_type: 'yes_no_sequence',
     value_type: 'boolean',
-    path_value_types: { 'work_authorization.visa_status': 'string' },
+    path_value_types: {
+      'work_authorization.visa_status': 'string',
+      'work_authorization.form_answer_policy': 'string',
+      'work_authorization._user_words': 'string',
+    },
     enum_values: null,
     // The subset that stops a batch before it opens a single browser tab. It is
     // declared here, next to the question, so the gate cannot ask for a path the

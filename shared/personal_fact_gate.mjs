@@ -21,7 +21,7 @@
 // A0 was already supposed to have collected — which is the difference between an
 // instruction to a model and an assertion.
 import { QUESTION_TEMPLATES } from './missing_field_questions.mjs';
-import { BLOCKED_BECAUSE, VISA_STATUS_LABELS, WHAT_HAPPENS_NEXT, WHERE_TO_CHECK } from './work_auth_identity.mjs';
+import { BLOCKED_BECAUSE, VISA_STATUS, WHAT_HAPPENS_NEXT, WHERE_TO_CHECK } from './work_auth_identity.mjs';
 
 const GATE_CATEGORY = 'user_work_authorization';
 
@@ -48,10 +48,10 @@ function remediationCommand(missingPaths) {
   for (const path of missingPaths) answers[path] = '<true|false>';
   // visa_status is not gated (an empty string is a legitimate "did not say"),
   // but a user answering this question always knows it, and having it on file
-  // keeps the drivers from re-deriving it from the booleans. The labels are the
-  // ones work_auth_identity derives, so a hand-run command and the funnel put
-  // the same strings on disk.
-  answers['work_authorization.visa_status'] = `<${Object.values(VISA_STATUS_LABELS).join(' | ')} | 你自己的原话>`;
+  // keeps the drivers from re-deriving it from the booleans. It is a fixed enum
+  // since ADR-12 — his own sentence goes to `_user_words`, never here — so a
+  // hand-run command and the funnel put the same strings on disk.
+  answers['work_authorization.visa_status'] = `<${Object.values(VISA_STATUS).join(' | ')}>`;
   return [
     'node shared/record_profile_answers.mjs',
     `--json '${JSON.stringify(answers)}'`,
