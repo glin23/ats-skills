@@ -65,6 +65,7 @@ function typeOf(value) {
 export function validateAnswers(answers, writePaths) {
   const unknown = [];
   const wrongType = [];
+  const outOfEnum = [];
   for (const [path, value] of Object.entries(answers)) {
     const spec = writePaths.get(path);
     if (!spec) {
@@ -76,9 +77,24 @@ export function validateAnswers(answers, writePaths) {
     const ok = expected === 'object'
       ? actual === 'object'
       : actual === expected;
-    if (!ok) wrongType.push({ path, expected, actual, value });
+    if (!ok) {
+      wrongType.push({ path, expected, actual, value });
+      continue;
+    }
+    // A path may also declare WHICH values it accepts. Same reason as the type
+    // check one line up: a near-miss ("defer" for "defer_to_user") would be
+    // stored happily and then read as "he never answered", which puts the
+    // question he already answered back in front of him.
+    if (spec.enum_values && !spec.enum_values.includes(value)) {
+      outOfEnum.push({ path, allowed: spec.enum_values, value });
+    }
   }
-  return { unknown, wrongType, ok: unknown.length === 0 && wrongType.length === 0 };
+  return {
+    unknown,
+    wrongType,
+    outOfEnum,
+    ok: unknown.length === 0 && wrongType.length === 0 && outOfEnum.length === 0,
+  };
 }
 
 function readAt(node, segments) {
@@ -155,6 +171,12 @@ export function main(argv, deps = {}) {
   if (validation.wrongType.length) {
     for (const bad of validation.wrongType) {
       console.error(`[record-answers] ${bad.path} expects ${bad.expected}, got ${bad.actual} (${JSON.stringify(bad.value)}). Values are not coerced.`);
+    }
+    return EXIT_TYPE;
+  }
+  if (validation.outOfEnum.length) {
+    for (const bad of validation.outOfEnum) {
+      console.error(`[record-answers] ${bad.path} only accepts ${bad.allowed.join(' | ')}, got ${JSON.stringify(bad.value)}. Near misses are refused, not stored.`);
     }
     return EXIT_TYPE;
   }

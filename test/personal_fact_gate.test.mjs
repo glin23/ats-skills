@@ -277,7 +277,7 @@ test('answering the gated question actually opens the gate', () => {
   execFileSync(process.execPath, [
     'shared/record_profile_answers.mjs',
     '--json', JSON.stringify({
-      'work_authorization.visa_status': 'F-1 OPT eligible',
+      'work_authorization.visa_status': 'student_visa_with_permission',
       'work_authorization.authorized_to_work_us': true,
       'work_authorization.requires_sponsorship_now': false,
       'work_authorization.requires_sponsorship_future': true,

@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { roleTypesFromSearchIntent } from './role_types.mjs';
+import { FORM_ANSWER_POLICIES } from './work_auth_identity.mjs';
+
+const FORM_ANSWER_POLICY_VALUES = Object.values(FORM_ANSWER_POLICIES);
 
 function readJson(file) {
   try {
@@ -71,6 +74,20 @@ export function validateProfileBundle(home = atsHome()) {
         } else if (!typeOfNullable(auth[key], type)) {
           pushIssue(issues, 'error', profilePath, `work_authorization.${key}`, `${key} must be ${type} or null`);
         }
+      }
+      // form_answer_policy is a new key with no legacy values, so an out-of-enum
+      // value can only be a hand edit or a bug — and a near miss reads downstream
+      // as "he never answered", which puts an answered question back in front of
+      // him. Fail loudly rather than let it pass as null.
+      if (hasOwn(auth, 'form_answer_policy') && auth.form_answer_policy !== null
+        && !FORM_ANSWER_POLICY_VALUES.includes(auth.form_answer_policy)) {
+        pushIssue(
+          issues,
+          'error',
+          profilePath,
+          'work_authorization.form_answer_policy',
+          `form_answer_policy must be null or one of ${FORM_ANSWER_POLICY_VALUES.join(' | ')}`
+        );
       }
       if (hasOwn(auth, 'status') || hasOwn(auth, 'needs_sponsor') || hasOwn(auth, 'sponsor_when')) {
         pushIssue(

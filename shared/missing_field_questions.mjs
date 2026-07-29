@@ -8,7 +8,9 @@
 // value_type / path_value_types drive the write-back validator: three-state
 // booleans refuse "yes"/"true"/1 rather than coercing them, because a coerced
 // value about immigration status ends up typed onto a real form.
-import { IDENTITY_QUESTIONS, Q4_NOTICE } from './work_auth_identity.mjs';
+import {
+  FORM_ANSWER_POLICIES, IDENTITY_QUESTIONS, Q4_NOTICE, VISA_STATUS,
+} from './work_auth_identity.mjs';
 
 // ---------------------------------------------------------------------------
 // standard_qa.custom_facts — the bucket for facts that have no bucket of their
@@ -109,6 +111,15 @@ export const QUESTION_TEMPLATES = {
       'work_authorization.visa_status': 'string',
       'work_authorization.form_answer_policy': 'string',
       'work_authorization._user_words': 'string',
+    },
+    // 「模板即权限」原来只管到路径这一层，一条声明过的路径能收下任何同类型的值。
+    // 这两格必须再收一层：form_answer_policy 错一个字符，「别替我答」就静默退化成
+    // 「没答过」，于是他答过的问题被再问一遍；visa_status 收下一句自由文本，
+    // ADR-12 那条「中文原话被打给雇主」的路就重新长出来了。他自己的原话有它自己的
+    // 格子（`_user_words`），那一格不设枚举。
+    path_enum_values: {
+      'work_authorization.visa_status': Object.values(VISA_STATUS),
+      'work_authorization.form_answer_policy': Object.values(FORM_ANSWER_POLICIES),
     },
     enum_values: null,
     // The subset that stops a batch before it opens a single browser tab. It is
@@ -283,20 +294,24 @@ export const QUESTION_GROUPS = [
  * Everything else — email, phone, resume_path, the resume-derived experience
  * blocks — stays out of reach of an answer.
  * @param {object} templates
- * @returns {Map<string, {value_type: string, categories: string[]}>}
+ * @returns {Map<string, {value_type: string, enum_values: string[]|null, categories: string[]}>}
  */
 export function answerWritePaths(templates = QUESTION_TEMPLATES) {
   const paths = new Map();
   for (const [category, template] of Object.entries(templates)) {
     for (const path of template.profile_paths || []) {
       const value_type = template.path_value_types?.[path] || template.value_type || 'string';
+      const enum_values = template.path_enum_values?.[path] || null;
       const existing = paths.get(path);
       if (!existing) {
-        paths.set(path, { value_type, categories: [category] });
+        paths.set(path, { value_type, enum_values, categories: [category] });
         continue;
       }
       if (existing.value_type !== value_type) {
         throw new Error(`answerWritePaths: ${path} is declared as both ${existing.value_type} and ${value_type}`);
+      }
+      if (JSON.stringify(existing.enum_values) !== JSON.stringify(enum_values)) {
+        throw new Error(`answerWritePaths: ${path} is declared with two different enums`);
       }
       existing.categories.push(category);
     }

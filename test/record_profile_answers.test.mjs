@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { QUESTION_TEMPLATES, answerWritePaths } from '../shared/missing_field_questions.mjs';
 import { fingerprint, readProvenance, recordEntries, sourceFor } from '../shared/answer_provenance.mjs';
 import { main, main as recordMain } from '../shared/record_profile_answers.mjs';
+import { workAuthAnswers } from '../shared/work_auth_identity.mjs';
 import { onboardTestEnv } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,7 +88,7 @@ test('record_profile_answers writes the answer and records where it came from', 
 
   const run = runCli(home, [
     '--json', JSON.stringify({
-      'work_authorization.visa_status': 'F-1 OPT eligible',
+      'work_authorization.visa_status': 'student_visa_with_permission',
       'work_authorization.authorized_to_work_us': true,
       'work_authorization.requires_sponsorship_now': false,
       'work_authorization.requires_sponsorship_future': true,
@@ -108,7 +109,7 @@ test('record_profile_answers writes the answer and records where it came from', 
   const profile = JSON.parse(readFileSync(profilePath, 'utf8'));
   assert.equal(profile.work_authorization.authorized_to_work_us, true);
   assert.equal(profile.work_authorization.requires_sponsorship_now, false);
-  assert.equal(profile.work_authorization.visa_status, 'F-1 OPT eligible');
+  assert.equal(profile.work_authorization.visa_status, 'student_visa_with_permission');
   // Everything the command was not asked to touch stays exactly as it was.
   assert.equal(profile.education.gpa, '3.4');
   assert.equal(profile.legal_attestations.no_prohibited_possessor_status, null);
@@ -162,6 +163,79 @@ test('record_profile_answers refuses to coerce a three-state boolean', () => {
   ]);
   assert.equal(stringPath.code, 3);
   assert.equal(digest(profilePath), before);
+});
+
+// ADR-5「模板即权限」原来只管到路径这一层: 一条声明过的路径可以收下任何一个
+// 同类型的值. 对枚举字段这不够 —— form_answer_policy 写错一个字符, 下游的
+// 「别替我答」就会静默变成「没答过」, 于是他答过的问题被再问一遍; visa_status
+// 写进一句自由文本, 就是 ADR-12 那条被逐字打给雇主的路重新长出来.
+test('record_profile_answers refuses a value outside the enum, and does not touch the profile', () => {
+  const home = makeHome('mrw-rec-enum-');
+  const profilePath = join(home, 'profile.json');
+  const before = digest(profilePath);
+
+  const bad = [
+    { 'work_authorization.form_answer_policy': 'defer' },
+    { 'work_authorization.form_answer_policy': 'answer_maybe' },
+    { 'work_authorization.form_answer_policy': '' },
+    { 'work_authorization.visa_status': 'F-1 OPT eligible' },
+    { 'work_authorization.visa_status': '我不知道，学校说要等' },
+  ];
+  for (const answers of bad) {
+    const run = runCli(home, ['--json', JSON.stringify(answers), '--source', 'user_answer']);
+    assert.equal(run.code, 3, `${JSON.stringify(answers)} should be refused as an out-of-enum value`);
+    assert.match(run.stderr, /form_answer_policy|visa_status/);
+    assert.equal(digest(profilePath), before, `profile.json changed after rejecting ${JSON.stringify(answers)}`);
+  }
+
+  for (const answers of [
+    { 'work_authorization.form_answer_policy': 'defer_to_user' },
+    { 'work_authorization.visa_status': 'student_visa_no_permission_yet' },
+    // 他的原话不是枚举, 它就该原样收下 —— 枚举管的是给系统看的那一格.
+    { 'work_authorization._user_words': '我不知道，学校说要等' },
+  ]) {
+    const run = runCli(home, ['--json', JSON.stringify(answers), '--source', 'user_answer']);
+    assert.equal(run.code, 0, `${JSON.stringify(answers)} must be accepted: ${run.stderr}`);
+  }
+  const written = JSON.parse(readFileSync(profilePath, 'utf8')).work_authorization;
+  assert.equal(written.form_answer_policy, 'defer_to_user');
+  assert.equal(written.visa_status, 'student_visa_no_permission_yet');
+  assert.equal(written._user_words, '我不知道，学校说要等');
+});
+
+test('the funnel round-trips: every situation it can produce lands on disk with its own provenance', () => {
+  // 第 1 个提交产出 write_groups, 这一条证明它真的落得了盘 —— 而且两个来源
+  // 分得开: 同一个 true, 一个是他说的, 一个是我们推的.
+  for (const input of [
+    { citizenOrGreenCard: true },
+    { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: true },
+    { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'answer_yes' },
+    { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'defer_to_user' },
+    {
+      citizenOrGreenCard: false, studentVisa: false, sponsorshipNeededFuture: 'unclear',
+      formAnswerPolicy: 'answer_no', userWords: '我是陪读签证',
+    },
+  ]) {
+    const home = makeHome('mrw-rec-funnel-');
+    const { answers, answer_sources, write_groups } = workAuthAnswers(input);
+    for (const group of write_groups) {
+      const run = runCli(home, [
+        '--json', JSON.stringify(group.answers),
+        '--source', group.source, '--category', 'user_work_authorization',
+      ]);
+      assert.equal(run.code, 0, `${JSON.stringify(input)} / ${group.source}: ${run.stderr}`);
+    }
+    const profile = JSON.parse(readFileSync(join(home, 'profile.json'), 'utf8'));
+    for (const [path, value] of Object.entries(answers)) {
+      const key = path.split('.').pop();
+      assert.equal(profile.work_authorization[key], value, `${JSON.stringify(input)}: ${path}`);
+      assert.equal(
+        sourceFor(home, path, value),
+        answer_sources[path],
+        `${JSON.stringify(input)}: ${path} lost the record of who said it`,
+      );
+    }
+  }
 });
 
 test('record_profile_answers restores the profile byte-for-byte when validation fails after the write', () => {

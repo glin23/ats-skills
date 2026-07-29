@@ -80,3 +80,31 @@ test('validateProfileBundle rejects legacy work authorization-only shape', () =>
   assert.match(result.issues.map((i) => i.message).join('\n'), /missing canonical key visa_status/);
   assert.match(result.issues.map((i) => i.message).join('\n'), /legacy keys/);
 });
+
+test('a hand-edited form_answer_policy that is nearly right is an error, not a silent null', () => {
+  // 「defer」不是「defer_to_user」. 下游读不出这一格就当他没答过, 于是他答过的
+  // 问题被再问一遍 —— 这正是新增这一格要防的那件事.
+  const home = tempHome();
+  writeBundle(home, {
+    visa_status: 'student_visa_no_permission_yet',
+    authorized_to_work_us: null,
+    requires_sponsorship_now: null,
+    requires_sponsorship_future: true,
+    form_answer_policy: 'defer',
+  });
+  const result = validateProfileBundle(home);
+  assert.equal(result.ok, false);
+  assert.match(result.issues.map((i) => `${i.path}: ${i.message}`).join('\n'), /form_answer_policy/);
+
+  for (const value of [null, 'defer_to_user', 'answer_yes', 'answer_no']) {
+    const good = tempHome();
+    writeBundle(good, {
+      visa_status: 'student_visa_no_permission_yet',
+      authorized_to_work_us: null,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: true,
+      form_answer_policy: value,
+    });
+    assert.equal(validateProfileBundle(good).ok, true, `${JSON.stringify(value)} must be accepted`);
+  }
+});
