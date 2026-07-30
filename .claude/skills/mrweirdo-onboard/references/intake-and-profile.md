@@ -73,18 +73,19 @@ the file by hand. The four `work_authorization` keys are three-state — `true`,
 `false`, or `null` meaning "never asked".
 
 If the answers do not settle `authorized_to_work_us` / `requires_sponsorship_future`
-(Q3 answered “说不清楚”, or a status other than citizen/green card/F-1), those keys
-stay `null` — and that is **not** a normal path to be left alone. The batch cannot
-start with them unanswered, so say all three of these to the user in the same
-breath, before he walks away thinking he is set up:
+(Q4 answered「别替我答」, or Q5 answered「说不清楚」), those keys stay `null` —
+**and that is a normal outcome, not a blocker**（关卡 7：还没批下来是常态，恰恰是
+该投的阶段）。跑完漏斗的用户门恒放行；没写的格子只会让**真问到那道题的那几行**
+停下来、进「你自己填最后一格」的清单（带岗位链接），**其余照投**。跟用户交代
+就交代这一句实话——实测约 20 行里停 1 行（4/72 = 5.6%），不是「几乎每一份都会卡」。
 
-1. 卡在哪：投递表单几乎每一份都会问工作身份，这一格没人能替他猜。
-2. 去哪里查 —— 三个具体去处，读 `WHERE_TO_CHECK` from `shared/work_auth_identity.mjs`
-   （学校国际学生办公室 / I-20 第 2 页 Employment Authorization 那一栏 / EAD 卡）。
-3. 查清楚之前会怎样：这一批先不投，查到了说一声，一条命令就能续上，排好的队列不会白排。
+三个查证去处（读 `WHERE_TO_CHECK` from `shared/work_auth_identity.mjs`）**挂在
+Q4 旁边**，帮「我不知道我有没有」的人搞清楚自己是哪一档；它们全是「确认你有
+没有」的去处，不是开工的前置条件——查不到也照样开跑。
 
-The pre-batch gate repeats the same three things and marks `asked_in_this_batch`
-once he has answered once, so nobody asks him the same unanswerable question twice.
+The pre-batch gate asks exactly one thing — 引导这几个身份问题问过没问过 —
+so it closes only for a profile the funnel never touched, and never re-asks
+anyone who finished onboarding, whatever they answered.
 
 A2 的年龄半句（关卡 2 ②）：与法律声明同一组里顺带确认「你已满 18 岁了吗」，**不新增独立问题**。
 档案里目前还没有这一格（`legal_attestations.at_least_18` 与驱动侧的三态判定一起落地，
@@ -116,21 +117,29 @@ Required `profile.json` shape:
 
 - `personal`: name, email, phone, LinkedIn/GitHub/website if present, address if present.
 - `education`: school, degree, major, graduation date, GPA only if known.
-- `work_authorization`: use the runtime shape from `shared/profile.template.json`:
-  - `visa_status`: human-readable status such as `US Citizen`, `Green Card`, `F-1 CPT`, `F-1 OPT`, `H-1B`, or `Other`.
-  - `authorized_to_work_us`: boolean or null.
-  - `requires_sponsorship_now`: boolean or null.
-  - `requires_sponsorship_future`: boolean or null.
+- `work_authorization`: use the runtime shape from `shared/profile.template.json`,
+  and **leave every key empty — the A0 funnel fills this block, never the resume**
+  (ADR-12 R4：`visa_status` 是固定枚举、只给系统看；从简历里猜出来的身份写进去
+  就是 `resume_inferred`，门不认、驱动也不许拿它推表单答案):
+  - `visa_status`: leave `""`. Only `shared/record_profile_answers.mjs` writes it,
+    and only with one of the five enum values from `work_auth_identity.mjs`
+    (free text such as `F-1 OPT` is rejected with exit 3).
+  - `authorized_to_work_us` / `requires_sponsorship_now` /
+    `requires_sponsorship_future`: leave `null` (three-state; the funnel derives them).
+  - `_user_words`: leave `""` — his own sentence, system-only, no employer-facing
+    module may read it.
   - Do not emit only `status`, `needs_sponsor`, or `sponsor_when`; the application drivers do not rely on those legacy keys.
 
-Example runtime shape:
+Example runtime shape (fresh profile, funnel not yet run):
 
 ```json
 "work_authorization": {
-  "visa_status": "F-1 OPT eligible",
-  "authorized_to_work_us": true,
-  "requires_sponsorship_now": false,
-  "requires_sponsorship_future": true
+  "visa_status": "",
+  "authorized_to_work_us": null,
+  "requires_sponsorship_now": null,
+  "requires_sponsorship_future": null,
+  "form_answer_policy": null,
+  "_user_words": ""
 }
 ```
 

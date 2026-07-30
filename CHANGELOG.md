@@ -60,6 +60,30 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **The pre-batch gate now asks "was he ever asked", not "is the cell filled
+  in"** (2026-07-30). The old predicate assumed a student needs his work permit
+  before applying; the truth runs the other way (offer first, then the school
+  approves the permit — 关卡 7), so a normal F-1 student who answered every
+  question he can answer was locked out of every batch forever. Measured on 72
+  real submissions: the missing cells actually block 4/72 = 5.6% of rows while
+  the gate blocked 100%. The gate now closes exactly once — for a profile the
+  identity funnel never touched — and unanswerable cells stop only the rows
+  that really ask that question, with the rest applying as normal.
+- **"Don't answer this for me" is no longer treated as "never asked"**
+  (2026-07-30). Q4's default answer gets its own note and lands on a self-serve
+  list (job link, materials ready, he fills the last cell himself) instead of
+  re-opening a question he already answered; switching his policy to "fill
+  yes/no" later re-queues those rows automatically.
+- **The visa-status field no longer reaches employers, verbatim or inferred**
+  (2026-07-30, ADR-12). It used to be rendered word-for-word into the
+  availability answer (five of 73 real submissions carried that sentence,
+  including branches that would have shipped the user's own Chinese words onto
+  an English form), and five driver branches plus one answer bucket regex-matched
+  it into Yes/No claims — a profile holding a Chinese sentence was answered "No"
+  to "Have you been admitted to the US as a nonimmigrant?". Employer-facing text
+  now reads the three-state booleans only (null = the clause does not appear),
+  the field is a five-value enum the write-back command enforces, and a
+  read-point whitelist test turns any new unregistered reader red.
 - **A fact he had already answered stopped being asked over and over**
   (2026-07-26). The fix above reads the custom-facts bucket one fact at a time,
   but it was only wired into the two paths that name a bucket up front. The
