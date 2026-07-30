@@ -2,9 +2,9 @@
 Status: done_pending_review
 Owner: arnold-verify
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, docs/active/2026-07-23_product-blueprint_BUILD.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_FORENSIC.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/arnold/roles/lead.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, shared/answer_routing.mjs, shared/greenhouse_apply_driver.mjs, shared/ashby_apply_driver.mjs, shared/profile.template.json, shared/answer_bank.json, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, test/greenhouse_work_auth_driver.test.mjs, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, .github/workflows/ci.yml
-Mode: strict（第 1 轮 批次 A）/ daily（第 2 轮 批次 B 的 B0+B1）/ daily+（第 3 轮 Round 35，含不可逆动作取证）/ daily+（第 4 轮 Round 37，回炉三件聚焦复核）
-Iterations: 5
-Updated: 2026-07-26
+Mode: strict（第 1 轮 批次 A）/ daily（第 2 轮 批次 B 的 B0+B1）/ daily+（第 3 轮 Round 35，含不可逆动作取证）/ daily+（第 4 轮 Round 37，回炉三件聚焦复核）/ daily+（第 5 轮 阶段 0，施工记录缺失全独立实测）
+Iterations: 6
+Updated: 2026-07-30
 Type: VERIFY_REPORT
 Reads_round2: 设计稿（对号入座问法 / Ashby 阻塞信号 / 批次 B 验收标准 / 方法论复盘 那几节）, 施工记录第 45-54 节, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/apply_gap_report.mjs, shared/ashby_apply_driver.mjs, shared/missing_field_questions.mjs, shared/apply_batch.mjs, shared/supervisor_preflight.mjs, shared/answer_provenance.mjs, shared/paths.mjs, shared/onboard_tmp.mjs, shared/local_db.mjs, shared/cover_letter_materials.mjs, scripts/intake_resume.sh, scripts/demo_check.mjs, test/ashby_driver_harness.mjs, test/ashby_pending_note.test.mjs, test/work_auth_identity.test.mjs, test/helpers.mjs, 引导说明书 intake-and-profile.md, .github/workflows/ci.yml
 ---
@@ -2337,3 +2337,175 @@ scripts/coverage_matrix_check.mjs:145 / 191 / 202       /tmp/coverage_*.json
 判成回炉，会让一件**本轮确实做成了的交付**被一条**跟本轮交付场景无关**的风险拖住。
 **教训：判严重度要问「在本次要交付的那个场景里，它点得着吗」，不能只看形状像不像红线。**
 把不相干的风险按最坏形状打分，看着是谨慎，实际是让真正该放行的东西过不去。
+
+---
+
+# 第 5 轮验收 — 阶段 0（身份问答收尾，8 提交 `a42dd4e`→`264a7af`）｜2026-07-29
+
+> Mode: daily+（施工记录缺失，一切结论独立实测）。边验边写，本节按验完顺序追加。
+> 硬边界遵守中：未 push、未动 origin、未碰 `batchA-backup`、未真跑投递、未开浏览器、
+> `~/.mrweirdo-jobs/` 零写入（开工基线 7205 条 stat 快照已存，收尾对账）、
+> `/tmp/mrweirdo-onboard` 开工计数 **168**（收尾须 ≥168）。
+
+## R5-§0 验到哪了（断线接续锚点）
+
+- [x] 读齐：TASK 全文、DESIGN §13.3.1/§13.3.2/§13.3.3/§13.3.4/§13.10/§13.11/§13.12、ADR-11、ADR-12、`shared/work_auth_identity.mjs` 全文、master-plan 定稿
+- [x] 独立环境：`git worktree add --detach` 干净检出 tip `264a7af`（scratchpad 独立路径，0 脏文件）
+- [x] **tip 干净检出 CI 四步复核（不采信 lead 数字，自己重跑）**：npm test **257/257 pass、fail 0、exit 0**；role_guard_smoke=0；public_alpha_gate=0；node --check（shared+scripts 全部 .mjs）=0 —— 与 lead 自述一致
+- [x] A1 门语义 ✅（见 R5-A1）
+- [x] A5 visa_status 不外泄 + 白名单守卫 ✅（见 R5-A5）
+- [x] C1 三态回归 / 突变抽查 ✅（见 R5-C1）
+- [x] **初步 D 判定已出（见 R5-D-初步）**
+- [x] A2 真值表 / A3 两层接缝 / A4 措辞 ✅（见 R5-A2/A3/A4）
+- [x] A6 删句对照 ✅（见 R5-A6）
+- [x] B 七种档案端到端 ✅（见 R5-B）
+- [x] C3 C1-C14 对账 / C4 零写入 / demo:check / 8 提交独立检出闭环 ✅（见 R5-C3/C4 与 R5-D 终判）
+
+## R5-C3 DESIGN §13.11 C1-C14 逐项对账 — 14/14 做了，附 2 处注释漂移（P3）
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| C1 Q3 换问法删术语 | ✅ | R5-A4 实测问句零术语，「还没有（正常…）」选项在 |
+| C2 Q4/Q5 + FORM_ANSWER_POLICIES | ✅ | R5-A2 行 3-9 |
+| C3 说不清楚补 `requires_sponsorship_future=true` | ✅ | R5-A2 行 6（三变体） |
+| C4 BLOCKED_BECAUSE / WHAT_HAPPENS_NEXT 改写 | ✅ | 新文案=「引导没跑过」/「答不上来的格子只停问到的那几行，其余照投」，读码+R5-A1 门关输出实测 |
+| C5 other_status 接 Q5+Q4′ | ✅ | R5-A2 行 7-9、R5-B 档案 6 |
+| C6 门谓词换「问过没问过」 | ✅ | R5-A1（含 🟡 值兜底偏离，已判接受） |
+| C7 preflight 注释与检查项语义 | ✅ | 新注释写「about 1 row in 20, 4/72=5.6%」，检查项挂 checks 硬项 |
+| C8 模板加 `form_answer_policy`/`_user_words` 路径+枚举收紧 | ✅ | 读码 + R5-B 写回实测（枚举拒收 exit 3） |
+| C9 引导说明书 A0 改 Q1-Q5、删「batch cannot start」段、门槛账写明 | ✅ | R5-A4；全仓 grep 旧句仅剩「已删」的自述注释 |
+| C10 NOTE_CATEGORY 新 note→self_serve 新类目 | ✅ | R5-A3 跨层实测 |
+| C11-C14 ADR-12 四处 | ✅ | R5-A5（渲染/驱动/桶/守卫）+ R5-A6（bank 删句） |
+
+**🟡 P3 注释漂移 2 处（行为零影响，建议下轮顺手清）**：`shared/missing_field_questions.mjs:82-84`（「blocks nearly every row」）与同文件 `gate_paths` 注释尾句（「this one blocks essentially all of them」）仍在复述被关卡 7 推翻的「阻塞几乎全部行」——同文件 `:100` 明说那两句已删，删的是用户可见问句、漏了这两条内部注释。13 维第 12 维（文档同步）记账。
+
+## R5-C4 边界与收尾对账 — ✅ 全部干净
+
+- `~/.mrweirdo-jobs/` **7205 条 stat 快照（路径+mtime+大小+权限）跑前跑后 diff = 0 行**；
+- `/tmp/mrweirdo-onboard` 条目 **168 → 168**，未删任何文件；
+- 沙箱家目录（`/tmp/mrw-v5-*`）已清；本轮建的 6 个 worktree 全部 remove（残留的 6 个是 lead/前几轮所建，非本轮产物，未动）；主仓工作区对产品代码 0 脏（突变全部复原核过）；
+- 未 push、未动 origin、未碰 `batchA-backup`、未真跑投递、未开浏览器、未发邮件；
+- `npm run demo:check`（登记表 ci_smoke 主流程冒烟）在干净 tip 检出 **exit 0**（对真实家只读；`work_authorization_answered ok=true` 对真实用户放行——门的值兜底偏离正是为他留的，实测吻合）。
+
+## R5-D 终判：阶段 0 完工判定（8 提交整体）
+
+**8 提交独立检出各自全绿（独立路径逐个建，未循环建删）**：lead 验过 6 个新提交（244→257 递增），本轮独立复核其中 2 个（`165dc6f` 244/244、`9dbfe79` 254/254，与 lead 数字一致），并**补验了 lead 没盖到的前两个**：`a42dd4e` **241/241**、`0cc1442` **244/244**。至此 8/8 每个提交单独检出 npm test 全绿——`git bisect` 安全，批次 A 那次「中间提交红」的旧事故形态不存在。
+
+**§2 5 维高危区**（测试前评估，密度按此定）：① 核心业务逻辑=真值表+门（最高密度：19+14 格逐格）② 安全边界=visa_status 外泄+编造（三层+突变）③ 集成点=驱动/报告接缝（跨层实测）④ 用户体验主流程=demo:check+七档案 ⑤ 性能=本轮无外部调用链变更，N/A。
+**§3 7 类技术**：等价类（七档案）/ 边界值（null/false/空串/字符串"true"/非法枚举）/ 决策表（真值表 10×5 逐格）/ 状态迁移（漏斗 Q1→Q5 含非法迁移抛错）/ 用例测试（沙箱端到端写回→门→驱动）/ 风险驱动（编造方向突变 M1-M5）/ pairwise：N/A（参数组合已被决策表穷举覆盖）。
+**§4 回归循环**：本轮为验收侧独立实测（1 轮全绿 + 5 突变红绿对照），未触发回炉循环。
+**§7 质量 3 指标**：真 bug 数 **0**；覆盖率 = 真值表 10/10 行、C 清单 14/14、七档案 7/7、8/8 提交；`verify_self_miss_rate: 0%`（本轮 3 条发现——1 🟡 偏离 + 2 P3 注释漂移——全部出自阶段 0 新代码，上一轮范围内无漏检对象；如实报 0，不是虚报）。
+**§8 老坑清单**：项目未定义 verify 岗位家规文件；派遣单点名的 4 条老坑（三态真假读法 / 测试假绿 / 对账不抽样 / 零写入）逐条核过，见 R5-C1/C2/C3/C4。
+**§9 13 维**：非 strict 轮，按派遣单聚焦面跑；文档同步维（#12）产出 2 条 P3。
+
+**质量分：4/5 — 放行。** 扣 1 分事由：① 门谓词与 DESIGN §13.3.3 硬规定 1 的偏离虽方向安全、理由实证成立，但因 BUILD §85 缺失而无人申报，靠验收侧代为补录——流程上是缺口不是零瑕疵；② 2 处注释漂移。均不构成回炉。
+
+**结论：这 8 个提交作为一个整体，可以推上 GitHub。**
+- 全检查绿灯（干净检出 CI 四步 + demo:check + 8/8 单提交绿）；
+- 设计符合性 A1-A6 六项全过（真值表、接缝、措辞、ADR-11/12、删句对照非故意变化=0）；
+- 编造路径实测已死且有守卫咬人；真实用户零意外变化（125 键仅 1 键、即拍板确认那句）。
+- 「本地与 GitHub 零差异」的后半句由 lead 推送后达成；推送时注意：**工作区尚有 4 个已改文件 + 7 个未跟踪文档不在本 8 提交内**（含本报告与 TASK/BUILD 的追加、master-plan 等定稿），是否随批入库由 lead 定——只推 8 提交或先收文档提交皆不影响本判定。
+
+**遗留清单（不阻断，建议去向）**：① 门谓词偏离半句回写 DESIGN（architect，随 BUILD §85 欠账一起）② 2 处注释漂移（builder 下轮顺手）③ BUILD §85 阶段 0 章节仍欠（Round 55 已挂账，事实链本报告已补全大半）。
+
+## R5-B 七种档案端到端 — ✅ 42/42 通过（不是看测试名，是真跑链条）
+
+**方法**：每档案一个独立沙箱家目录 → 出厂模板落盘 → 漏斗 `workAuthAnswers()` → **真 CLI** `record_profile_answers.mjs --home <沙箱>` 按 `write_groups` 分组写回（`user_answer` 与 `onboarding_a0` 两次调用）→ 读磁盘核三态 → 门（读磁盘档案+磁盘留痕，真实调用链形态）→ 出货 Greenhouse 驱动答授权/担保两道真题面。
+
+| 档案 | 门 | 授权题 | 担保题 | 三态/留痕 |
+|---|---|---|---|---|
+| 公民 / 绿卡 | 开 | 填 Yes | 填 No | 不写格磁盘 null ✅ 留痕在 ✅ |
+| F-1 已有证件 | 开 | 填 Yes | 填 Yes | ✅ |
+| F-1 没批（Q4=C 默认） | **开**（关卡 7 兑现：常态不拦批） | **停行** note=deferred | 填 Yes（fut 已推导） | `authorized_to_work_us` 磁盘 **null** ✅ |
+| F-1 说不清（含中文原话） | 开 | 停行 deferred | 填 Yes | 原话只进 `_user_words`、`visa_status` 是枚举、全 bank 渲染零泄漏 ✅ |
+| 其他签证（Q5=需要, Q4′=C） | 开 | 停行 deferred | 填 Yes（**他说的**） | ✅ |
+| 一次都没问过 | **关** | —（门先拦） | — | 报错可读 ✅ |
+
+附加：写回口对自由文本 `visa_status:"F-1 OPT"` **exit 3 拒收、档案未被污染**（ADR-12 R4 枚举收敛在写入口真执行）。与门+行层验收表（§13.3.3）逐行一致。
+
+## R5-A6 「到岗时间」尾部工作授权自述删除 — ✅ 通过，非故意变化 = 0
+
+**方法**：真实档案 + 真实 search_intent（只读）喂新旧两棵干净检出（`635c143` = R1 落地前一提交，独立路径 worktree）各自的出货渲染器 × 各自的 answer_bank 全部 125 个模板键，逐键对照。
+**结果**：**变化键数 = 1**（`essay_templates.15.answer_template`，到岗时间），变化内容恰为设计 §13.10 点名那句尾巴消失：`Work authorization summary from my profile: F-1 OPT eligible; may require future sponsorship depending on the role.` → 整句不再出现，前半句逐字不变。**其余 124 键逐字节零变化。** 真实用户自由文本 `F-1 OPT eligible` 被打给雇主的路径就此关闭（该变化已由拍板人在关卡 8/§13.10 流程确认，非偷改）。
+
+## R5-A2 真值表 10 行 × 5 列 — ✅ 19/19 逐格通过（独立探针 `probe_truthtable.mjs`）
+
+- 行 1-9（含行 6 的 A/B 变体）：五列值 + 「不写」形态 + 来源留痕（第 3/4 行 `authorized_to_work_us` **source=user_answer**、推导格 **onboarding_a0**、`write_groups` 两组分开）全对。
+- **第三行（F-1 没批）重点**：Q4=A → `true`(他说的)；Q4=B → `false`(他说的)；Q4=C → **键整个不出现**（不可能是 false/空串），`requires_sponsorship_now` 恒不写。
+- **第十行（漏斗没跑过）重点**：`workAuthAnswers({})` **显式抛错**（Fail Fast，零格子产出）；档案侧出厂模板实测 `authorized_to_work_us === null`、`requires_sponsorship_now === null`、`requires_sponsorship_future === null`、`visa_status === ""`、`form_answer_policy === null`——**不是 false、不是编造值**。
+- 第 9 行纪律：Q4=A 时 `requires_sponsorship_future` 仍不写（不许拿 Q4 补 Q5）✅。
+- 防御：Q1 已定案还带 Q3 答案 → 抛错（漏斗与调用方打架不吞）✅。
+
+## R5-A3 两层接缝 — ✅ 通过（跨层实测：出货驱动发的 note → 出货报告 CLI 分类）
+
+- 驱动侧（真代码）：defer 档案 + 授权题 → 停行、note=**`work_authorization_deferred_by_user`**；没问过档案 → note=**`work_authorization_required`**——两个 note 从驱动侧就分开；defer 档案的担保题（`fut=true` 已推导）照答 Yes（defer 只覆盖答不出的格子，与 §13.3.3 验收表第 5 行一致）。
+- 报告侧（真 CLI）：defer note → 独立类目 `user_work_authorization_self_serve`，文案是交待不是重问；**`user_work_authorization`（身份问题）类目零条目 = 他答过的问题不会被再问一遍**；不落 `agent_actions`（「你自己从档案填」那台静默卡死机器不启动）；行仍可重投。
+- 出货 `work_auth_self_serve.test.mjs` 另覆盖「改口 C→A 后旧 deferred 行自动变按档案填」，本轮读码核对其断言真实。
+
+## R5-A4 措辞硬约束 — ✅ 通过
+
+- Q4 问句 + `Q4_NOTICE` 含「这三个字会被原样打到真实雇主的表单上」逐字（代码与引导说明书两处，说明书并规定文案一律从 `IDENTITY_QUESTIONS`/`Q4_NOTICE` 读、禁止重打防漂移）。
+- Q1/Q2/Q3/Q5 问句与选项全文**零 CPT/OPT/EAD/H-1B/J-1**；全仓扫描剩余命中均为：`WHERE_TO_CHECK` 指路说明（派遣单豁免）、代码注释/设计理由（非问句）、校验文档「free text such as F-1 OPT is rejected」（枚举拒收说明）。
+- Q3 选项带「还没有（**正常，大多数人在这一档**）」——「常态不是资格审查」拍板兑现；引导说明书把上手门槛的账写在明处（公民 1 题 / 常态留学生 4 题）。
+
+## R5-C1/C2 老坑回归：三态读法 + 突变 — ✅ 通过
+
+**C1 三态字段真假判断扫描**：8 提交全 diff（+5870/−521，38 文件）的新增行里，对 `authorized_to_work_us` / `requires_sponsorship_*` / `form_answer_policy` / `visa_status` 的每一处读取全部是 `=== true` / `=== false` 严格三分支或枚举白名单判；**零处 `|| 默认值` / truthy 读法**。`withoutSponsorshipAnswer()` 显式「两 false→Yes、任一 true→No、其余 null 调用方必须阻塞」，注释自书「No default branch: that was the fabrication」，与实现一致。
+
+**C2 突变测试（5 处全红，无假绿）**：
+| 突变 | 结果 |
+|---|---|
+| M1 真值表第 4 行 Q4=B 改写 `true`（编造方向） | `work_auth_identity.test` **2 红** ✅ |
+| M2 门的漏斗来源放宽（`resume_inferred` 算问过） | `personal_fact_gate.test` **1 红** ✅ |
+| M3 `authSummary` null 掉进「不需要担保」（两态回归重演） | `answer_templates.test` **1 红** ✅ |
+| M4 白名单外文件加 visa_status 读点 | 守卫 **1 红** ✅（见 R5-A5） |
+| M5 雇主可见模块加读点 | 守卫 **2 红** ✅（见 R5-A5） |
+
+每处突变后 `git checkout` 复原，工作树 0 脏（复原已核）。
+
+## R5-D-初步 初步判定（最小证据链完成时点）
+
+**初步结论：倾向可推。** 依据：① tip 干净检出 CI 四步 + 257/257 独立复核全绿；② 门的新语义（本轮改动的地基）14 形态实测全对，报错可读、修复命令可复制；③ ADR-12 三层（渲染/驱动/守卫）实测全通，编造路径确认已死且守卫会咬人；④ 新增测试非假绿（5 突变全红）；⑤ 三态老坑零新增。
+**尚未验、可能翻盘的项**：A2 真值表逐格（若格子写错属 P0）、A6 删句对照（若非故意变化 ≠0 属 P1）、B 七档案（若某档死锁属 P0）、C4 零写入收尾对账。以下继续。
+
+## R5-A5 ADR-12：`visa_status` 只给系统看 — ✅ 通过（渲染层 + 驱动层 + 守卫突变三层实测）
+
+**渲染层（R1/R3/R4，独立探针 `probe_adr12.mjs`，跑出货 `renderAnswerTemplate`）**：
+- 毒档案（`visa_status: '我不知道，学校说要等'`、`_user_words: '我是陪读签证…'`、三布尔全 null）喂 **answer_bank.json 全部 125 条模板逐条渲染**：中文原话 / `F-1` 字样 **零泄漏**；
+- `answer_bank.json` 全文无 `{{WORK_AUTH_SUMMARY}}`（到岗时间那半句确认已删——A6 再做真实档案前后对照）；
+- `authSummary()` 对毒档案输出空串；R3 三分支实测：`requires_sponsorship_future` null → 担保半句**整个不出现**，true → `may require…`，false → `does not require…`。
+
+**驱动层（R2，出货 Greenhouse 驱动经 harness——只换浏览器边界，判定逐字节是驱动代码）**：
+- 中文原话档案 + 「非移民签证入境」题 → **阻塞（needs_user_answer），零填写**——ADR-12 里「被答成 No」那条编造路已死；
+- 真实用户旧形态（`visa_status:'F-1 OPT eligible'` 自由文本、布尔 null）→ 同样阻塞，**自由文本不再被嗅**；
+- 公民签名形态（两担保布尔皆 false）→ 允许答 `No`（合理推导，非编造）；
+- 「无限制授权」题、未知 → 阻塞（关卡 2 ③ 兑现）。
+
+**守卫层（`test/visa_status_read_points.test.mjs`，突变实测）**：
+- 白名单 6 文件各有登记理由 + 「白名单没腐烂」反向测试（登记了却不读 = 红，防守卫空转）；
+- **突变 1**：白名单外文件（`answer_routing.mjs`）加一个读点 → 测试 **1 红** ✅；
+- **突变 2**：雇主可见模块（`answer_templates.mjs`）加读点 → 测试 **2 红**（读点未登记 + 零容忍双杀）✅；两处突变后 `git checkout` 复原，工作树 0 脏。
+- 静态扫描核对：全仓 `visa_status` 命中文件与白名单差集 = 3 个文件全是**注释**（`answer_routing/answer_buckets/greenhouse_apply_driver` 里的 ADR-12 说明文字）+ 1 个 note 标签字符串 `'nonimmigrant_visa_status'`（出站标签、非读点，且 READ_SHAPES 正则边界处理正确不误伤）。
+
+## R5-A1 门的新语义（ADR-11）— ✅ 通过，附 1 条 🟡 有理由的设计偏离
+
+**方法**：独立探针（scratchpad `probe_gate.mjs`），只 import 干净检出 tip 的出货 `personal_fact_gate.mjs`，14 个形态逐一喂 `blockingProfileGaps()`。**14/14 符合设计语义**：
+
+| 形态 | 门 | 判据 |
+|---|---|---|
+| 光有留痕（`user_answer` / `onboarding_a0`）、格子全空/全 null | **开** | 派遣单 A1 正例 ✅ |
+| 空档案+无留痕 / 出厂模板原样 | **关** | 报错三件套齐：`blocked_because` 人话（「不是你答不上来，是这一步还没走完」）+ `missing_paths` + 可直接复制跑的 `remediation_command` ✅ |
+| 留痕来源 `resume_inferred` / `legacy_unverified` / 留痕在别的字段族 | **关** | 非漏斗来源不算「问过」✅ |
+| 格子是字符串 `"true"` / `"Yes"` / 自由文本 visa_status / 非法 policy 值 | **关** | 手改与旧档形态不被强转成「问过」✅ |
+| typed boolean / 合法 policy 枚举、无留痕 | 开 | 见下偏离条 |
+| context 整个缺省 | 关 | 调用方漏传不会静默放行 ✅ |
+
+**preflight 接线**：`supervisor_preflight.mjs` 的 `work_authorization_answered` 是 **checks 硬项**（非 WARN），喂的是 `workAuthSources(home)` 真实留痕——门真挂在批次口上。
+
+**🟡 偏离（有理由，方向安全，但 BUILD 缺失导致无人申报——由本轮代为申报）**：DESIGN §13.3.3 接缝硬规定 1 写「门**只读来源留痕，不读值**」；实现是「留痕 **或** 严格类型值（boolean/枚举）任一即认定问过」。代码注释自述理由：**现有真实用户早于留痕文件**——本轮实查属实（`~/.mrweirdo-jobs/answer_provenance.json` 不存在，档案里 3 个 typed boolean 在）。若照设计字面写，唯一真实用户会被自己的门锁死。方向性安全：**值只能开门、永远不能关门**（被 ADR-11 取缔的是「值缺 ⇒ 锁」这个反方向），且字符串形态一律不认。判定：**接受，不构成回炉**；建议 architect 把这半句补回 DESIGN（与 BUILD §85 欠账一起收）。
+
+## R5-§0.1 已核事实（静态读码，随后实测补强）
+
+- 真值表模块 `shared/work_auth_identity.mjs`：Q3 问句「你现在手上已经有一份批下来的、允许你在美国工作的证件吗？」与 DESIGN §13.3.1 逐字一致，**问句无 CPT/OPT/EAD**；Q5 问句无术语；Q4_NOTICE 含「这三个字会被原样打到真实雇主的表单上」原话（关卡 8 决定一）。`WHERE_TO_CHECK` 第 3 条含「EAD 卡（Employment Authorization Document…）」——属指路说明（派遣单豁免项），且已按 §13.3.2 挪到 Q4 旁边（`where_to_check_ref`）而非门前。
+- 「不写」实现形态：模块用「`answers` 里**不出现该键**」表达「不写」，并返回 `unwritten_paths` 清单——与 DESIGN「不写 ≠ false ≠ 空串」语义相容（档案上该格保持 null 由写回口保证，待实测确认）。
+- 第 9 行纪律（Q5=unclear 不写、不许拿 Q4 补）代码注释与实现均在（`typeof input.sponsorshipNeededFuture === 'boolean'` 才写）；第 10 行（漏斗没跑过）由 `identitySituation` 直接 throw 兑现「Fail Fast，缺答案是调用方 bug」。
