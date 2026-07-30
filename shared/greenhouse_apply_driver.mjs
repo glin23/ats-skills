@@ -31,7 +31,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { renderAnswerTemplate } from './answer_templates.mjs';
-import { currentResidenceYesNoAnswer, deriveWorkAuthAnswers, workAuthGapFor } from './answer_routing.mjs';
+import { currentResidenceYesNoAnswer, deriveWorkAuthAnswers, withoutSponsorshipAnswer, workAuthBlockNote, workAuthGapFor } from './answer_routing.mjs';
 import {
   availabilityCommitmentAnswer,
   bachelorProgressCandidates,
@@ -580,18 +580,13 @@ function hasPriorApplicationToCompany() {
   return Number((r.stdout || '').trim()) > 0;
 }
 
+// ADR-12 R2: work-auth answers come from the three-state booleans ONLY. The
+// visa_status regexes that used to live here turned a free-text field (which
+// once held the user's own Chinese sentence) into Yes/No claims on a real form.
+// "Without restriction" now delegates to withoutSponsorshipAnswer() in
+// answer_routing.mjs — shared verbatim with the Ashby driver.
 function needsFutureSponsorship() {
-  return PROFILE.work_authorization?.requires_sponsorship_future ??
-    PROFILE.work_authorization?.needs_sponsor;
-}
-
-function workAuthWithoutRestrictionAnswer() {
-  const visa = String(PROFILE.work_authorization?.visa_status || '').toLowerCase();
-  const requiresNow = PROFILE.work_authorization?.requires_sponsorship_now;
-  const requiresFuture = needsFutureSponsorship();
-  if (/citizen|green card|permanent resident|authorized without restriction/.test(visa)) return 'Yes';
-  if (requiresNow === false && requiresFuture === false && !/f-?1|opt|cpt|h-?1b|visa|sponsor/.test(visa)) return 'Yes';
-  return 'No';
+  return PROFILE.work_authorization?.requires_sponsorship_future;
 }
 
 function standardYesNoAnswerForLabel(labelText) {
@@ -606,11 +601,11 @@ function standardYesNoAnswerForLabel(labelText) {
     return { needs_user_answer: true, note: 'export_control_answer_required' };
   }
   if (/unlimited and unrestricted authorization|unrestricted authorization.{0,80}work|authorization.{0,40}unrestricted/.test(lt)) {
-    const value = workAuthWithoutRestrictionAnswer();
+    const value = withoutSponsorshipAnswer(PROFILE); if (!value) return { needs_user_answer: true, note: workAuthBlockNote(PROFILE, 'sponsorship_future_required') }; // ADR-12 R2 + 关卡 2 ③: 三态布尔说了算，未知阻塞
     return { value, candidates: [value, value === 'Yes' ? 'I have unrestricted authorization' : 'No'], note: 'profile_unrestricted_work_authorization' };
   }
   if (/permanent.{0,60}work authorization|work authorization.{0,60}permanent/.test(lt)) {
-    const value = workAuthWithoutRestrictionAnswer();
+    const value = withoutSponsorshipAnswer(PROFILE); if (!value) return { needs_user_answer: true, note: workAuthBlockNote(PROFILE, 'sponsorship_future_required') };
     return { value, candidates: [value, value === 'Yes' ? 'I have permanent work authorization' : 'No'], note: 'profile_permanent_work_authorization' };
   }
   if (/currently enrolled.{0,80}(?:masters?|ph\.?d|doctor|graduate)|(?:masters?|ph\.?d).{0,80}program|graduate degree program/.test(lt)) {
@@ -703,14 +698,14 @@ function standardYesNoAnswerForLabel(labelText) {
     return { value: 'Yes', note: 'work_location_commitment' };
   }
   if (/without restriction|not tied to a specific employer|not dependent on.*government filing/.test(lt)) {
-    return { value: workAuthWithoutRestrictionAnswer(), note: 'work_auth_without_restriction' };
+    const unrestricted = withoutSponsorshipAnswer(PROFILE); // ADR-12 R2 + 关卡 2 ③: 三态布尔说了算，未知阻塞，不再嗅 visa_status
+    return unrestricted ? { value: unrestricted, note: 'work_auth_without_restriction' }
+      : { needs_user_answer: true, note: workAuthBlockNote(PROFILE, 'sponsorship_future_required') };
   }
   if (/(?:will you|do you).{0,80}(?:now|future).{0,160}(?:file|transfer|extend|support|sponsor|immigration|employment authorization|government application|approval|renewal)/.test(lt)
       || /future.{0,80}(?:sponsor|immigration|employment authorization|government application|approval|renewal)/.test(lt)) {
-    const requiresFuture = needsFutureSponsorship();
-    const visa = String(PROFILE.work_authorization?.visa_status || '').toLowerCase();
-    const value = requiresFuture === false ? 'No' : (requiresFuture === true || /f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visa) ? 'Yes' : null);
-    return value ? { value, note: 'future_immigration_support' } : { needs_user_answer: true, note: 'sponsorship_future_required' };
+    const value = needsFutureSponsorship() === false ? 'No' : (needsFutureSponsorship() === true ? 'Yes' : null);
+    return value ? { value, note: 'future_immigration_support' } : { needs_user_answer: true, note: workAuthBlockNote(PROFILE, 'sponsorship_future_required') };
   }
   if (/verification of both.*identity.*authorization to work|provide verification.*authorization to work|i-?9/.test(lt)) {
     return { value: 'Yes', note: 'i9_verification' };
@@ -718,9 +713,9 @@ function standardYesNoAnswerForLabel(labelText) {
   if (/at least 18|18 years of age|over 18/.test(lt)) return { value: 'Yes', note: 'age_over_18' };
   if (/fugitive from justice/.test(lt)) return { value: 'No', note: 'legal_disqualifier_default_no' };
   if (/alien illegally|alien.*unlawfully/.test(lt)) return { value: 'No', note: 'lawful_presence' };
-  if (/nonimmigrant visa|admitted.*nonimmigrant/.test(lt)) {
-    const visa = String(PROFILE.work_authorization?.visa_status || '').toLowerCase();
-    return { value: /f-?1|opt|cpt|h-?1b|j-?1|nonimmigrant|visa/.test(visa) ? 'Yes' : 'No', note: 'nonimmigrant_visa_status' };
+  if (/nonimmigrant visa|admitted.*nonimmigrant/.test(lt)) { // ADR-12 R2 实测: 中文原话档案在此被答成 No。担保两问皆否（公民/绿卡的签名）才可推 No，其余停行绝不默认
+    if (PROFILE.work_authorization?.requires_sponsorship_now === false && PROFILE.work_authorization?.requires_sponsorship_future === false) return { value: 'No', note: 'nonimmigrant_visa_status' };
+    return { needs_user_answer: true, note: workAuthBlockNote(PROFILE, 'work_authorization_required') };
   }
   if (/unlawful user.*controlled substance|addicted to.*controlled substance|marijuana|narcotic drug/.test(lt)) {
     return { value: 'No', note: 'legal_disqualifier_default_no' };

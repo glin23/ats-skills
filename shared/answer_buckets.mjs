@@ -12,6 +12,8 @@
 // raceAns, veteranAns, disabilityAns, profile fields) are now supplied via the
 // `ctx` object the driver builds from PROFILE/BANK/SEARCH_INTENT.
 
+import { withoutSponsorshipAnswer } from './answer_routing.mjs';
+
 export const PNA = 'I prefer not to answer';
 
 // Build the keyword → descriptor bucket list. `missingLabel` is the original
@@ -36,13 +38,12 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
   } = ctx;
   const personal = PROFILE.personal || {};
   const education = PROFILE.education || {};
-  const workAuth = PROFILE.work_authorization || {};
-  const visaStatus = String(workAuth.visa_status || '').toLowerCase();
-  const authorizedWithoutSponsorship =
-    workAuth.requires_sponsorship_now === false &&
-    workAuth.requires_sponsorship_future === false &&
-    !/f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visaStatus);
-  const withoutSponsorshipAns = authorizedWithoutSponsorship ? 'Yes' : 'No';
+  // ADR-12 R2: three-state booleans only — the visa_status regex that used to
+  // sit here answered 'No' for every profile it could not parse, including one
+  // holding the user's own Chinese sentence. `null` (unknowable) removes the
+  // bucket row entirely, so the label falls through to the drivers' explicit
+  // blocking path instead of a guessed radio click.
+  const withoutSponsorshipAns = withoutSponsorshipAnswer(PROFILE);
 
   return [
     { match: /phone|mobile|telephone|cell ?phone/i, action: 'fill_phone', q: missingLabel },
@@ -54,7 +55,9 @@ export function buildAnswerBuckets(missingLabel, ctx = {}) {
     { match: /graduate.{0,15}2026|2026.{0,15}later/i, action: 'click_radio_in_question', q: missingLabel, choice: 'Yes', fallback: '' },
     { match: /confirm.{0,20}acknowledge.{0,30}internship details|hours and pay align/i, action: 'click_single_radio_in_question', q: missingLabel },
     { match: /authorized.{0,30}canada|legally.{0,15}work.{0,15}canada|reside.{0,20}canada|residency.{0,10}canada/i, action: 'click_radio_in_question', q: missingLabel, choice: 'No', fallback: '' },
-    { match: /(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i, action: 'click_radio_in_question', q: missingLabel, choice: withoutSponsorshipAns, fallback: pna },
+    ...(withoutSponsorshipAns ? [
+      { match: /(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i, action: 'click_radio_in_question', q: missingLabel, choice: withoutSponsorshipAns, fallback: pna },
+    ] : []),
     // Authorization separate from sponsorship: "Are you authorized to work" → Yes (F-1 OPT)
     { match: /authorized to work|legally.{0,5}work|eligible to work|right to work/i, action: 'click_radio_in_question', q: missingLabel, choice: authorizedAns, fallback: pna },
     { match: /do you need.{0,40}sponsor.{0,40}work authorization|sponsor your work authorization/i, action: 'click_radio_in_question', q: missingLabel, choice: sponsorAns, fallback: pna },

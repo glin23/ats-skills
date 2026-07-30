@@ -37,7 +37,7 @@ import {
   relocationPolicyOpen as routingRelocationPolicyOpen,
   confirmedCitiesFrom as routingConfirmedCities,
   mentionsConfirmedCity as routingMentionsConfirmedCity,
-  deriveWorkAuthAnswers, workAuthGapFor,
+  deriveWorkAuthAnswers, withoutSponsorshipAnswer, workAuthBlockNote, workAuthGapFor,
 } from './answer_routing.mjs';
 import { matchAnswerBucket } from './answer_buckets.mjs';
 
@@ -216,18 +216,6 @@ function essayAnswerFor(questionText) {
     }
   }
   return null;
-}
-
-function workAuthWithoutSponsorshipAnswer() {
-  const auth = PROFILE.work_authorization || {};
-  const visa = String(auth.visa_status || '').toLowerCase();
-  if (/citizen|green card|permanent resident|authorized without restriction/.test(visa)) return 'Yes';
-  if (auth.requires_sponsorship_now === false &&
-      auth.requires_sponsorship_future === false &&
-      !/f-?1|opt|cpt|h-?1b|j-?1|visa|sponsor/.test(visa)) {
-    return 'Yes';
-  }
-  return 'No';
 }
 
 async function pickComboboxInQuestion(tab, questionText, value) {
@@ -540,8 +528,7 @@ async function answerMissing(tab, missingLabel) {
     return { ok: false, note: 'specific_city_fact_unconfirmed', pending_for_main_claude: true, question: missingLabel };
   }
 
-  // Same rule for work authorization / sponsorship: three-state facts about the
-  // user. Never told = ask (pending), never an invented answer on a real form.
+  // Work-auth / sponsorship three-state: never told = ask (pending); deferred by Q4 = self-serve list, never re-ask.
   const workAuthGap = workAuthGapFor(missingLabel, PROFILE);
   if (workAuthGap) return { ok: false, note: workAuthGap.note, pending_for_main_claude: true, question: missingLabel };
 
@@ -553,7 +540,8 @@ async function answerMissing(tab, missingLabel) {
   }
 
   if (/(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i.test(ml)) {
-    const withoutSponsorshipAns = workAuthWithoutSponsorshipAnswer();
+    const withoutSponsorshipAns = withoutSponsorshipAnswer(PROFILE); // ADR-12 R2 + 关卡 2 ③: 三态布尔说了算，与 Greenhouse 逐字同款；未知 → 停这一行，不再嗅 visa_status、不默认
+    if (!withoutSponsorshipAns) return { ok: false, note: workAuthBlockNote(PROFILE, 'sponsorship_future_required'), pending_for_main_claude: true, question: missingLabel };
     const combo = await pickComboboxInQuestion(tab, missingLabel, [withoutSponsorshipAns]);
     if (combo.ok) return combo;
   }

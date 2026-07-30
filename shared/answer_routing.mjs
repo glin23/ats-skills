@@ -233,6 +233,30 @@ export function workAuthPolicyDefers(profile = {}) {
   return profile.work_authorization?.form_answer_policy === 'defer_to_user';
 }
 
+// The right note for a blocked work-auth row: deferred by his own instruction
+// (self-serve list, never re-ask) or the caller's never-asked note. Drivers'
+// inline work-auth branches use this so a Q4-C profile is honoured everywhere,
+// not only on the labels workAuthGapFor recognises.
+export function workAuthBlockNote(profile = {}, neverAskedNote) {
+  return workAuthPolicyDefers(profile) ? 'work_authorization_deferred_by_user' : neverAskedNote;
+}
+
+// "…authorized to work WITHOUT sponsorship / without restriction" — the fact
+// is the two sponsorship booleans, read three-state (ADR-12 R2: the visa_status
+// regexes both drivers used here turned free text — once the user's own Chinese
+// sentence — into Yes/No claims). 'Yes' only when both are false (the citizen /
+// green-card signature in the truth table); 'No' when either is true; null when
+// unknowable, and the caller must block the row (关卡 2 ③: 无限制授权未知 →
+// 阻塞问清楚再投 — 答错双向都伤). No default branch: that was the fabrication.
+export function withoutSponsorshipAnswer(profile = {}) {
+  const auth = profile.work_authorization || {};
+  const now = auth.requires_sponsorship_now;
+  const future = auth.requires_sponsorship_future;
+  if (now === false && future === false) return 'Yes';
+  if (now === true || future === true) return 'No';
+  return null;
+}
+
 // Pure gap check: returns a blocking descriptor when the form asks about a
 // work-authorization fact the profile cannot answer, else null. Mirrors the
 // shape used by currentResidenceYesNoAnswer's blocking branch. `note` says
