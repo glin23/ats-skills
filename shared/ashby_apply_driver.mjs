@@ -14,7 +14,7 @@
 //      match a keyword bucket (work-auth, RTO, gender, race, veteran, disability,
 //      sponsorship, location combobox, LinkedIn) → answer from profile.
 //   6. Click Submit again. Up to 5 attempts.
-//   7. On success page → return {outcome:'submitted', screenshot}, close tab.
+//   7. Submit result judged NODE-SIDE by submissionVerdict (shared/submission_evidence.mjs, the single implementation) — no default success; a deny hit can never become 'submitted'.
 //   8. On unresolved errors → return {outcome:'skip', reason, remaining}, close tab.
 //   9. On essay-pending → return {outcome:'essay_pending'}, KEEP tab open.
 //
@@ -40,10 +40,9 @@ import {
   deriveWorkAuthAnswers, withoutSponsorshipAnswer, workAuthBlockNote, workAuthGapFor,
 } from './answer_routing.mjs';
 import { matchAnswerBucket } from './answer_buckets.mjs';
+import { submissionVerdict } from './submission_evidence.mjs';
 
-// ============================================================
-// CLI dispatcher — handle --list-pending-essays before anything else.
-// ============================================================
+// ---- CLI dispatcher — handle --list-pending-essays before anything else ----
 const HOME = atsHome();
 const REPO = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const CDP = join(REPO, 'shared/cdp.mjs');
@@ -421,24 +420,22 @@ async function submitAndCheck(tab) {
     })()
   `);
   await sleep(7000);
-  return await evalInTab(tab, `
+  const page = await evalInTab(tab, `
     (() => {
-      const bodyText = document.body.innerText;
-      const success = /successfully submitted|application[\\s\\S]{0,30}(received|success)|thanks? for (applying|submitting)|thank you for submitting|already applied[\\s\\S]{0,160}(reviewed|application)/i.test(bodyText);
       const errors = [...document.querySelectorAll(".error, [class*=error i], [role=alert], [aria-live]")]
         .map(e => (e.innerText||'').trim())
         .filter(s => s.length > 0 && s.length < 400);
       // Dedup + filter signal
-      const seen = new Set();
-      const missing = [];
+      const seen = new Set(); const missing = [];
       for (const e of errors) {
         if (seen.has(e)) continue; seen.add(e);
         const m = e.match(/Missing entry for required field:?\\s*([^\\n]+)/i);
         if (m) missing.push(m[1].trim());
       }
-      return { success, missing, error_count: errors.length, url: location.href, snippet: document.body.innerText.slice(0, 200) };
+      return { bodyText: document.body.innerText.slice(0, 20000), missing, error_count: errors.length, url: location.href, snippet: document.body.innerText.slice(0, 200) };
     })()
   `);
+  return { ...page, verdict: submissionVerdict({ bodyText: page.bodyText, url: page.url }) };
 }
 
 async function fillTextInQuestion(tab, question, value) {
@@ -1067,7 +1064,7 @@ async function main() {
   for (let attempt = 1; attempt <= 5; attempt++) {
     log(`Submit attempt ${attempt}…`);
     const res = await submitAndCheck(tab);
-    if (res.success) {
+    if (res.verdict.verdict === 'submitted') {
       cdp('screenshot', tab, `/tmp/mrw_post_${JOB_ID || 'job'}.png`);
       console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url, cover_letter_uploaded: coverLetterUploaded }));
       await closeTab(tab);

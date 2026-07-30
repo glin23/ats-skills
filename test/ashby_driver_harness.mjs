@@ -34,8 +34,8 @@ function cdp(...args) {
   globalThis.__MRW_CDP.push(args);
   return { stdout: '{"ok":true}', stderr: '' };
 }
-async function evalInTab(tab, js) { return { ok: false }; }
-export { answerMissing, addPendingQuestion };
+async function evalInTab(tab, js) { return globalThis.__MRW_EVAL_RESULT ?? { ok: false }; }
+export { answerMissing, addPendingQuestion, submitAndCheck };
 
 // The shipped pending-list statement, verbatim, with the three variables main()
 // has in scope at that point bound as arguments.
@@ -54,6 +54,12 @@ export async function loadDriver(profile) {
   const home = mkdtempSync(join(tmpdir(), 'mrw-ashby-driver-'));
   writeFileSync(join(home, 'profile.json'), JSON.stringify(profile, null, 2));
   let src = DRIVER_SRC.replace(/\nmain\(\)\.catch\([\s\S]*$/, '\n');
+  // No real waits under test: submitAndCheck alone sleeps 7s per call in the
+  // shipped code. Guarded like PENDING_LINE — if the declaration drifts, this
+  // fails loudly instead of silently re-slowing the suite.
+  const SLEEP_DECL = 'const sleep = (ms) => new Promise((r) => setTimeout(r, ms));';
+  assert.ok(src.includes(SLEEP_DECL), 'harness stale: sleep declaration not found in the driver');
+  src = src.replace(SLEEP_DECL, 'const sleep = () => Promise.resolve();');
   for (const fn of BROWSER_FNS) {
     const decl = `function ${fn}(`;
     assert.ok(src.includes(decl), `harness stale: ${decl} not found in the driver`);

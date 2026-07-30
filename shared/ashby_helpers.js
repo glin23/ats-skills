@@ -760,7 +760,7 @@
   Ashby.checkSuccess = function () {
     const txt = document.body.innerText || '';
     return {
-      ok: /successfully submitted|already applied[\s\S]{0,160}(reviewed|application)/i.test(txt),
+      ok: /successfully submitted/i.test(txt),
       snippet: txt.slice(0, 200),
     };
   };
