@@ -32,7 +32,7 @@ Commands:
   goto <url> [tabId]                     Navigate; opens new tab if tabId omitted
   eval <tabId> <js>                      Runtime.evaluate, print result.value (or stack)
   upload <tabId> <selector> <file>       DOM.setFileInputFiles to <selector>
-  screenshot <tabId> <out.png>           Page.captureScreenshot → write file
+  screenshot <tabId> <out.png> [--full-page]   Page.captureScreenshot → write file (600); --full-page scrolls to bottom first, captures beyond viewport
   typetext <tabId> <selector> <text>     Focus + CLEAR (React-safe) + Input.insertText, read back value
   key <tabId> <KeyName>                  Dispatch a trusted key press (Enter|Tab|ArrowDown|ArrowUp|Escape|Backspace)
   cdp <tabId> <Method> <params-json>     Raw CDP call, e.g. cdp X Page.reload '{}'
@@ -187,9 +187,22 @@ async function cmdUpload(tabId, selector, file) {
   });
 }
 
-async function cmdScreenshot(tabId, outPath) {
+async function cmdScreenshot(tabId, outPath, { fullPage = false } = {}) {
   await withSession(tabId, async s => {
-    const r = await s.send('Page.captureScreenshot', { format: 'png' });
+    if (fullPage) {
+      // Scroll to the bottom first (lazy-loaded sections must render — the
+      // historical one-viewport screenshots caught the mid-form questions in
+      // only 2 of 50 shots), then capture beyond the viewport.
+      await s.send('Runtime.evaluate', {
+        expression: 'window.scrollTo(0, document.body.scrollHeight)',
+        returnByValue: true,
+      });
+      await new Promise(r => setTimeout(r, 800));
+    }
+    const r = await s.send('Page.captureScreenshot', {
+      format: 'png',
+      ...(fullPage ? { captureBeyondViewport: true } : {}),
+    });
     const abs = pathResolve(outPath);
     writeFileSync(abs, Buffer.from(r.data, 'base64'));
     // Screenshots regularly contain the applicant's name/email/phone in frame.
@@ -347,9 +360,10 @@ async function main() {
         break;
       }
       case 'screenshot': {
-        const [, tabId, out] = argv;
-        if (!tabId || !out) throw new Error('Usage: screenshot <tabId> <out.png>');
-        await cmdScreenshot(tabId, out);
+        const fullPage = argv.includes('--full-page');
+        const [, tabId, out] = argv.filter(a => a !== '--full-page');
+        if (!tabId || !out) throw new Error('Usage: screenshot <tabId> <out.png> [--full-page]');
+        await cmdScreenshot(tabId, out, { fullPage });
         break;
       }
       case 'typetext': {

@@ -93,14 +93,13 @@ node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(async () => await Lever.
 
 If `waitForResumeStorageId` returns failure → resume upload didn't complete; skip + log `reason=resume_storage_timeout`.
 
-### 7. Pre-submit screenshot (audit only)
+### 7. Pre-submit evidence (audit only)
 
 ```bash
-mkdir -p "$MRWEIRDO_HOME/log/screenshots"
-TIMESTAMP=$(date -u +%Y%m%dT%H%M%S)
-SHOT="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_lever_${TIMESTAMP}_pre_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT"
+node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase before_submit
 ```
+
+Scrolls to the bottom (mid-form answers in frame), captures a FULL-PAGE screenshot into `$MRWEIRDO_HOME/log/screenshots/` named `…_before_submit.png`, locked to 600.
 
 ### 8. CAPTCHA check → auto-click Submit → verify
 
@@ -133,19 +132,23 @@ SUBMIT_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => {
 })()")
 
 sleep 5  # Lever sometimes redirects to a confirmation page
-SUCCESS=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "Lever.checkSuccess()")
-
-SHOT_POST="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_lever_${TIMESTAMP}_post_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT_POST"
+EVIDENCE=$(node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase after_submit)
+VERDICT=$(echo "$EVIDENCE" | python3 -c "import json,sys; print(json.load(sys.stdin)['verdict'])")
 ```
 
-Parse `$SUCCESS`:
+One command reads the page text + URL (the `/thanks` redirect counts as confirming evidence), judges through the single shared verdict (no default success), then takes a full-page screenshot named after the verdict (`…_after_submitted.png` / `…_after_not_submitted.png` / `…_after_unknown.png`).
 
-- `{ok: true}` (Lever redirects to a confirmation URL or body text confirms) — **success**:
+Parse `$VERDICT`:
+
+- `submitted` — **the page confirmed it**:
   - Mark DB row: `status='✅ 已投'`, `auto_submitted_at=now`, `bot_note='mrweirdo-lever-auto v2'`
-  - `feedback.jsonl`: `{outcome:'success', auto_submitted:true, ats:'lever', ...}`
+  - `feedback.jsonl`: `{outcome:'submitted', auto_submitted:true, ats:'lever', ...}`
 
-- `{ok: false}` — **uncertain**:
+- `not_submitted` — **the page states failure**:
+  - Do NOT click Submit again
+  - Mark DB row: `status='⚠️ 跳过未投'`, `skip_reason='page_states_failure'`. Never report this row as submitted.
+
+- `unknown` — **uncertain**:
   - Do NOT click Submit again
   - Mark DB row: `status='⚠️ 跳过未投'`, `skip_reason='submit_verify_fail'`
   - Both forensic screenshots saved
@@ -161,7 +164,8 @@ Parse `$SUCCESS`:
 
 ## Reference
 
-- `shared/lever_helpers.js` — `fillForm` (async) / `findSubmit` / `checkSuccess` / `findEmptyRequired` / `waitForResumeStorageId` / `isErrorMessageVisible` / `setSelectedLocation`
+- `shared/lever_helpers.js` — `fillForm` (async) / `findSubmit` / `findEmptyRequired` / `waitForResumeStorageId` / `isErrorMessageVisible` / `setSelectedLocation`
+- `shared/submission_evidence.mjs` — the single submit verdict + full-page evidence capture (replaces `Lever.checkSuccess()` here)
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - v2 design: auto helpers are internal-only and invoked from `mrweirdo-onboard`
 - Lever gotchas: `shared/lever_helpers.js`

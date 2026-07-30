@@ -120,16 +120,13 @@ for SEL in 'input[type=file][name=_systemfield_resume]' 'input[type=file][data-t
 done || { echo "skip: resume_upload_fail"; exit 0; }
 ```
 
-### 7. Pre-submit screenshot (audit only)
+### 7. Pre-submit evidence (audit only)
 
 ```bash
-mkdir -p "$MRWEIRDO_HOME/log/screenshots"
-TIMESTAMP=$(date -u +%Y%m%dT%H%M%S)
-SHOT="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_ashby_${TIMESTAMP}_pre_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT"
+node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase before_submit
 ```
 
-Saved to disk for forensic audit. NOT shown to user.
+Scrolls to the bottom (so the mid-form answers are actually in frame), captures a FULL-PAGE screenshot into `$MRWEIRDO_HOME/log/screenshots/`, names it `…_before_submit.png`, and locks it to 600. Saved for forensic audit. NOT shown to user.
 
 ### 8. CAPTCHA check → auto-click Submit → verify
 
@@ -167,21 +164,25 @@ SUBMIT_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => {
 })()")
 
 sleep 4
-SUCCESS=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "Ashby.checkSuccess()")
-
-SHOT_POST="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_ashby_${TIMESTAMP}_post_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT_POST"
+EVIDENCE=$(node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase after_submit)
+VERDICT=$(echo "$EVIDENCE" | python3 -c "import json,sys; print(json.load(sys.stdin)['verdict'])")
 ```
 
-Parse `$SUCCESS`:
+One command reads the page text, judges it through the single shared verdict (`shared/submission_evidence.mjs` — confirm/deny tables, no default success), then takes a full-page screenshot whose name carries the verdict (`…_after_submitted.png` / `…_after_not_submitted.png` / `…_after_unknown.png`). File names can no longer contradict the page.
 
-- `{ok: true}` (Ashby confirms via "successfully submitted" body text) — **success**:
+Parse `$VERDICT`:
+
+- `submitted` — the page confirmed it:
   - Emit a structured final line like `{"outcome":"submitted","job_id":ROW_ID,"post_url":"<current URL>"}`
   - Let onboard call `shared/record_apply_outcome.mjs` to mark the DB row. Do not update `jobs.db` directly inside this helper.
   - Append `daily_count.jsonl` only from the onboard caller after the recorder says `action:"submitted"`.
-  - Append `feedback.jsonl`: `{outcome:'success', auto_submitted:true, ats:'ashby', screenshot_pre, screenshot_post}`
+  - Append `feedback.jsonl`: `{outcome:'submitted', auto_submitted:true, ats:'ashby', screenshot_pre, screenshot_post}`
 
-- `{ok: false}` — **uncertain**:
+- `not_submitted` — the page states failure (e.g. "We couldn't submit your application", duplicate-application refusal):
+  - Do NOT click Submit again
+  - Emit `{"outcome":"skip","reason":"page_states_failure","deny_hits":<from $EVIDENCE>,...}` and let the onboard recorder mark the DB row. This row is NOT a submission — never report it as one.
+
+- `unknown` — the page confirmed nothing either way:
   - Do NOT click Submit again
   - Emit `{"outcome":"skip","reason":"submit_verify_fail",...}` and let the onboard recorder mark the DB row.
   - Forensic screenshots both saved
@@ -211,6 +212,7 @@ only reads execution artifacts and updates the row's `report_path`.
 
 ## Reference
 
-- `shared/ashby_helpers.js` — `fillForm` (plan-returning) / `findSubmit` / `checkSuccess` / `findEmptyRequired` / `pickSelect` / `setSelectedLocation`
+- `shared/ashby_helpers.js` — `fillForm` (plan-returning) / `findSubmit` / `findEmptyRequired` / `pickSelect` / `setSelectedLocation`
+- `shared/submission_evidence.mjs` — the single submit verdict + full-page evidence capture (replaces `Ashby.checkSuccess()` here)
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - v1 manual-submit equivalent: `mrweirdo-ashby`

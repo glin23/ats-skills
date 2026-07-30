@@ -40,7 +40,7 @@ import {
   deriveWorkAuthAnswers, withoutSponsorshipAnswer, workAuthBlockNote, workAuthGapFor,
 } from './answer_routing.mjs';
 import { matchAnswerBucket } from './answer_buckets.mjs';
-import { submissionVerdict } from './submission_evidence.mjs';
+import { submissionVerdict, captureEvidence } from './submission_evidence.mjs';
 
 // ---- CLI dispatcher — handle --list-pending-essays before anything else ----
 const HOME = atsHome();
@@ -1065,7 +1065,7 @@ async function main() {
     log(`Submit attempt ${attempt}…`);
     const res = await submitAndCheck(tab);
     if (res.verdict.verdict === 'submitted') {
-      cdp('screenshot', tab, `/tmp/mrw_post_${JOB_ID || 'job'}.png`);
+      await captureEvidence(tab, { company: COMPANY, jobId: JOB_ID, phase: 'after_submit', verdict: res.verdict.verdict }).catch((e) => log('evidence capture failed (submission still recorded):', e.message));
       console.log(JSON.stringify({ outcome: 'submitted', attempt, job_id: JOB_ID, url: APPLY_URL, post_url: res.url, cover_letter_uploaded: coverLetterUploaded }));
       await closeTab(tab);
       return;

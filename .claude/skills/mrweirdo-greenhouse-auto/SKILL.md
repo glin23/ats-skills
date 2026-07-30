@@ -134,14 +134,13 @@ node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" upload "$TAB" "#resume_input" "$RESUME
 
 If both upload selectors fail → skip + log `reason=resume_upload_fail`. Common cause: Greenhouse changed selectors; needs helpers patch.
 
-### 7. Pre-submit screenshot (for audit log, NOT for user review)
+### 7. Pre-submit evidence (for audit log, NOT for user review)
 
 ```bash
-mkdir -p "$MRWEIRDO_HOME/log/screenshots"
-TIMESTAMP=$(date -u +%Y%m%dT%H%M%S)
-SHOT="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_${TIMESTAMP}_pre_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT"
+node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase before_submit
 ```
+
+Scrolls to the bottom (mid-form answers in frame), captures a FULL-PAGE screenshot into `$MRWEIRDO_HOME/log/screenshots/` named `…_before_submit.png`, locked to 600.
 
 **Critical v2 difference vs v1**: This screenshot is **for audit only** — saved to disk, NOT shown to user. The onboard flow does not pause for human review. The user can later run `datasette serve ~/.mrweirdo-jobs/jobs.db` or browse `log/screenshots/` if they want to audit what happened.
 
@@ -185,26 +184,29 @@ SUBMIT_RESULT=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "(() => {
 })()")
 ```
 
-Then verify success:
+Then verify the submit state through the single shared verdict (no per-platform success regex, no default success):
 
 ```bash
 sleep 4  # let confirmation page render
-SUCCESS=$(node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" eval "$TAB" "GH.checkSuccess()")
-
-# Post-submit screenshot
-SHOT_POST="$MRWEIRDO_HOME/log/screenshots/${COMPANY}_${TIMESTAMP}_post_submit.png"
-node "$MRWEIRDO_REPO_ROOT/shared/cdp.mjs" screenshot "$TAB" "$SHOT_POST"
+EVIDENCE=$(node "$MRWEIRDO_REPO_ROOT/shared/submission_evidence.mjs" --tab "$TAB" --company "$COMPANY" --job "$ROW_ID" --phase after_submit)
+VERDICT=$(echo "$EVIDENCE" | python3 -c "import json,sys; print(json.load(sys.stdin)['verdict'])")
 ```
 
-Parse `$SUCCESS`:
+One command reads the page text + URL (`/confirmation` counts as confirming evidence), judges, then takes a full-page screenshot whose name carries the verdict (`…_after_submitted.png` / `…_after_not_submitted.png` / `…_after_unknown.png`).
 
-- `{ok: true, urlMatch: true}` or text match — **success**:
+Parse `$VERDICT`:
+
+- `submitted` — **the page confirmed it**:
   - Emit a structured final line like `{"outcome":"submitted","job_id":ROW_ID,"post_url":"<current URL>"}`
   - Let onboard call `shared/record_apply_outcome.mjs` to mark the DB row. Do not update `jobs.db` directly inside this helper.
   - Append to `daily_count.jsonl` only from the onboard caller after the recorder says `action:"submitted"`.
-  - Append to `feedback.jsonl`: `{outcome:'success', auto_submitted:true, screenshot_pre, screenshot_post}`
+  - Append to `feedback.jsonl`: `{outcome:'submitted', auto_submitted:true, screenshot_pre, screenshot_post}`
 
-- `{ok: false}` — **uncertain submit state**:
+- `not_submitted` — **the page states failure**:
+  - Do NOT click Submit again
+  - Emit `{"outcome":"skip","reason":"page_states_failure","deny_hits":<from $EVIDENCE>,...}` and let the onboard recorder mark the DB row. Never report this row as submitted.
+
+- `unknown` — **uncertain submit state**:
   - Do NOT click Submit again (avoid double submissions)
   - Emit `{"outcome":"skip","reason":"submit_verify_fail",...}` and let the onboard recorder mark the DB row.
   - Append to `feedback.jsonl` with both screenshots — these are the forensic record
@@ -248,6 +250,7 @@ only reads execution artifacts and updates the row's `report_path`.
 
 ## Reference
 
-- `shared/greenhouse_helpers.js` — `fillForm` / `findSubmit` / `checkSuccess` / `findEmptyRequired`
+- `shared/greenhouse_helpers.js` — `fillForm` / `findSubmit` / `findEmptyRequired`
+- `shared/submission_evidence.mjs` — the single submit verdict + full-page evidence capture (replaces `GH.checkSuccess()` here)
 - `shared/cdp.mjs` — Node 24 WebSocket CDP driver
 - v1 manual-submit equivalent: `mrweirdo-greenhouse`
