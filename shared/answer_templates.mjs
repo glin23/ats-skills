@@ -6,16 +6,23 @@ function firstNonEmpty(...values) {
   return '';
 }
 
+// ADR-12 R1/R3: this function produces EMPLOYER-FACING text, so it may not read
+// `visa_status` (system-only since ADR-12 — it used to be rendered verbatim,
+// which turned a design-invented label, and in two branches the user's own
+// Chinese sentence, into a self-declaration on a real English form). Only the
+// three-state booleans speak here, and each reads with three branches: `null`
+// means the clause does not appear at all — never "does not require", which is
+// a claim nobody made and the I-9 employment-verification step can contradict.
 function authSummary(profile = {}) {
   const auth = profile.work_authorization || {};
-  if (auth.visa_status) {
-    const needsFuture = auth.requires_sponsorship_future === true
-      ? 'may require future sponsorship depending on the role'
-      : 'does not require future sponsorship based on the current profile';
-    return `${auth.visa_status}; ${needsFuture}`;
+  const parts = [];
+  if (auth.authorized_to_work_us === true) parts.push('authorized to work in the United States');
+  if (auth.requires_sponsorship_future === true) {
+    parts.push('may require future sponsorship depending on the role');
+  } else if (auth.requires_sponsorship_future === false) {
+    parts.push('does not require future sponsorship based on the current profile');
   }
-  if (auth.authorized_to_work_us === true) return 'authorized to work in the United States';
-  return '';
+  return parts.join('; ');
 }
 
 export function renderAnswerTemplate(template, { profile = {}, companyPretty = '', searchIntent = {} } = {}) {

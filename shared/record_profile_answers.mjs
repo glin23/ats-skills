@@ -20,9 +20,12 @@
 //   node shared/record_profile_answers.mjs \
 //     --json '{"work_authorization.authorized_to_work_us": true,
 //              "work_authorization.requires_sponsorship_future": true,
-//              "work_authorization.visa_status": "F-1 OPT"}' \
+//              "work_authorization.visa_status": "student_visa_with_permission"}' \
 //     --source user_answer --category user_work_authorization \
 //     --asked-by queue_gate [--home <dir>] [--dry-run]
+//   (visa_status is a fixed enum since ADR-12 — a free-text value like
+//   "F-1 OPT" is rejected with exit 3; the user's own words go to
+//   work_authorization._user_words, which no employer-facing module may read.)
 //
 // Exit codes: 0 ok · 2 bad arguments or a path no question asked for ·
 //             3 wrong value type · 4 profile validation failed (nothing changed)

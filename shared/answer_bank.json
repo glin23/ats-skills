@@ -79,7 +79,7 @@
     },
     {
       "match": "(when.{0,10}(can|could).{0,5}you.{0,5}start|start date|earliest start|hire.{0,10}as soon|availability|when.{0,10}available)",
-      "answer_template": "My earliest listed start date is {{EARLIEST_START_DATE}}. I can typically discuss internship availability around my academic calendar, and I can provide exact timing if the recruiting team needs it. Work authorization summary from my profile: {{WORK_AUTH_SUMMARY}}.",
+      "answer_template": "My earliest listed start date is {{EARLIEST_START_DATE}}. I can typically discuss internship availability around my academic calendar, and I can provide exact timing if the recruiting team needs it.",
       "tags": ["availability", "start_date"]
     },
     {
