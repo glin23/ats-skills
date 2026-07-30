@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
+import { lockFile } from './state_file_lock.mjs';
 
 const UNSUPPORTED_COMPANY_FACT_RE = /\b(mission|values?|culture|product|platform|customers?|users?|market|industry[- ]leading|technology stack)\b/i;
 const UNSUPPORTED_PERSONAL_FACT_RE = /\b(GPA|certified|certification|security clearance|authorized to work|work authorization|salary|compensation)\b/i;
@@ -298,6 +299,10 @@ export function writeCoverLetterArtifact({ row = {}, profile = {}, essayProfile 
   const html = renderHtml({ row, draft: draft.text, review });
   writeFileSync(htmlPath, html);
   writeFileSync(pdfPath, renderSimplePdf(draft.text));
+  // Cover letters carry the applicant's real name; born locked (write-side
+  // trigger, 设计稿 §13.4 写入侧上锁), not swept later.
+  lockFile(htmlPath);
+  lockFile(pdfPath);
 
   const metadata = {
     ts,

@@ -18,6 +18,7 @@ import { workAuthSources } from './answer_provenance.mjs';
 import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
 import { progress, sleepWithProgress } from './progress.mjs';
 import { onboardTmpDir } from './onboard_tmp.mjs';
+import { lockDir, lockFile } from './state_file_lock.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -98,7 +99,10 @@ function jitterMs() {
 
 function runTee(args, outPath, extraEnv = {}) {
   return new Promise((resolve) => {
-    const out = createWriteStream(outPath, { flags: 'w' });
+    // mode here + lockFile on close: the driver result file holds every answer
+    // the driver typed into the form. Born 600 even if the file pre-exists.
+    const out = createWriteStream(outPath, { flags: 'w', mode: 0o600 });
+    out.on('open', () => lockFile(outPath));
     const child = spawn(process.execPath, args, { cwd: repoRoot, env: { ...env, ...extraEnv } });
     child.stdout.on('data', (chunk) => {
       process.stdout.write(chunk);
@@ -212,6 +216,11 @@ function acquireBatchLock() {
 }
 
 mkdirSync(tmpDir, { recursive: true });
+// The transit files written below (apply-result-*.jsonl, batch summaries) carry
+// what was actually typed into real forms（阶段 1 设计 §14.5 未明点 1，lead 裁决
+// 并入本批上锁）. A 700 directory protects them wholesale; each write below
+// also locks its own file (write-side trigger).
+lockDir(tmpDir, { recursive: true });
 
 // Dry-run counts the gate but does not stop on it. The point is that the queue
 // gate can show the gap while the user is still reading the queue, instead of
@@ -330,7 +339,8 @@ for (let i = 0; i < rows.length; i += 1) {
       outcome: 'skip',
       reason,
       validation: validationResult,
-    })}\n`);
+    })}\n`, { mode: 0o600 });
+    lockFile(resultFile);
     const record = runNode(['shared/record_apply_outcome.mjs', '--row-id', String(row.id), '--result-file', resultFile]);
     if (record.stdout) process.stdout.write(record.stdout);
     if (record.stderr) process.stderr.write(record.stderr);
@@ -438,7 +448,8 @@ const batchSummary = {
 };
 
 const summaryPath = join(tmpDir, `apply-batch-summary-${Date.now()}.json`);
-writeFileSync(summaryPath, JSON.stringify(batchSummary, null, 2));
+writeFileSync(summaryPath, JSON.stringify(batchSummary, null, 2), { mode: 0o600 });
+lockFile(summaryPath);
 
 let gapReport = null;
 if (!dryRun) {

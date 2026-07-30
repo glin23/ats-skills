@@ -9,6 +9,7 @@ import { validateProfileBundle } from './validate_user_profile.mjs';
 import { blockingProfileGaps } from './personal_fact_gate.mjs';
 import { workAuthSources } from './answer_provenance.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
+import { sweep } from './state_file_lock.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
 const home = atsHome();
@@ -166,6 +167,14 @@ const syntax = syntaxFiles.map((file) => {
 const smoke = runNode(['scripts/role_guard_smoke.mjs']);
 const cdp = await checkCdp();
 
+// Safety-net lock sweep（设计稿 §13.4 触发二·补网扫描）: carriers with no producer
+// (cover_letter.pdf is hand-placed) only ever get locked here. A WARN, not a
+// hard check — a chmod failure typically means the file belongs to another
+// user, and stopping the whole batch over that costs more than saying it.
+// MRWEIRDO_LOCK_SWEEP=report keeps read-only diagnostics (demo:check) honest:
+// they still see what is unlocked, they just don't touch anything.
+const lockSweep = sweep(home, { apply: process.env.MRWEIRDO_LOCK_SWEEP !== 'report' });
+
 // A hard check, not a warning: this file already emits five kinds of WARN and an
 // automated flow walks straight past all of them. What it checks is onboarding
 // completeness (ADR-11): did the identity funnel ever run? It fails only for a
@@ -196,6 +205,21 @@ const checks = [
 ];
 
 const warnings = [];
+if (lockSweep.failed.length > 0) {
+  warnings.push({ name: 'pii_lock_failed', detail: lockSweep.failed });
+}
+if (lockSweep.locked.length > 0 || lockSweep.would_lock.length > 0) {
+  warnings.push({
+    name: 'pii_lock_sweep',
+    detail: {
+      locked: lockSweep.locked,
+      would_lock: lockSweep.would_lock,
+      note: lockSweep.apply
+        ? 'Personal-data files found unlocked were set to 600/700 before this batch.'
+        : 'Report-only mode: these personal-data files are unlocked; a real batch preflight will lock them.',
+    },
+  });
+}
 for (const warning of profileValidation.warnings || []) {
   warnings.push({
     name: `profile_${String(warning.path || 'warning').replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').toLowerCase()}`,

@@ -147,8 +147,10 @@ if (existsSync(profilePath)) {
 let preflight = null;
 if (existsSync(profilePath) && existsSync(intentPath) && existsSync(dbPath)) {
   const maxRows = expectReady > 0 ? String(expectReady) : '0';
+  // MRWEIRDO_LOCK_SWEEP=report: demo:check is a read-only diagnostic against the
+  // user's real home; the preflight lock sweep must observe, not chmod, here.
   const r = run(process.execPath, ['shared/supervisor_preflight.mjs', '--json'], {
-    env: { MRWEIRDO_MAX_AUTO_APPLY: maxRows },
+    env: { MRWEIRDO_MAX_AUTO_APPLY: maxRows, MRWEIRDO_LOCK_SWEEP: 'report' },
   });
   preflight = jsonParse(r.stdout, null);
   facts.ready_rows = Array.isArray(preflight?.queue) ? preflight.queue.length : 0;

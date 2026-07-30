@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve as pathResolve } from 'node:path';
 import { atsHome } from './paths.mjs';
+import { lockFile } from './state_file_lock.mjs';
 
 function resolveCdpHost() {
   if (process.env.CDP_HOST) return process.env.CDP_HOST.replace(/^https?:\/\//, '');
@@ -189,8 +190,13 @@ async function cmdUpload(tabId, selector, file) {
 async function cmdScreenshot(tabId, outPath) {
   await withSession(tabId, async s => {
     const r = await s.send('Page.captureScreenshot', { format: 'png' });
-    writeFileSync(pathResolve(outPath), Buffer.from(r.data, 'base64'));
-    process.stdout.write(JSON.stringify({ ok: true, path: pathResolve(outPath) }) + '\n');
+    const abs = pathResolve(outPath);
+    writeFileSync(abs, Buffer.from(r.data, 'base64'));
+    // Screenshots regularly contain the applicant's name/email/phone in frame.
+    // This is the single funnel every screenshot goes through, so it locks at
+    // the write (write-side trigger, 设计稿 §13.4 写入侧上锁).
+    lockFile(abs);
+    process.stdout.write(JSON.stringify({ ok: true, path: abs }) + '\n');
   });
 }
 
