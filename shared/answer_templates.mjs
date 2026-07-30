@@ -7,9 +7,9 @@ function firstNonEmpty(...values) {
 }
 
 // ADR-12 R1/R3: this function produces EMPLOYER-FACING text, so it may not read
-// `visa_status` (system-only since ADR-12 — it used to be rendered verbatim,
-// which turned a design-invented label, and in two branches the user's own
-// Chinese sentence, into a self-declaration on a real English form). Only the
+// the visa-status field (system-only since ADR-12 — it used to be rendered
+// verbatim, which turned a design-invented label, and in two branches the
+// user's own Chinese sentence, into a self-declaration on a real form). Only the
 // three-state booleans speak here, and each reads with three branches: `null`
 // means the clause does not appear at all — never "does not require", which is
 // a claim nobody made and the I-9 employment-verification step can contradict.
