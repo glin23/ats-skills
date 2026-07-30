@@ -4,7 +4,7 @@ Owner: arnold-builder
 Type: BUILD_NOTES
 Reads: docs/active/2026-07-23_product-blueprint_TASK.md, shared/work_auth_identity.mjs, shared/personal_fact_gate.mjs, shared/record_profile_answers.mjs, shared/answer_provenance.mjs, test/ashby_driver_harness.mjs, test/helpers.mjs, docs/specs/product-blueprint.md, docs/active/2026-07-23_product-blueprint_RISK_REPORT.md, docs/active/2026-07-23_product-blueprint_ARCH_AUDIT.md, PROJECT_MEMORY.md, PROJECT_CONTEXT.yaml, .claude/arnold/roles/builder.md, .claude/phase_schemas.yaml, .claude/file_size_limits.json, .github/workflows/ci.yml, .claude/skills/mrweirdo-onboard/SKILL.md, .claude/skills/mrweirdo-confirm/SKILL.md, .claude/skills/mrweirdo-lever/SKILL.md, .claude/skills/mrweirdo-ashby/SKILL.md, setup.sh, scripts/preflight.sh, scripts/public_alpha_gate.mjs, scripts/role_guard_smoke.mjs, shared/answer_routing.mjs, shared/answer_buckets.mjs, shared/answer_bank.json, shared/ashby_apply_driver.mjs, shared/greenhouse_apply_driver.mjs, shared/greenhouse_value_rules.mjs, shared/lever_apply_driver.mjs, shared/profile.template.json, shared/paths.mjs, test/answer_routing.test.mjs, test/answer_buckets.test.mjs, test/greenhouse_value_rules.test.mjs, test/json_shapes.test.mjs, test/personal_facts_guard.test.mjs, test/greenhouse_work_auth_driver.test.mjs, test/helpers.mjs, shared/answer_templates.mjs, shared/validate_user_profile.mjs, scripts/demo_check.mjs, CHANGELOG.md, docs/active/2026-07-23_product-blueprint_DESIGN.md, shared/apply_gap_report.mjs, shared/missing_field_questions.mjs, shared/supervisor_preflight.mjs, shared/apply_batch.mjs, shared/local_db.mjs, shared/onboard_tmp.mjs, scripts/secure_profile_files.sh, test/apply_gap_report.test.mjs, .claude/skills/mrweirdo-onboard/references/intake-and-profile.md, .claude/skills/mrweirdo-onboard/references/run-and-database.md, docs/active/2026-07-23_product-blueprint_VERIFY_REPORT.md, docs/active/2026-07-23_product-blueprint_STATE_AUDIT.md, test/greenhouse_driver_harness.mjs, test/secure_profile_files.test.mjs
 Blocks: none
-Iterations: 10
+Iterations: 11
 Updated: 2026-07-30
 ---
 
@@ -2859,3 +2859,79 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
 
 - 6 提交链 `165dc6f`→`635c143`→`5f5b40d`→`9dbfe79`→`77ed7a7`→`264a7af`，npm test 244→257 小步递增全绿；lead 与 verify 各自独立干净检出复核（verify 并补验了 lead 没盖到的 2 个提交）。
 - 真值表 10×5 逐格、七档案端到端 42/42、visa_status 三层零泄漏、5 处突变全红——均为 verify 第 5 轮独立实测（R5-A2/B/A5/C2），施工侧不重复自证。
+
+---
+
+# 阶段 1「数字变真」包 1（第 11 轮，2026-07-30）
+
+## 86. 实现摘要（3 个代码提交 + 1 个补账文档提交，未 push）
+
+链：`9a490cb`（§85 补账）→ `9f73b3d` 锁 → `713aa4c` 判定器 → `c3dd9be` 整页留证。按阶段 1 设计 §14.10 提交 1-3 施工，B3-a 写入侧上锁按 §14.1.3 并入。
+
+| 提交 | 内容 | 新/改文件 |
+|---|---|---|
+| `9f73b3d` feat(lock) | `state_file_lock.mjs`（PII_TARGETS 唯一载体清单 + lockFile/lockDir/sweep + CLI）；写入点接线：cdp 截图收口、求职信 HTML/PDF、apply_batch 结果文件与汇总（run-tmp 整目录 700）；`secure_profile_files.sh` 委托 sweep；preflight 补网 WARN；demo_check 走 report 模式 | 新 2 / 改 6 |
+| `713aa4c` feat(verdict) | `submission_evidence.mjs` 判定半部（集合语义、无默认成功）；Ashby 驱动 submitAndCheck 判定收归 node 侧（1156→1155 净减 1）；`ashby_helpers.js` 肇事支拔除；19 个页面文案夹具（6 张 Directive 横幅逐张自截图转写） | 新 21 / 改 3 |
+| `c3dd9be` feat(evidence) | `cdp.mjs --full-page`（滚到底 + captureBeyondViewport）；captureEvidence + evidenceFileName + CLI（判先于拍、名随判定）；Ashby 驱动 `/tmp` 一次性截图同行换 captureEvidence（净增 0）；3 份 -auto 技能说明书截图段换一行 evidence 调用、提交后判定改解析 verdict 三档 | 新 1 / 改 6 |
+
+## 87. TDD 落地证据（先红后绿，原始报错原文）
+
+- 提交 1 红：`Error [ERR_MODULE_NOT_FOUND]: Cannot find module '…/shared/state_file_lock.mjs'`（11 例全红）→ 实现后 11/11 绿。
+- 提交 2 红（两层）：模块层同上；驱动层针对出货代码先写测试——`AssertionError: harness must export the shipped submitAndCheck` 与 `shared/ashby_apply_driver.mjs still mentions "already applied" in a success path`（对未改驱动实跑，红）→ 改完绿。**物证测试永久钉死**：旧正则原文对 Directive 横幅夹具判 `true`（这条测试若哪天红了，说明夹具不再复现原始 bug，禁止改夹具「修」它）。
+- 提交 3 例外申报：captureEvidence 的 8 例测试写在实现之后（非先红）。补偿：2 处突变自证测试真咬人——① after 文件名改成永远 `_after_success` → **4 红**；② 去掉落盘 lockFile → **2 红**；突变后从备份复原并重跑 8/8 绿。
+- 覆盖率（node --test --experimental-test-coverage）：`state_file_lock.mjs` 行 **95.0%**、`submission_evidence.mjs` 行 **89.5%**（均 ≥80）。未盖到的行如实列：chmod 失败收集分支与 CLI stderr 循环（本机作为文件属主无法制造 chmod 失败）、defaultRunCdp 真实 spawn 与 CLI 成功路（需活 Chrome，verify 有浏览器时可补 V9）。
+
+## 88. 实测证据（沙箱 + 干净检出）
+
+- **链上 4 个提交各自 `git worktree add --detach` 独立路径干净检出 npm test 全绿**：257→268→277→285，fail 全 0（Round 55 教训：独立路径逐个建，未循环建删）。
+- tip `c3dd9be` 干净检出 CI 四步：npm test 285/285、role_guard_smoke=0、public_alpha_gate=0、node --check（shared+scripts 全部）=0。
+- 主流程冒烟（登记表 ci_smoke.main_chain 启用）：`npm run demo:check` **exit 0**（对真实家目录，只读）。
+- preflight 补网双模式沙箱实测：report 模式 WARN `pii_lock_sweep` would_lock=2、文件仍 644；默认模式 locked=2、文件变 600。
+- **创始人家目录零写入**：开工前后 stat 快照（路径+mtime+大小+权限，841 条目，排除 chrome-profile/ 自缓存）diff = **0 行**；`/tmp/mrweirdo-onboard` 168→168。6 张 Directive 截图 + 309 真成功共 7 张只读打开转写，未动一字节。
+- 膨胀铁律：`ashby_apply_driver.mjs` 1156→**1155**（净减 1）；hook 曾两次当场拦下「先加后删」的过渡态编辑，改为每笔编辑自身净增 ≤0 后通过。
+
+## 89. 偏离设计稿（逐条显式，无偷改）
+
+1. **`ashby_helpers.js` 不在 §14.2 文件清单里但改了**：`Ashby.checkSuccess()` 藏着同一条肇事正则（`:763`），且 -auto 技能说明书正在调它——只删驱动那份等于留一条活的假成功路。已拔除肇事支（该函数现只认 `successfully submitted`，且说明书判定已改走 evidence CLI，它已无调用方）。**建议 architect 把该文件补进 §14.2 清单**；彻底收编（第四份实现清零）在包 2 提交 4 + 包 3 守卫。
+2. **PII_TARGETS 比 §13.4 原清单多 2 项**：`log/submissions.jsonl`（§14.2 明写）与 `{dir: 'run-tmp'}`（§14.5 未明点 1 的 lead 裁决——answers 中转文件并入本批上锁）。非私自扩，均有出处。
+3. **demo_check 引入 `MRWEIRDO_LOCK_SWEEP=report`（设计没写）**：设计只说 preflight 补网上锁，没考虑 demo:check 也调 preflight——照字面写，一次只读体检就会 chmod 用户家目录里 50 张截图，「诊断」变「改动」。report 模式让体检看得见（WARN 列出未锁文件）但不动手，真实批次照锁。已在两模式沙箱实测（§88）。
+4. **`not_submitted` 的驱动侧短路与 `page_states_failure` 出场留给包 2**：判定器已能给出 not_submitted，但驱动 outcome 词汇表统一（emitOutcome/退出码）是包 2 提交 4 的事，本包不越界。今天 Directive 类页面的行为：判定绝不再是 submitted，走既有重试后以 `unknown_state_no_errors_no_success` skip 收尾——诚实但多耗 4 次重试，包 2 收口。
+5. **harness 顺带中和 `sleep` 真等待**：submitAndCheck 每次真睡 7 秒会让测试多 14 秒；带守卫的字符串替换（声明漂移即红），与 PENDING_LINE 同一体例。
+
+## 90. 发现的旧 bug / 遗留（本轮未动，按包排队）
+
+- `greenhouse_apply_driver.mjs:1272-1276` 与 `lever_helpers.js checkSuccess()` 的本地成功正则仍在（包 2 提交 4 收归唯一实现；包 3 提交 9 上源码守卫）。`jobvite/handshake/smartrecruiters` 等 5 个半成品 helpers 的 checkSuccess 属阶段 4 转正时收编。
+- `greenhouse_apply_driver.mjs:1829` 附近的 `/tmp` 一次性截图未换（该文件本包一行未碰，属包 2 净增 0 预算统筹）。
+- preflight sweep 接线只有沙箱实测、无常驻测试（spawn 全套 preflight 太重）；verify 可按 §88 的两条命令复核。
+- 截图保留策略（取证 R3）仍未定，依赖本包判定落地后随批次 C 端给拍板人（§13.7 明确排除项，非遗漏）。
+
+## 91. 试过的错误方向（第 11 轮）
+
+**❌ 方向 1：用 `git checkout --` 复原突变测试，把未提交的实现一起冲掉。**
+提交 2 后做突变自证时，习惯性用 `git checkout -- shared/submission_evidence.mjs` 复原——但 captureEvidence 半部当时还没提交，一条命令回到了提交 2 的状态，第二处突变的「红」其实是 import 报错的假红。**靠突变前先拷到 scratchpad 的备份救回，零丢失**；重做突变 B 得到真红（2 红）。教训：**未提交状态下复原手段只能用备份，git checkout 是面向已提交状态的工具**；「每完成一小块就 commit」在这种夜里是字面意义的保命纪律。
+**❌ 方向 2：按「先加行、后删行」的顺序编辑超限文件。**
+膨胀 hook 逐笔编辑校验，过渡态 +1 也拦。第一轮把 import（+1）、verdict 返回（+1）拆成独立编辑，两笔全被拒，文件停在半改状态（函数没有返回值）。改法：每笔编辑自身净增 ≤0——import 与相邻三行横幅注释压缩合成一笔（-1），verdict 返回与 eval 内两行合并合成一笔（净 0）。
+**❌ 方向 3：CLI 直调判定用 `import.meta.url.endsWith(argv[1] 文件名)`。**
+文件名碰巧同名的第三方脚本会误触发 CLI 分支。改为 `fileURLToPath(import.meta.url) === resolve(argv[1])` 全路径等值。
+**❌ 方向 4：给 submissionVerdict 套一层 verdictInner 间接**。写到一半发现毫无必要（没有任何第二调用面），当场删掉——每一行都得是需求要的。
+
+## 92. 交付自查清单（第 11 轮）
+
+- ☑ TDD：提交 1/2 先红后绿（红样原文在 §87）；提交 3 的测试后置已申报并用 2 处突变补证
+- ☑ 测试全绿 285/285（257→+28）；链上 4 提交独立干净检出各自全绿；覆盖率新模块 95.0% / 89.5%（≥80，缺口行如实列）
+- ☑ 主流程冒烟：demo:check exit 0（ci_smoke.main_chain 启用项）；结构升级双路 / 隔离字段两格空 → 跳过
+- ☑ 无 `except pass` / 空 catch 吞错：唯一一处 `catch { page = {bodyText:'',url:''} }` 是显式语义（页面读不出 = unknown 档，注释写明）；驱动截图失败 `.catch` 显式打日志不吞（已确认投递不能因留证失败翻成没投）
+- ☑ 无 mock 假数据混入生产代码；夹具全部来自真实截图转写或标注为构造样张
+- ☑ 不涉 HTTP 端点 → 接口 8 契约/压测不适用
+- ☑ 偏离 100% 标注（§89 五条）；没顺手修排队中的旧 bug（§90 列明去向）
+- ☑ 变更日志：CHANGELOG.md Fixed 顶部 3 条（判定唯一实现 / 留证命名+整页 / 写入侧上锁）
+- ☑ 边界：未 push（`origin/main` = `e124773`，本地领先 4）；未真投递、未提交表单、未开浏览器碰真实网站；创始人家目录 stat diff 0 行（§88）；截图只读；工作区他人未提交改动（DESIGN.md +519 architect 稿、TASK.md lead 稿、hook_hits）一字未动、未 stage
+- ☑ 产物红线：BUILD/CHANGELOG/技能说明书全部 Edit 精准替换；新文件才用 Write
+
+### 92.1 本项目铁律对照（`.claude/arnold/roles/builder.md`）
+
+| 铁律 | 结论 |
+|---|---|
+| 测试必须串行跑 | ✅ `npm test` 自带 `--test-concurrency=1`；新测试全部独立 mkdtemp 前缀 |
+| 说「可以交付」前 ci.yml 每一步本地跑全绿 | ✅ 四步全跑且 tip 干净检出重跑（§88），不是只跑 npm test |
+| 主流程冒烟优先保证不断 | ✅ demo:check exit 0，且本包给它加的是「更不打扰」（report 模式零写入） |

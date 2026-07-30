@@ -60,6 +60,28 @@ since shipped and now lives in `docs/archive/`; the current one is
 `docs/PRD-improvements.md`.
 
 ### Fixed
+- **A page saying "We couldn't submit your application" can no longer be
+  recorded as a success** (2026-07-30, 阶段 1「数字变真」包 1). The Ashby
+  driver's success regex had an `already applied…` branch that judged that
+  exact failure banner as submitted — six historical screenshots named
+  `success` show that banner (all six re-opened and transcribed as regression
+  fixtures). "Was it submitted" now has a single implementation
+  (`shared/submission_evidence.mjs`): confirm/deny rule tables, all rules
+  consulted, both-or-neither → `unknown`, and `unknown` never counts as
+  submitted. Every rule ships with a fixture the tests verify it fires on.
+- **Evidence file names are decided by the judged verdict, and screenshots are
+  full-page** (2026-07-30). Names used to be bash-assembled in skill docs
+  before anyone read the page — that is how failure pages got named
+  `success`. Now one command reads, judges, then shoots the whole page
+  (single-viewport shots caught the mid-form answers in 2 of 50 historical
+  screenshots); files are named `…_after_<verdict>.png` and born locked.
+- **Personal-data files are locked where they are written, with a pre-batch
+  sweep for the ones nothing produces** (2026-07-30). One carrier list
+  (`shared/state_file_lock.mjs`) covers profile files, resume, cover letters,
+  screenshots and the batch transit files that hold real form answers; the
+  screenshot funnel, the cover-letter writer and the batch runner lock at the
+  write, preflight sweeps before every real batch, and `demo:check` observes
+  without touching (report-only mode) so a diagnostic never mutates the home.
 - **The pre-batch gate now asks "was he ever asked", not "is the cell filled
   in"** (2026-07-30). The old predicate assumed a student needs his work permit
   before applying; the truth runs the other way (offer first, then the school
