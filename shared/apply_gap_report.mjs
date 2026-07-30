@@ -126,6 +126,11 @@ function collectFields(obj) {
 const NOTE_CATEGORY = {
   work_authorization_required: 'user_work_authorization',
   sponsorship_future_required: 'user_work_authorization',
+  // NOT user_work_authorization: he answered Q4 with "don't answer for me", so
+  // this row goes on the self-serve list (link + materials, he fills the last
+  // cell) and must never be asked again. Sharing a note with never-asked would
+  // re-open a question he has already answered (§13.3.3 接缝硬规定 2，门与行层的接缝).
+  work_authorization_deferred_by_user: 'user_work_authorization_self_serve',
   legal_attestation_required: 'user_legal_attestation',
   export_control_answer_required: 'user_legal_attestation',
   current_residence_required: 'user_full_address',
@@ -209,6 +214,11 @@ function classifyField(field, outcome = {}) {
   const nonEmpty = (obj) => Object.keys(obj || {}).length > 0;
   const CATEGORY_ANSWERED = {
     user_work_authorization: () => workAuthKnown(),
+    // Deferred rows leave the self-serve list only when the profile can now
+    // actually answer the question (he changed his policy to A/B, so the
+    // booleans hold his own statement). Until then the row stays listed — it is
+    // his to fill, not ours to re-ask.
+    user_work_authorization_self_serve: () => workAuthKnown(),
     user_demographics_eeo: () => eeoValueKnown(lower),
     user_full_address: () => fullAddressKnown,
     user_legal_attestation: () => typeof legal.no_prohibited_possessor_status === 'boolean',
@@ -358,6 +368,7 @@ const RETRYABLE_CATEGORIES = new Set([
   'user_logistics_fact',
   'user_earliest_start_date',
   'user_work_authorization',
+  'user_work_authorization_self_serve',
   'user_work_location_commitment',
   'unknown_user_fact',
 ]);

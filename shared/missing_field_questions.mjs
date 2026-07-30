@@ -220,6 +220,24 @@ export const QUESTION_TEMPLATES = {
     value_type: 'object',
     enum_values: null,
   },
+  user_work_authorization_self_serve: {
+    // 照抄 user_external_form_completion 的体例（§13.3.3 接缝硬规定 3，门与行层的
+    // 接缝）：这不是一个问题，是一句交待 + 岗位链接。他在 Q4 已经指示「这类题
+    // 别替我答」，再问「那你到底要答什么」就是没听。写回路径只有 policy 一条：
+    // 他唯一可能想改的就是那个指示（随时可改），改成 A/B 后这些行自动重投。
+    priority: 10.5,
+    profile_paths: ['work_authorization.form_answer_policy'],
+    question: '这几个岗位的表单问到了工作授权。按你说的，我没替你答——岗位链接在报告里，材料已备好，你自己填最后一格就能交。想让我以后替你填的话，随时改一句话的事（把「碰到这道题怎么办」改成填「有」或填「没有」），改完这些岗位会自动重投。',
+    answer_type: 'acknowledgement',
+    value_type: 'string',
+    path_value_types: {
+      'work_authorization.form_answer_policy': 'string',
+    },
+    path_enum_values: {
+      'work_authorization.form_answer_policy': Object.values(FORM_ANSWER_POLICIES),
+    },
+    enum_values: null,
+  },
   user_demographics_eeo: {
     // Ranked last on purpose: it unlocks nothing on its own and only surfaces
     // when a form offers no "decline to answer" option. Step 6 spends its

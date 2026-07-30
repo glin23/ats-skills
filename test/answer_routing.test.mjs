@@ -175,6 +175,66 @@ test('workAuthGapFor: an answered profile never blocks; unrelated labels never b
   assert.equal(workAuthGapFor('How did you hear about this job?', {}), null);
 });
 
+test('workAuthGapFor: 「别替我答」有自己的 note，绝不与「没问过」共用', () => {
+  // 接缝硬规定 2（设计稿 §13.3.3 门与行层的接缝）：两个 note 的正确后续完全相反——
+  // work_authorization_required = 没问过 → 该问；deferred = 他答过了（答的是
+  // 「别替我答」）→ 不许再问，只把这一行放进「你自己填最后一格」清单。
+  // 共用一个 note 的直接后果是把他已经回答过的问题再问一遍。
+  const rowFive = {
+    // 真值表第 5 行：常态留学生 + Q4 选 C（默认档）。
+    work_authorization: {
+      visa_status: 'student_visa_no_permission_yet',
+      authorized_to_work_us: null,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: true,
+      form_answer_policy: 'defer_to_user',
+    },
+  };
+  assert.deepEqual(
+    workAuthGapFor('Are you legally authorized to work in the United States?', rowFive),
+    { needs_user_answer: true, note: 'work_authorization_deferred_by_user' },
+  );
+
+  // 担保题同族一起 defer（接缝表第 5 行「同左」）：其他情形 + Q5 说不清楚 + Q4′ = C。
+  const rowNineC = {
+    work_authorization: {
+      visa_status: 'other_status',
+      authorized_to_work_us: null,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: null,
+      form_answer_policy: 'defer_to_user',
+    },
+  };
+  assert.deepEqual(
+    workAuthGapFor('Will you now or in the future require sponsorship for employment visa status?', rowNineC),
+    { needs_user_answer: true, note: 'work_authorization_deferred_by_user' },
+  );
+
+  // Q4 选 A：授权题已是他自己的陈述（布尔在档案里），不拦；担保题他没答过
+  // （真值表第 9 行不写 rsf），照旧走「该问」——policy 管的是授权那道题的作者权，
+  // 不是把整个人的所有空格都盖掉。
+  const rowNineA = {
+    work_authorization: {
+      visa_status: 'other_status',
+      authorized_to_work_us: true,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: null,
+      form_answer_policy: 'answer_yes',
+    },
+  };
+  assert.equal(workAuthGapFor('Are you legally authorized to work in the United States?', rowNineA), null);
+  assert.deepEqual(
+    workAuthGapFor('Do you need us to sponsor your work authorization?', rowNineA),
+    { needs_user_answer: true, note: 'sponsorship_future_required' },
+  );
+
+  // 没跑过漏斗（没有 policy）的空档案仍走「没问过」那个 note——回归护栏。
+  assert.deepEqual(
+    workAuthGapFor('Are you legally authorized to work in the United States?', {}),
+    { needs_user_answer: true, note: 'work_authorization_required' },
+  );
+});
+
 test('workAuthGapFor: "visa" is matched as a WORD, not as a substring of another word', () => {
   const unknown = {};
   // Real work-auth phrasings must still block.

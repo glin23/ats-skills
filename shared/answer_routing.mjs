@@ -223,19 +223,32 @@ const SPONSORSHIP_LABEL_RE = /sponsor|sponsorship|work auth|\bvisas?\b|(?:mainta
 // through the two fields above and is left to that path.
 const WITHOUT_SPONSORSHIP_LABEL_RE = /(?:authorized|eligible|right|legally).{0,80}work.{0,80}without.{0,50}sponsor|without.{0,50}sponsor.{0,80}(?:work|employment|authorization)|unrestricted.{0,50}(?:work|employment|authorization)/i;
 
+// Q4 关卡 8: he was asked, once, what to do when a form asks the
+// work-authorization question, and "don't answer for me" is the default. That
+// instruction covers the whole question family (同族一起 defer). It is NOT the
+// same thing as "never asked", and the two must never share a note: the correct
+// follow-up to never-asked is to ask, the correct follow-up to deferred is to
+// hand him the row and NEVER ask again (设计稿 §13.3.3 接缝硬规定 2).
+export function workAuthPolicyDefers(profile = {}) {
+  return profile.work_authorization?.form_answer_policy === 'defer_to_user';
+}
+
 // Pure gap check: returns a blocking descriptor when the form asks about a
-// work-authorization fact we were never told, else null. Mirrors the shape used
-// by currentResidenceYesNoAnswer's blocking branch.
+// work-authorization fact the profile cannot answer, else null. Mirrors the
+// shape used by currentResidenceYesNoAnswer's blocking branch. `note` says
+// WHY the cell is empty: never asked (ask him) vs deferred by his own
+// instruction (self-serve list, do not ask).
 export function workAuthGapFor(label = '', profile = {}) {
   const text = String(label || '');
   if (!text) return null;
   if (WITHOUT_SPONSORSHIP_LABEL_RE.test(text)) return null;
+  const defers = workAuthPolicyDefers(profile);
   const { authorizedNeedsUser, sponsorNeedsUser } = deriveWorkAuthAnswers(profile);
   if (authorizedNeedsUser && WORK_AUTH_LABEL_RE.test(text)) {
-    return { needs_user_answer: true, note: 'work_authorization_required' };
+    return { needs_user_answer: true, note: defers ? 'work_authorization_deferred_by_user' : 'work_authorization_required' };
   }
   if (sponsorNeedsUser && SPONSORSHIP_LABEL_RE.test(text)) {
-    return { needs_user_answer: true, note: 'sponsorship_future_required' };
+    return { needs_user_answer: true, note: defers ? 'work_authorization_deferred_by_user' : 'sponsorship_future_required' };
   }
   return null;
 }
