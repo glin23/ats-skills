@@ -2816,3 +2816,46 @@ apply-result-1.jsonl                 →  apply_gap_report   →  沙箱 run-tmp
    **只改这一句的措辞，不改任何事实性内容**，如实报在这里。
 2. **提交落在 `main` 上，没有新开分支**：与本任务链 Round 1-40 的既有做法一致（派遣单也按"链上提交单独检出"验收）。**未 push。**
 3. **验收给 builder 的 5.2.5 半条建议本轮没做**，理由与去向见 §82 末行 + §83 方向 4。
+
+## 85. 阶段 0 施工记录补账（Round 55 挂账，本轮一次 Edit 还清）
+
+> 为什么晚交：阶段 0 施工在连续 7 次基础设施中断下完成，本节四次尝试均因断线未写成（TASK Round 55 显式挂账）。
+> 事实链依据：6 个提交（`165dc6f`→`264a7af`）的提交信息 + lead 独立复验数字 + verify 第 5 轮（VERIFY_REPORT R5-*）独立实测。本节为补录，不是新证据。
+
+### 85.1 ⚠️ 偏离 DESIGN 申报（当时漏报，verify R5-A1 已代为核实，此处正式补申报）
+
+**门谓词比设计多读了「严格类型值」**。DESIGN §13.3.3 接缝硬规定 1 写「门**只读来源留痕，不读值**」；
+`personal_fact_gate.mjs` 实现是「漏斗留痕 **或** 严格类型值（typed boolean / 合法 policy 枚举）任一即认定问过」。
+- **为什么偏离**：现有真实用户的档案早于留痕机制——实查其家目录 `answer_provenance.json` 不存在、档案里 3 个 typed boolean 在。照设计字面写，唯一真实用户会被自己的门锁死。
+- **为什么方向安全**：值**只能开门、永远不能关门**（ADR-11 取缔的是「值缺 ⇒ 锁」这个反方向）；字符串形态（`"true"` / `"Yes"` / 自由文本）一律不认。
+- **verify 独立结论**（R5-A1，14 形态实测）：接受、不构成回炉；`demo:check` 对真实用户放行正是走的这条兜底。
+- **未了事项**：这半句该回写进 DESIGN §13.3.3，归 architect（verify 遗留清单第 ① 条）。
+
+### 85.2 DESIGN §13.11 C1-C14 对账（verify R5-C3 独立核对 14/14，此处按施工侧补录）
+
+| 项 | 做了什么 | 落点提交 |
+|---|---|---|
+| C1 Q3 换问法删术语 | 问句零 CPT/OPT/EAD，「还没有（正常，大多数人在这一档）」选项在 | `165dc6f` |
+| C2 Q4/Q5 + FORM_ANSWER_POLICIES | 三档 policy（默认 defer）+「这三个字会被原样打到真实雇主的表单上」原话 | `165dc6f` |
+| C3 说不清楚补 `requires_sponsorship_future=true` | 补上后被阻塞投递 16/72 → 4/72 | `165dc6f` |
+| C4 BLOCKED_BECAUSE / WHAT_HAPPENS_NEXT 改写 | 「引导没跑过」/「答不上来的格子只停问到的那几行，其余照投」 | `165dc6f` |
+| C5 other_status 接 Q5+Q4′ | 第二个永久死锁解除（真值表 7-9 行） | `165dc6f` |
+| C6 门谓词换「问过没问过」 | 含 §85.1 那处偏离 | `165dc6f` |
+| C7 preflight 注释与检查项语义 | 实测数字（约 1/20 行、4/72=5.6%）替换旧的「几乎全部」 | `165dc6f` |
+| C8 模板加 `form_answer_policy`/`_user_words` | 写回口枚举收紧（自由文本 exit 3 拒收） | `635c143` |
+| C9 引导说明书 A0 改 Q1-Q5、删「batch cannot start」段 | 全仓 grep 旧句仅剩自述注释 | `264a7af` |
+| C10 新 note → `user_work_authorization_self_serve` 类目 | defer 是交待不是重问；不落 agent_actions | `635c143` |
+| C11-C14 ADR-12 四处 | `authSummary()` 不读 visa_status / bank 删句 / 驱动不嗅自由文本 / 桶三态化 + 读点白名单守卫 | `5f5b40d` `9dbfe79` `77ed7a7` |
+
+### 85.3 ADR-12 删句对照（提交信息承诺「原文进施工记录」，此处兑现）
+
+`answer_bank.json:82`「你什么时候能到岗」模板尾部删掉的原文（真实语料命中 5/73 投递）：
+> `… I can provide exact timing if the recruiting team needs it. Work authorization summary from my profile: {{WORK_AUTH_SUMMARY}}.`
+
+现有真实用户可见变化（verify R5-A6 独立对照 125 个模板键）：**仅 1 键变化**，即上句渲染结果
+`Work authorization summary from my profile: F-1 OPT eligible; may require future sponsorship depending on the role.` 整句消失，前半句逐字不变，其余 124 键零字节变化。该变化已由拍板人在关卡 8 / §13.10 流程确认，非偷改。
+
+### 85.4 真实用户对照与证据摘要
+
+- 6 提交链 `165dc6f`→`635c143`→`5f5b40d`→`9dbfe79`→`77ed7a7`→`264a7af`，npm test 244→257 小步递增全绿；lead 与 verify 各自独立干净检出复核（verify 并补验了 lead 没盖到的 2 个提交）。
+- 真值表 10×5 逐格、七档案端到端 42/42、visa_status 三层零泄漏、5 处突变全红——均为 verify 第 5 轮独立实测（R5-A2/B/A5/C2），施工侧不重复自证。
