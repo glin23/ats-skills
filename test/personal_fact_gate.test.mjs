@@ -18,14 +18,16 @@ import { fileURLToPath } from 'node:url';
 import { GATED_PATHS, blockingProfileGaps } from '../shared/personal_fact_gate.mjs';
 import { answerWritePaths } from '../shared/missing_field_questions.mjs';
 import { WHERE_TO_CHECK, workAuthAnswers } from '../shared/work_auth_identity.mjs';
-import { sourceFor } from '../shared/answer_provenance.mjs';
+import { workAuthSources } from '../shared/answer_provenance.mjs';
 import { onboardTestEnv } from './helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('the gate opens for a profile that answered work authorization', () => {
-  // The one real user today: F-1 OPT, all four keys present. This assertion is
-  // the "existing user sees no change" guarantee in executable form.
+  // The one real user today: F-1 OPT, all four keys present, and NO provenance
+  // file at all (his profile predates that file). 设计稿 §13.9.2 promises him
+  // 逐格零变化, so a gate that reads provenance and nothing else would lock out
+  // the only real user there is — see the note in personal_fact_gate.mjs.
   const result = blockingProfileGaps({
     work_authorization: {
       visa_status: 'F-1 OPT eligible',
@@ -36,6 +38,64 @@ test('the gate opens for a profile that answered work authorization', () => {
   });
   assert.equal(result.ok, true);
   assert.deepEqual(result.missing_paths, []);
+});
+
+test('ADR-11: the gate judges "was he ever asked", not "is this cell filled in"', () => {
+  // 关卡 7 推翻的死锁的确切形状: 一个常态留学生答完了全部问题, 两个布尔仍然
+  // 空着 (答不出来的东西不许替他写), 旧谓词于是永远拦着他 —— 一行也投不出去.
+  // 实测: 那道门的实际阻塞面是 72/72 = 100%, 而这些格子缺失真正会挡的行是 4/72.
+  const answeredEverythingHeCan = {
+    work_authorization: {
+      visa_status: 'student_visa_no_permission_yet',
+      authorized_to_work_us: null,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: true,
+      form_answer_policy: 'defer_to_user',
+    },
+  };
+  const gate = blockingProfileGaps(answeredEverythingHeCan);
+  assert.equal(gate.ok, true, '他能答的都答了, 再问只会拿回同一个答案');
+
+  // 第二个死锁: 其他情形 + Q5 说不清楚 + Q4 选 B. pm 的值判据在这一格下
+  // 门仍然关着, 而这个人已经把能答的都答了 —— 所以值判据不能当门用.
+  const otherStatus = {
+    work_authorization: {
+      visa_status: 'other_status',
+      authorized_to_work_us: false,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: null,
+      form_answer_policy: 'answer_no',
+    },
+  };
+  assert.equal(blockingProfileGaps(otherStatus).ok, true);
+});
+
+test('the gate opens on the provenance record alone, even before any cell can be filled', () => {
+  // 门只读来源留痕这一半: 一个人被问过 (留痕在), 哪怕这一族的值一格都没落下来,
+  // 也不该被拦 —— 再问一遍只会拿回同一个答案.
+  const nothingOnFile = {
+    work_authorization: {
+      visa_status: '',
+      authorized_to_work_us: null,
+      requires_sponsorship_now: null,
+      requires_sponsorship_future: null,
+      form_answer_policy: null,
+    },
+  };
+  assert.equal(blockingProfileGaps(nothingOnFile).ok, false, 'nothing at all: he was never asked');
+  const asked = blockingProfileGaps(nothingOnFile, {
+    work_auth_sources: { 'work_authorization.visa_status': 'onboarding_a0' },
+  });
+  assert.equal(asked.ok, true, '留痕说他被问过了, 门就不该再拦批次');
+
+  // 但留痕必须是「人给的」. resume_inferred / unknown 不是他说的.
+  for (const source of ['resume_inferred', 'unknown']) {
+    assert.equal(
+      blockingProfileGaps(nothingOnFile, { work_auth_sources: { 'work_authorization.visa_status': source } }).ok,
+      false,
+      `${source} is not the funnel having been run`,
+    );
+  }
 });
 
 test('the gate opens for a NO as readily as a YES — an answer is an answer', () => {
@@ -62,7 +122,6 @@ test('the gate opens for a NO as readily as a YES — an answer is an answer', (
 
 test('the gate closes on every shape of "nobody ever told us"', () => {
   const cases = {
-    'one key missing': { work_authorization: { authorized_to_work_us: true } },
     'whole block missing': {},
     'block present but empty': { work_authorization: {} },
     'explicitly null': { work_authorization: { authorized_to_work_us: null, requires_sponsorship_future: null } },
@@ -74,10 +133,13 @@ test('the gate closes on every shape of "nobody ever told us"', () => {
     assert.ok(result.missing_paths.length > 0, `${name} must name the missing paths`);
     assert.ok(result.question.length > 0, `${name} must carry a question`);
   }
+  // 反向守卫: 「改成一律放行」是这一轮最省事也最坏的解法, 所以这一行必须仍然拦.
   assert.deepEqual(
-    blockingProfileGaps({ work_authorization: { authorized_to_work_us: true } }).missing_paths,
-    ['work_authorization.requires_sponsorship_future'],
+    blockingProfileGaps({}).missing_paths,
+    [...GATED_PATHS],
   );
+  // 而「一个格子有值」已经足够证明有人走过这个漏斗 —— 之后该卡的行按行卡.
+  assert.equal(blockingProfileGaps({ work_authorization: { authorized_to_work_us: true } }).ok, true);
 });
 
 test('the gate treats a stringy "true" as never asked, and never coerces it', () => {
@@ -111,99 +173,71 @@ test('the gate asks which kind of person he is, and hands back a runnable fix', 
   }
 });
 
-test('"I do not know" is not a dead end: the gate hands back all three things at once', () => {
-  // 设计稿 §13.3: 卡在哪 / 去哪里查 / 查清楚之前会怎样. Stopping the batch without
-  // all three is the behaviour this round exists to delete — the user sees
-  // "0 submitted", no question, and no reason.
+test('the stop says what it is stuck on and what happens next — and it is no longer "this batch is off"', () => {
   const result = blockingProfileGaps({});
   assert.equal(result.ok, false);
   assert.ok(result.blocked_because.length > 0, 'the gate must say what it is stuck on');
-  assert.deepEqual(result.where_to_check, WHERE_TO_CHECK, 'the three places must come from one source, not be retyped');
+  assert.match(result.blocked_because, /一次都没问过|还没走完/, '它现在只有一个理由: 引导没跑过');
   // 关卡 7: 「这一批先不投」已删. 剩下的承诺是「问到那道题的那几行停下, 其余照投」.
   assert.match(result.what_happens_next, /其余照投/);
   assert.doesNotMatch(result.what_happens_next, /这一批先不投|这一批我先不投/);
+  // 那三条查证去处已按 §13.3.2 挪到 Q4 旁边: 它们全是「确认你有没有」的去处,
+  // 没有一条能让一个还没投工作的人拿到许可. 挂在门上就是一个礼貌的死胡同.
+  assert.ok(!('where_to_check' in result), '三条去处不再挂在门上, 它们在 Q4 里');
+  assert.ok(!('asked_in_this_batch' in result), '门只在「一次都没问过」时关, 不存在「已经问过还关着」这种状态');
+  assert.equal(WHERE_TO_CHECK.length, 3, '它们仍然存在, 只是换了位置');
 });
 
-test('the gate does not ask twice in one batch once the user has said he cannot tell', () => {
-  // Without this the loop is: ask -> "I don't know" -> gate still shut -> ask
-  // the same question again. The signal is structural, not a guess: provenance
-  // says a human supplied visa_status, and the two gated booleans are still
-  // unanswered, so asking again can only produce the same answer.
-  const unclear = {
-    work_authorization: {
-      visa_status: '我不知道，学校说要等',
-      authorized_to_work_us: null,
-      requires_sponsorship_now: null,
-      requires_sponsorship_future: null,
-    },
-  };
-  const firstTime = blockingProfileGaps(unclear);
-  assert.equal(firstTime.ok, false);
-  assert.equal(firstTime.asked_in_this_batch, false, 'nothing on record means nobody asked yet');
+const EMPTY_HOME_PROFILE = {
+  personal: {},
+  education: {},
+  work_authorization: {
+    visa_status: '',
+    authorized_to_work_us: null,
+    requires_sponsorship_now: null,
+    requires_sponsorship_future: null,
+    form_answer_policy: null,
+    _user_words: '',
+  },
+  resume_path: '/tmp/resume.pdf',
+  standard_qa: {},
+};
 
-  const afterAsking = blockingProfileGaps(unclear, { visa_status_source: 'user_answer' });
-  assert.equal(afterAsking.ok, false, 'a status we cannot act on still stops the batch');
-  assert.equal(afterAsking.asked_in_this_batch, true);
-  assert.ok(afterAsking.where_to_check.length === 3, 'and he still gets told where to look');
-
-  // A value nobody vouches for is not an answer: an inferred or unlabelled
-  // visa_status must not silence the question.
-  for (const source of ['unknown', 'legacy_unverified', 'resume_inferred']) {
-    assert.equal(
-      blockingProfileGaps(unclear, { visa_status_source: source }).asked_in_this_batch,
-      false,
-      `${source} is not the user telling us`,
-    );
-  }
-});
-
-test('an answered gate never reports itself as already asked', () => {
-  const settled = blockingProfileGaps({
-    work_authorization: {
-      visa_status: 'US Citizen or Permanent Resident',
-      authorized_to_work_us: true,
-      requires_sponsorship_now: false,
-      requires_sponsorship_future: false,
-    },
-  }, { visa_status_source: 'user_answer' });
-  assert.equal(settled.ok, true);
-  assert.equal(settled.asked_in_this_batch, false);
-  assert.deepEqual(settled.where_to_check, []);
-});
-
-test('every situation the identity funnel can produce is written to disk without a single invented boolean', () => {
-  // 本条在本提交里只守一件事: 漏斗产出的每一种情形都能原样落盘, 且它拒绝写的
-  // 格子落盘后仍是 null. 门的判据本身在下一个提交 (ADR-11) 换成「问过没问过」,
-  // 那时这里会补上逐行的开/关期望.
-  const home = mkdtempSync(join(tmpdir(), 'mrw-gate-identity-'));
-  for (const input of [
-    { citizenOrGreenCard: true },
-    { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: true },
-    { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'defer_to_user' },
-    {
+// 设计稿 §13.9.3 第 3 条: 门在 10 种情形里只关 1 次 (第 10 行「漏斗没跑过」),
+// 其余 9 行必须放行 —— 包括「还没批」「说不清楚」「其他情形 + Q5 说不清楚」
+// 这三行, 它们就是本轮修掉的两个死锁.
+const NINE_FUNNEL_ROWS = [
+  { row: 1, input: { citizenOrGreenCard: true } },
+  { row: 2, input: { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: true } },
+  { row: 3, input: { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'answer_yes' } },
+  { row: 4, input: { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'answer_no' } },
+  { row: 5, input: { citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: false, formAnswerPolicy: 'defer_to_user' } },
+  {
+    row: 6,
+    input: {
       citizenOrGreenCard: false, studentVisa: true, workPermissionGranted: 'unclear',
-      formAnswerPolicy: 'answer_yes', userWords: '不清楚',
+      formAnswerPolicy: 'defer_to_user', userWords: '我不知道，学校说要等',
     },
-    {
-      citizenOrGreenCard: false, studentVisa: false, sponsorshipNeededFuture: 'unclear',
-      formAnswerPolicy: 'answer_no', userWords: 'H-1B',
-    },
-  ]) {
+  },
+  { row: 7, input: { citizenOrGreenCard: false, studentVisa: false, sponsorshipNeededFuture: true, formAnswerPolicy: 'answer_yes' } },
+  { row: 8, input: { citizenOrGreenCard: false, studentVisa: false, sponsorshipNeededFuture: false, formAnswerPolicy: 'answer_no' } },
+  { row: 9, input: { citizenOrGreenCard: false, studentVisa: false, sponsorshipNeededFuture: 'unclear', formAnswerPolicy: 'defer_to_user' } },
+];
+
+test('the gate closes exactly once in the ten-row truth table: only for the funnel that never ran', () => {
+  for (const { row, input } of NINE_FUNNEL_ROWS) {
+    const home = mkdtempSync(join(tmpdir(), 'mrw-gate-identity-'));
     const profilePath = join(home, 'profile.json');
-    writeFileSync(profilePath, `${JSON.stringify({
-      personal: {},
-      education: {},
-      work_authorization: {
-        visa_status: '',
-        authorized_to_work_us: null,
-        requires_sponsorship_now: null,
-        requires_sponsorship_future: null,
-        form_answer_policy: null,
-        _user_words: '',
-      },
-      resume_path: '/tmp/resume.pdf',
-      standard_qa: {},
-    }, null, 2)}\n`);
+    writeFileSync(profilePath, `${JSON.stringify(EMPTY_HOME_PROFILE, null, 2)}\n`);
+
+    // 第 10 行的形状: 同一份档案, 漏斗还没跑.
+    assert.equal(
+      blockingProfileGaps(JSON.parse(readFileSync(profilePath, 'utf8')), {
+        work_auth_sources: workAuthSources(home),
+      }).ok,
+      false,
+      '第 10 行 (漏斗一次都没跑过) 必须仍然拦',
+    );
 
     const { write_groups, unwritten_paths } = workAuthAnswers(input);
     for (const group of write_groups) {
@@ -220,15 +254,11 @@ test('every situation the identity funnel can produce is written to disk without
       const value = profile.work_authorization[key];
       assert.ok(
         value === null || value === '',
-        `${JSON.stringify(input)}: ${path} must stay empty, got ${JSON.stringify(value)}`,
+        `第 ${row} 行: ${path} must stay empty, got ${JSON.stringify(value)}`,
       );
     }
-    const gate = blockingProfileGaps(profile, {
-      visa_status_source: sourceFor(home, 'work_authorization.visa_status', profile.work_authorization.visa_status),
-    });
-    if (!gate.ok) {
-      assert.equal(gate.where_to_check.length, 3, `${JSON.stringify(input)}: a blocked user must be told where to look`);
-    }
+    const gate = blockingProfileGaps(profile, { work_auth_sources: workAuthSources(home) });
+    assert.equal(gate.ok, true, `第 ${row} 行必须放行, 得到 ${JSON.stringify(gate.missing_paths)}`);
   }
 });
 
@@ -238,7 +268,6 @@ test('every gated path is a path the write-back command is allowed to write', ()
   const writable = answerWritePaths();
   for (const path of GATED_PATHS) {
     assert.ok(writable.has(path), `the gate asks for ${path}, which no question can write`);
-    assert.equal(writable.get(path).value_type, 'boolean');
   }
 });
 

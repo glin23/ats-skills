@@ -94,6 +94,22 @@ export function sourceFor(home, path, currentValue) {
   return entry.value_fingerprint === fingerprint(currentValue) ? entry.source : 'unknown';
 }
 
+/**
+ * Every recorded source in the work-authorization family, keyed by profile
+ * path. This is what the pre-batch gate reads to answer "was the identity
+ * funnel ever run" (ADR-11): a recorded entry proves the question was put to
+ * him, regardless of what the cell holds today — deliberately NOT fingerprint-
+ * checked, because a later hand-edit changes the value, not the fact that he
+ * was asked. Who supplied the CURRENT value is `sourceFor`'s job, not this one.
+ */
+export function workAuthSources(home = atsHome()) {
+  const out = {};
+  for (const [path, entry] of Object.entries(readProvenance(home).entries)) {
+    if (path.startsWith('work_authorization.')) out[path] = entry.source;
+  }
+  return out;
+}
+
 function valueAtPath(profile, path) {
   let node = profile;
   for (const key of path.split('.')) {

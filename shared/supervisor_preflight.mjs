@@ -7,7 +7,7 @@ import { atsHome } from './paths.mjs';
 import { deriveRoleTypeFromJob, normalizeRoleType, roleTypesFromSearchIntent } from './role_types.mjs';
 import { validateProfileBundle } from './validate_user_profile.mjs';
 import { blockingProfileGaps } from './personal_fact_gate.mjs';
-import { sourceFor } from './answer_provenance.mjs';
+import { workAuthSources } from './answer_provenance.mjs';
 import { formatMaxRows, resolveMaxRows } from './batch_limit.mjs';
 
 const repoRoot = process.env.MRWEIRDO_REPO_ROOT || dirname(dirname(fileURLToPath(import.meta.url)));
@@ -167,15 +167,17 @@ const smoke = runNode(['scripts/role_guard_smoke.mjs']);
 const cdp = await checkCdp();
 
 // A hard check, not a warning: this file already emits five kinds of WARN and an
-// automated flow walks straight past all of them. Failing here costs two seconds
-// and one question; passing here with an unanswered work-authorization key costs
-// twenty browser tabs, twenty blocked rows and a "0 submitted" report.
-// The provenance record answers "was he ever actually asked": a visa_status a
-// human supplied while the two gated booleans stay unanswered means the honest
-// reply was "I can't tell", and repeating the question this batch would only
-// get the same answer back. `detail` carries the three places to look instead.
+// automated flow walks straight past all of them. What it checks is onboarding
+// completeness (ADR-11): did the identity funnel ever run? It fails only for a
+// profile the funnel never touched — copied from the template, onboarding
+// skipped — where failing costs two seconds and one question, and passing costs
+// a browser round before the user learns nothing was configured. It is NOT a
+// value check: for anyone who finished onboarding it is always ok, whatever
+// they answered — unanswerable cells stop only the rows that actually ask that
+// question (measured: about 1 row in 20, 4/72 = 5.6% of real submissions), and
+// that is the row layer's job, not this check's.
 const profileGate = blockingProfileGaps(profile, {
-  visa_status_source: sourceFor(home, 'work_authorization.visa_status', profile.work_authorization?.visa_status),
+  work_auth_sources: workAuthSources(home),
 });
 
 const checks = [

@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atsHome } from './paths.mjs';
 import { blockingProfileGaps } from './personal_fact_gate.mjs';
-import { sourceFor } from './answer_provenance.mjs';
+import { workAuthSources } from './answer_provenance.mjs';
 import { formatMaxRows, limitRows, resolveMaxRows } from './batch_limit.mjs';
 import { progress, sleepWithProgress } from './progress.mjs';
 import { onboardTmpDir } from './onboard_tmp.mjs';
@@ -226,18 +226,15 @@ function readProfileForGate() {
 }
 const gateProfile = readProfileForGate();
 const profileGate = blockingProfileGaps(gateProfile, {
-  visa_status_source: sourceFor(home, 'work_authorization.visa_status', gateProfile.work_authorization?.visa_status),
+  work_auth_sources: workAuthSources(home),
 });
 if (!profileGate.ok) {
+  // Closed means exactly one thing since ADR-11: the funnel never ran. There is
+  // no "asked but still closed" state any more, so the only right move is to
+  // ask — the three places-to-look live next to Q4 now, not on this gate.
   progress('apply', `profile gate: unanswered ${profileGate.missing_paths.join(', ')}`);
   progress('apply', `profile gate: ${profileGate.blocked_because}`);
-  // Already asked and unresolved: repeating the question would only get the same
-  // "I don't know" back. Show him where the answer actually lives instead.
-  if (profileGate.asked_in_this_batch) {
-    for (const place of profileGate.where_to_check) progress('apply', `profile gate: 去查 — ${place}`);
-  } else {
-    progress('apply', `profile gate: ask "${profileGate.question}"`);
-  }
+  progress('apply', `profile gate: ask "${profileGate.question}"`);
   progress('apply', `profile gate: ${profileGate.what_happens_next}`);
   progress('apply', `profile gate: then run ${profileGate.remediation_command}`);
 }
